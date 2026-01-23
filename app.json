@@ -4,14 +4,14 @@
     "slug": "FocusFrame",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/favicon.png",
     "scheme": "focusframe",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.FocusFrame",
-      "icon": "./assets/images/icon.png",
+      "icon": "./assets/images/favicon.png",
       "buildNumber": "1.0.0"
     },
     "android": {
