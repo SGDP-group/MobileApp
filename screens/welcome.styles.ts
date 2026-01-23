@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { Colors } from '../../theme/colors'; // Adjust this path to where your Colors file is
+import { Colors } from '../theme/colors'; // Adjust this path to where your Colors file is
 
 // Note the 'export' keyword here
 export const styles = StyleSheet.create({

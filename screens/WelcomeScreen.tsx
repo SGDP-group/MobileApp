@@ -7,11 +7,11 @@ import {
     View
 } from 'react-native';
 
-import { GeometricLogo } from '../../components/GeometricLogo';
-import { SocialButton } from '../../components/SocialButton';
+import { GeometricLogo } from '../components/GeometricLogo';
+import { SocialButton } from '../components/SocialButton';
 import { styles } from './welcome.styles';
 
-const BG_IMAGE = require('../../assets/images/login-bg.jpg');
+const BG_IMAGE = require('../assets/images/login-bg.jpg');
 
 export default function WelcomeScreen() {
   
