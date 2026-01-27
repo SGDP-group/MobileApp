@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   ImageBackground,
+  Platform, // Added Platform import
   SafeAreaView,
   StatusBar,
   Text,
-  View,
-  Platform // Added Platform import
+  View
 } from 'react-native';
 
 import {
@@ -19,13 +19,19 @@ import { GeometricLogo } from '../components/GeometricLogo';
 import { SocialButton } from '../components/SocialButton';
 import { styles } from './welcome.styles';
 
+
 const BG_IMAGE = require('../assets/images/login-bg.jpg');
 
 export default function WelcomeScreen() {
   // 1. Hooks must be INSIDE the component
   const [userInfo, setUserInfo] = useState<any>(null);
 
-  // 2. Configure Google Sign-In inside useEffect
+
+
+  // ios  - 320294722121-16em0d7qgg1kjkui1dn6vdur3n0euelg.apps.googleusercontent.com
+  // Android - 320294722121-3u7p22o9jroqbf89unduu5qn22290j8s.apps.googleusercontent.com
+  // web - 320294722121-aer10knc1tfkaqd7r6l4glan2l6t6er6.apps.googleusercontent.com
+  
   useEffect(() => {
     if (Platform.OS !== 'web') {
       try {
