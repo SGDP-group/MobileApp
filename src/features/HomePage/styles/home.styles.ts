@@ -55,6 +55,12 @@ export const styles = StyleSheet.create({
     backgroundColor: "#F4C552",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   statusPill: {
     alignSelf: "flex-start",
@@ -254,6 +260,24 @@ export const styles = StyleSheet.create({
     fontSize: 10,
     color: "#54D2FF",
     fontWeight: "600",
+  },
+  scrollIndicatorContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  scrollDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#2A3B43",
+  },
+  scrollDotActive: {
+    width: 20,
+    backgroundColor: "#54D2FF",
   },
   logoutButton: {
     marginHorizontal: 20,

@@ -9,6 +9,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   ListRenderItemInfo,
   ScrollView,
   Text,
@@ -29,6 +30,17 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
   const snapInterval = 234;
   const [events, setEvents] = useState<CalendarEventResponse[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
+
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50,
+  };
+
+  const onViewableItemsChanged = React.useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+      setCurrentScrollIndex(viewableItems[0].index);
+    }
+  }).current;
 
   const quickActions = [
     { id: "start", label: "Start Focus\nSession", icon: "play" as const },
@@ -236,6 +248,15 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        scrollEventThrottle={8}
+        decelerationRate={0.992}
+        removeClippedSubviews={false}
+        overScrollMode="never"
+        nestedScrollEnabled={true}
+        directionalLockEnabled={true}
+        showsHorizontalScrollIndicator={false}
       >
         <View style={styles.header}>
           <View>
@@ -257,7 +278,14 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
               style={styles.avatarCircle}
               onPress={() => Alert.alert("Profile", "Coming soon.")}
             >
-              <Ionicons name="person" size={18} color="#0B1A20" />
+              {userInfo?.user?.photo ? (
+                <Image
+                  source={{ uri: userInfo.user.photo }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons name="person" size={18} color="#0B1A20" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -297,14 +325,30 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
           nestedScrollEnabled
           decelerationRate="fast"
           snapToInterval={snapInterval}
-          snapToAlignment="start"
+          snapToAlignment="center"
           disableIntervalMomentum
           getItemLayout={(_, index) => ({
             length: snapInterval,
             offset: snapInterval * index,
             index,
           })}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
         />
+
+        {upNextData.length > 1 && upNextData[0].type === "event" && (
+          <View style={styles.scrollIndicatorContainer}>
+            {upNextData.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.scrollDot,
+                  index === currentScrollIndex && styles.scrollDotActive,
+                ]}
+              />
+            ))}
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
@@ -354,11 +398,11 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         </TouchableOpacity>
       </View>
 
-      {onLogout && (
+      {/* {onLogout && (
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
-      )}
+      )} */}
     </SafeAreaView>
   );
 }
