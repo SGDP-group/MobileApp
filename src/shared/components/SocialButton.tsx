@@ -1,8 +1,8 @@
-import React from "react";
-import { TouchableOpacity, Text, View } from "react-native";
 import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import { Colors } from "@shared/theme/colors";
-import { styles } from "@shared/styles/SocialButton.styles";
+import { styles } from "../../shared/styles/SocialButton.styles";
+import { colors } from "../../shared/theme/colors";
+import React from "react";
+import { Text, TouchableOpacity, View } from "react-native";
 
 interface SocialButtonProps {
   title: string;
@@ -31,12 +31,12 @@ export const SocialButton: React.FC<SocialButtonProps> = ({
     >
       <View style={styles.iconContainer}>
         {isPrimary ? (
-          <FontAwesome name="google" size={20} color={Colors.textPrimary} />
+          <FontAwesome name="google" size={20} color={colors.text} />
         ) : (
           <Ionicons
             name="person-circle-outline"
             size={24}
-            color={Colors.textSecondary}
+            color={colors.secondaryText}
           />
         )}
       </View>

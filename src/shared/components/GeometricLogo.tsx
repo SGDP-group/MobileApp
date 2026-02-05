@@ -1,6 +1,6 @@
 import React from "react";
 import { View } from "react-native";
-import { styles } from "@shared/styles/GeometricLogo.styles";
+import { styles } from "../../shared/styles/GeometricLogo.styles";
 
 export const GeometricLogo = () => {
   return (

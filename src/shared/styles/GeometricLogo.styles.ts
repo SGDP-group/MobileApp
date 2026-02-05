@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { Colors } from "@shared/theme/colors";
+import { colors } from "../../shared/theme/colors";
 
 export const styles = StyleSheet.create({
   logoWrapper: {
@@ -10,11 +10,11 @@ export const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: Colors.logoBg,
+    backgroundColor: colors.logoBg,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: Colors.logoBorder,
+    borderColor: colors.logoBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
@@ -24,7 +24,7 @@ export const styles = StyleSheet.create({
   logoDiamond: {
     width: 100,
     height: 100,
-    backgroundColor: Colors.diamond,
+    backgroundColor: colors.diamond,
     transform: [{ rotate: "45deg" }],
     alignItems: "center",
     justifyContent: "center",
@@ -34,6 +34,6 @@ export const styles = StyleSheet.create({
     width: 35,
     height: 35,
     borderRadius: 17.5,
-    backgroundColor: Colors.dot,
+    backgroundColor: colors.dot,
   },
 });

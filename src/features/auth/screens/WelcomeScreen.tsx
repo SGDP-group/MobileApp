@@ -21,7 +21,11 @@ import { SocialButton } from "../../../shared/components/SocialButton";
 
 const BG_IMAGE = require("@assets/images/login-bg.jpg");
 
-export default function WelcomeScreen() {
+interface WelcomeScreenProps {
+  onLoginSuccess?: (userInfo: any) => void;
+}
+
+export default function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
   const [userInfo, setUserInfo] = useState<any>(null);
 
   // ios  - 320294722121-16em0d7qgg1kjkui1dn6vdur3n0euelg.apps.googleusercontent.com
@@ -61,6 +65,10 @@ export default function WelcomeScreen() {
       if (isSuccessResponse(response)) {
         setUserInfo(response.data);
         console.log("User Info:", response.data);
+        // Call the callback to notify parent navigator
+        if (onLoginSuccess) {
+          onLoginSuccess(response.data);
+        }
       } else {
         // Sign in cancelled
       }

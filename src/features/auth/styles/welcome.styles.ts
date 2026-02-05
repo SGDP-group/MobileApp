@@ -1,5 +1,5 @@
-import { StyleSheet, Platform } from "react-native";
-import { Colors } from "@shared/theme/colors";
+import { Platform, StyleSheet } from "react-native";
+import { Colors } from "../../.../../../shared/theme/colors";
 
 export const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: Colors.background },
@@ -15,7 +15,7 @@ export const styles = StyleSheet.create({
     marginTop: Platform.OS === "android" ? 40 : 10,
   },
   appName: {
-    color: Colors.textPrimary,
+    color: Colors.text,
     fontSize: 22,
     fontWeight: "700",
     letterSpacing: 1.5,
@@ -32,7 +32,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
   },
   heroTitle: {
-    color: Colors.textPrimary,
+    color: Colors.text,
     fontSize: 28,
     fontWeight: "900",
     textAlign: "justify",
