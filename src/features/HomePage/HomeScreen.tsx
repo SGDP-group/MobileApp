@@ -297,7 +297,7 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
           nestedScrollEnabled
           decelerationRate="fast"
           snapToInterval={snapInterval}
-          snapToAlignment="center"
+          snapToAlignment="start"
           disableIntervalMomentum
           getItemLayout={(_, index) => ({
             length: snapInterval,
