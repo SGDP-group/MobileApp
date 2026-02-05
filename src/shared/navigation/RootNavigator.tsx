@@ -1,8 +1,8 @@
+import WelcomeScreen from "@features/auth/screens/WelcomeScreen";
+import HomeScreen from "@features/HomePage/HomeScreen";
 import { NavigationProp } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useState } from "react";
-import WelcomeScreen from "../../features/auth/screens/WelcomeScreen";
-import HomeScreen from "../../features/HomePage/HomeScreen";
 
 export type RootStackParamList = {
   Welcome: undefined;

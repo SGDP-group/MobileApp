@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
 import {
-  Alert,
-  ImageBackground,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  Text,
-  View,
+    Alert,
+    ImageBackground,
+    Platform,
+    SafeAreaView,
+    StatusBar,
+    Text,
+    View,
 } from "react-native";
 
+import { styles } from "@features/auth/styles/welcome.styles";
 import {
-  GoogleSignin,
-  isErrorWithCode,
-  isSuccessResponse,
-  statusCodes,
+    GoogleSignin,
+    isErrorWithCode,
+    isSuccessResponse,
+    statusCodes,
 } from "@react-native-google-signin/google-signin";
-import { styles } from "../../../features/auth/styles/welcome.styles";
-import { GeometricLogo } from "../../../shared/components/GeometricLogo";
-import { SocialButton } from "../../../shared/components/SocialButton";
+import { GeometricLogo } from "@shared/components/GeometricLogo";
+import { SocialButton } from "@shared/components/SocialButton";
 
 const BG_IMAGE = require("@assets/images/login-bg.jpg");
 
