@@ -6,7 +6,15 @@ import {
 } from "@services/googleCalendarService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  ListRenderItemInfo,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/home.styles";
 
@@ -18,6 +26,7 @@ interface HomeScreenProps {
 export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
   const navigation = useNavigation<RootNavigationProp>();
   const userName = userInfo?.user?.name ?? "User";
+  const snapInterval = 234;
   const [events, setEvents] = useState<CalendarEventResponse[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 
@@ -108,6 +117,92 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
     return events.slice(0, 6);
   }, [events]);
 
+  const upNextData = useMemo(() => {
+    if (isLoadingEvents) {
+      return [{ id: "loading", type: "loading" as const }];
+    }
+
+    if (filteredEvents.length === 0) {
+      return [{ id: "empty", type: "empty" as const }];
+    }
+
+    return filteredEvents.map((event) => ({
+      id: event.id,
+      type: "event" as const,
+      event,
+    }));
+  }, [filteredEvents, isLoadingEvents]);
+
+  const renderUpNextItem = (
+    item: ListRenderItemInfo<
+      | { id: string; type: "loading" }
+      | { id: string; type: "empty" }
+      | { id: string; type: "event"; event: CalendarEventResponse }
+    >,
+  ) => {
+    if (item.item.type === "loading") {
+      return (
+        <View style={styles.eventCard}>
+          <Text style={styles.eventLead}>LOADING</Text>
+          <Text style={styles.eventTitle}>Fetching events...</Text>
+          <View style={styles.eventMeta}>
+            <Ionicons name="time-outline" size={14} color="#8DA7B5" />
+            <Text style={styles.eventMetaText}>Please wait</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (item.item.type === "empty") {
+      return (
+        <View style={styles.eventCard}>
+          <Text style={styles.eventLead}>NO EVENTS</Text>
+          <Text style={styles.eventTitle}>Nothing upcoming</Text>
+          <View style={styles.eventMeta}>
+            <Ionicons name="time-outline" size={14} color="#8DA7B5" />
+            <Text style={styles.eventMetaText}>Create a new event</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.eventActionButton}
+            onPress={() => navigation.navigate("Calendar")}
+          >
+            <Text style={styles.eventActionText}>Open Calendar</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const startDate = getEventStart(item.item.event);
+    const endDate = getEventEnd(item.item.event);
+
+    return (
+      <View style={styles.eventCard}>
+        <Text style={styles.eventLead}>{formatLead(startDate)}</Text>
+        <Text style={styles.eventTitle}>
+          {item.item.event.summary || "Untitled Event"}
+        </Text>
+        <View style={styles.eventMeta}>
+          <Ionicons name="time-outline" size={14} color="#8DA7B5" />
+          <Text style={styles.eventMetaText}>{formatTime(startDate)}</Text>
+          {endDate && (
+            <>
+              <View style={styles.eventDivider} />
+              <Text style={styles.eventMetaText}>
+                {formatDuration(startDate, endDate)}
+              </Text>
+            </>
+          )}
+        </View>
+        <TouchableOpacity
+          style={styles.eventActionButton}
+          onPress={() => navigation.navigate("Calendar")}
+        >
+          <Text style={styles.eventActionText}>Start Focus Session Now</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   const handleQuickAction = (actionId: string) => {
     switch (actionId) {
       case "plan":
@@ -192,72 +287,24 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
           </TouchableOpacity>
         </View>
 
-        <ScrollView
+        <FlatList
+          data={upNextData}
+          renderItem={renderUpNextItem}
+          keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.upNextRow}
-        >
-          {isLoadingEvents ? (
-            <View style={styles.eventCard}>
-              <Text style={styles.eventLead}>LOADING</Text>
-              <Text style={styles.eventTitle}>Fetching events...</Text>
-              <View style={styles.eventMeta}>
-                <Ionicons name="time-outline" size={14} color="#8DA7B5" />
-                <Text style={styles.eventMetaText}>Please wait</Text>
-              </View>
-            </View>
-          ) : filteredEvents.length === 0 ? (
-            <View style={styles.eventCard}>
-              <Text style={styles.eventLead}>NO EVENTS</Text>
-              <Text style={styles.eventTitle}>Nothing upcoming</Text>
-              <View style={styles.eventMeta}>
-                <Ionicons name="time-outline" size={14} color="#8DA7B5" />
-                <Text style={styles.eventMetaText}>Create a new event</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.eventActionButton}
-                onPress={() => navigation.navigate("Calendar")}
-              >
-                <Text style={styles.eventActionText}>Open Calendar</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            filteredEvents.map((event) => {
-              const startDate = getEventStart(event);
-              const endDate = getEventEnd(event);
-              return (
-                <View key={event.id} style={styles.eventCard}>
-                  <Text style={styles.eventLead}>{formatLead(startDate)}</Text>
-                  <Text style={styles.eventTitle}>
-                    {event.summary || "Untitled Event"}
-                  </Text>
-                  <View style={styles.eventMeta}>
-                    <Ionicons name="time-outline" size={14} color="#8DA7B5" />
-                    <Text style={styles.eventMetaText}>
-                      {formatTime(startDate)}
-                    </Text>
-                    {endDate && (
-                      <>
-                        <View style={styles.eventDivider} />
-                        <Text style={styles.eventMetaText}>
-                          {formatDuration(startDate, endDate)}
-                        </Text>
-                      </>
-                    )}
-                  </View>
-                  <TouchableOpacity
-                    style={styles.eventActionButton}
-                    onPress={() => navigation.navigate("Calendar")}
-                  >
-                    <Text style={styles.eventActionText}>
-                      Start Focus Session Now
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })
-          )}
-        </ScrollView>
+          nestedScrollEnabled
+          decelerationRate="fast"
+          snapToInterval={snapInterval}
+          snapToAlignment="center"
+          disableIntervalMomentum
+          getItemLayout={(_, index) => ({
+            length: snapInterval,
+            offset: snapInterval * index,
+            index,
+          })}
+        />
 
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
