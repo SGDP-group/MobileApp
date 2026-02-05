@@ -55,6 +55,12 @@ export const styles = StyleSheet.create({
     backgroundColor: "#F4C552",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  avatarImage: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   statusPill: {
     alignSelf: "flex-start",

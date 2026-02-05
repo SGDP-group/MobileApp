@@ -9,6 +9,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
+  Image,
   ListRenderItemInfo,
   ScrollView,
   Text,
@@ -268,7 +269,14 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
               style={styles.avatarCircle}
               onPress={() => Alert.alert("Profile", "Coming soon.")}
             >
-              <Ionicons name="person" size={18} color="#0B1A20" />
+              {userInfo?.user?.photo ? (
+                <Image
+                  source={{ uri: userInfo.user.photo }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons name="person" size={18} color="#0B1A20" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
