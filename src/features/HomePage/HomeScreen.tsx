@@ -31,6 +31,16 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
 
+  const viewabilityConfig = {
+    itemVisiblePercentThreshold: 50,
+  };
+
+  const onViewableItemsChanged = React.useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+      setCurrentScrollIndex(viewableItems[0].index);
+    }
+  }).current;
+
   const quickActions = [
     { id: "start", label: "Start Focus\nSession", icon: "play" as const },
     { id: "plan", label: "Plan Tasks", icon: "checkmark-circle" as const },
@@ -298,24 +308,20 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
           nestedScrollEnabled
           decelerationRate="fast"
           snapToInterval={snapInterval}
-          snapToAlignment="start"
+          snapToAlignment="center"
           disableIntervalMomentum
           getItemLayout={(_, index) => ({
             length: snapInterval,
             offset: snapInterval * index,
             index,
           })}
-          onScroll={(event) => {
-            const scrollPosition = event.nativeEvent.contentOffset.x;
-            const index = Math.round(scrollPosition / snapInterval);
-            setCurrentScrollIndex(index);
-          }}
-          scrollEventThrottle={16}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
         />
 
-        {upNextData.length > 1 && (
+        {upNextData.length > 1 && upNextData[0].type === "event" && (
           <View style={styles.scrollIndicatorContainer}>
-            {upNextData.map((_, index ) => (
+            {upNextData.map((_, index) => (
               <View
                 key={index}
                 style={[
