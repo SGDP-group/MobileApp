@@ -31,6 +31,55 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
   const [events, setEvents] = useState<CalendarEventResponse[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const getGreeting = () => {
+    const hour = currentDate.getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    if (hour < 21) return "Good Evening";
+    return "Good Evening";
+  };
+
+  const getFormattedDate = () => {
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    const dayName = days[currentDate.getDay()];
+    const monthName = months[currentDate.getMonth()];
+    const day = currentDate.getDate();
+
+    return `${dayName}, ${monthName} ${day}`;
+  };
 
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 50,
@@ -260,8 +309,10 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.dateText}>Thursday, Oct 25</Text>
-            <Text style={styles.title}>Good Morning, {userName}</Text>
+            <Text style={styles.dateText}>{getFormattedDate()}</Text>
+            <Text style={styles.title}>
+              {getGreeting()}, {userName}
+            </Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
