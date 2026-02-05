@@ -1,5 +1,5 @@
-import WelcomeScreen from "@features/auth/screens/WelcomeScreen";
+import { RootNavigator } from "@shared/navigation/RootNavigator";
 
 export default function App() {
-  return <WelcomeScreen />;
+  return <RootNavigator />;
 }

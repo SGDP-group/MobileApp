@@ -1,10 +1,5 @@
-import { Stack } from "expo-router";
-import React from "react";
+import { RootNavigator } from "@shared/navigation/RootNavigator";
 
 export default function RootLayout() {
-  return (
-    <Stack>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-    </Stack>
-  );
+  return <RootNavigator />;
 }
