@@ -1,6 +1,6 @@
 import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { styles } from "./home.styles";
+import { styles } from "./styles/home.styles";
 
 interface HomeScreenProps {
   userInfo?: any;
