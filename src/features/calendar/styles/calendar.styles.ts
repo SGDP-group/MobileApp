@@ -1,0 +1,177 @@
+import { colors } from "@shared/theme/colors";
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: colors.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  addButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  listContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  eventCard: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    marginBottom: 12,
+    padding: 16,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  eventContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 6,
+  },
+  eventDescription: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  eventTime: {
+    fontSize: 12,
+    color: colors.primary,
+    marginBottom: 4,
+    fontWeight: "500",
+  },
+  eventLocation: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 4,
+  },
+  eventActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  editButton: {
+    padding: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteButton: {
+    padding: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: "#999",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  addEventButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  addEventButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.text,
+  },
+  cancelButton: {
+    color: "#999",
+    fontWeight: "500",
+    fontSize: 16,
+  },
+  saveButton: {
+    color: colors.primary,
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  modalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  formGroup: {
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: "#f9f9f9",
+  },
+  textArea: {
+    textAlignVertical: "top",
+    minHeight: 100,
+    paddingTop: 10,
+  },
+  hint: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 6,
+  },
+});

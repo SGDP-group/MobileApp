@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { colors } from "../../shared/theme/colors";
+import { colors } from "@shared/theme/colors";
 
 export const styles = StyleSheet.create({
   container: {
@@ -43,6 +43,40 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.text,
     marginBottom: 16,
+  },
+  card: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: colors.text,
+    marginLeft: 12,
+  },
+  cardDescription: {
+    fontSize: 14,
+    color: colors.secondaryText,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  cardAction: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#4285F4",
   },
   placeholder: {
     flex: 1,
