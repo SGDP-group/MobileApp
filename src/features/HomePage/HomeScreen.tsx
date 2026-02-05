@@ -29,6 +29,7 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
   const snapInterval = 234;
   const [events, setEvents] = useState<CalendarEventResponse[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
 
   const quickActions = [
     { id: "start", label: "Start Focus\nSession", icon: "play" as const },
@@ -304,7 +305,27 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
             offset: snapInterval * index,
             index,
           })}
+          onScroll={(event) => {
+            const scrollPosition = event.nativeEvent.contentOffset.x;
+            const index = Math.round(scrollPosition / snapInterval);
+            setCurrentScrollIndex(index);
+          }}
+          scrollEventThrottle={16}
         />
+
+        {upNextData.length > 1 && (
+          <View style={styles.scrollIndicatorContainer}>
+            {upNextData.map((_, index ) => (
+              <View
+                key={index}
+                style={[
+                  styles.scrollDot,
+                  index === currentScrollIndex && styles.scrollDotActive,
+                ]}
+              />
+            ))}
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.actionsGrid}>

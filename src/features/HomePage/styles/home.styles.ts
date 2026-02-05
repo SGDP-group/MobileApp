@@ -255,6 +255,24 @@ export const styles = StyleSheet.create({
     color: "#54D2FF",
     fontWeight: "600",
   },
+  scrollIndicatorContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  scrollDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#2A3B43",
+  },
+  scrollDotActive: {
+    width: 20,
+    backgroundColor: "#54D2FF",
+  },
   logoutButton: {
     marginHorizontal: 20,
     marginBottom: 20,
