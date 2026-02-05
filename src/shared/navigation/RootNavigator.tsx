@@ -5,6 +5,7 @@ import { NavigationProp } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingScreen } from "@shared/components/LoadingScreen";
 import React, { useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -22,15 +23,36 @@ export function RootNavigator() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const configureGoogleSignin = async () => {
+      if (Platform.OS === "web") {
+        return;
+      }
+
+      try {
+        GoogleSignin.configure({
+          webClientId:
+            "320294722121-aer10knc1tfkaqd7r6l4glan2l6t6er6.apps.googleusercontent.com",
+          scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+          offlineAccess: false,
+          forceCodeForRefreshToken: false,
+          iosClientId:
+            "320294722121-16em0d7qgg1kjkui1dn6vdur3n0euelg.apps.googleusercontent.com",
+          profileImageSize: 120,
+        });
+      } catch (error) {
+        console.error("Google Sign-In Config Error:", error);
+      }
+    };
+
     const checkSignInStatus = async () => {
       try {
         const currentUser = await GoogleSignin.getCurrentUser();
         if (currentUser) {
           handleLoginSuccess(currentUser);
         }
-      if(!currentUser){
-        setIsLoggedIn(false);
-      }
+        if (!currentUser) {
+          setIsLoggedIn(false);
+        }
       } catch (error) {
         console.error("Error checking sign-in status:", error);
       } finally {
@@ -38,7 +60,12 @@ export function RootNavigator() {
       }
     };
 
-    checkSignInStatus();
+    const initializeAuth = async () => {
+      await configureGoogleSignin();
+      await checkSignInStatus();
+    };
+
+    initializeAuth();
   }, []);
 
   const handleLoginSuccess = (info: any) => {
