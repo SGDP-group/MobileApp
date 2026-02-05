@@ -1,9 +1,9 @@
-export const Colors = {
+export const colors = {
   primary: "#4285F4",
   secondary: "#FFFFFF",
   background: "#000000",
-  textPrimary: "#FFFFFF",
-  textSecondary: "#000000",
+  text: "#FFFFFF",
+  secondaryText: "#888888",
   textMuted: "#888888",
 
   logoBg: "#050505",
@@ -11,5 +11,12 @@ export const Colors = {
   diamond: "#2F5D6E",
   dot: "#4CB5D3",
 
+  cardBackground: "#1a1a1a",
+  border: "#333333",
+  error: "#E53935",
+
   overlay: "rgba(0,0,0,0.4)",
 };
+
+// Keep for backwards compatibility
+export const Colors = colors;

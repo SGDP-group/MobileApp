@@ -1,5 +1,5 @@
 import { RootNavigator } from "@shared/navigation/RootNavigator";
 
-export default function App() {
+export default function RootLayout() {
   return <RootNavigator />;
 }

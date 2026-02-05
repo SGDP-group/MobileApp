@@ -1,50 +1,36 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   ImageBackground,
   Platform,
-  SafeAreaView,
   StatusBar,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { styles } from "@features/auth/styles/welcome.styles";
 import {
   GoogleSignin,
   isErrorWithCode,
   isSuccessResponse,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
-import { styles } from "../../../features/auth/styles/welcome.styles";
-import { GeometricLogo } from "../../../shared/components/GeometricLogo";
-import { SocialButton } from "../../../shared/components/SocialButton";
+import { GeometricLogo } from "@shared/components/GeometricLogo";
+import { SocialButton } from "@shared/components/SocialButton";
 
 const BG_IMAGE = require("@assets/images/login-bg.jpg");
 
-export default function WelcomeScreen() {
+interface WelcomeScreenProps {
+  onLoginSuccess?: (userInfo: any) => void;
+}
+
+export default function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
   const [userInfo, setUserInfo] = useState<any>(null);
 
   // ios  - 320294722121-16em0d7qgg1kjkui1dn6vdur3n0euelg.apps.googleusercontent.com
   // Android - 320294722121-3u7p22o9jroqbf89unduu5qn22290j8s.apps.googleusercontent.com
   // web - 320294722121-aer10knc1tfkaqd7r6l4glan2l6t6er6.apps.googleusercontent.com
-  useEffect(() => {
-    if (Platform.OS !== "web") {
-      try {
-        GoogleSignin.configure({
-          webClientId:
-            "320294722121-aer10knc1tfkaqd7r6l4glan2l6t6er6.apps.googleusercontent.com",
-          scopes: ["https://www.googleapis.com/auth/drive.readonly"],
-          offlineAccess: false,
-          forceCodeForRefreshToken: false,
-          iosClientId: "<FROM DEVELOPER CONSOLE>",
-          profileImageSize: 120,
-        });
-      } catch (e) {
-        console.error("Google Sign-In Config Error:", e);
-      }
-    }
-  }, []);
-
   const signIn = async () => {
     if (Platform.OS === "web") {
       Alert.alert(
@@ -61,6 +47,10 @@ export default function WelcomeScreen() {
       if (isSuccessResponse(response)) {
         setUserInfo(response.data);
         console.log("User Info:", response.data);
+        // Call the callback to notify parent navigator
+        if (onLoginSuccess) {
+          onLoginSuccess(response.data);
+        }
       } else {
         // Sign in cancelled
       }

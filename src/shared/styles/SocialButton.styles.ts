@@ -1,5 +1,5 @@
+import { colors } from "../../shared/theme/colors";
 import { StyleSheet } from "react-native";
-import { Colors } from "@shared/theme/colors";
 
 export const styles = StyleSheet.create({
   container: {
@@ -18,19 +18,19 @@ export const styles = StyleSheet.create({
     position: "relative",
   },
   primaryBg: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   secondaryBg: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: colors.secondary,
     marginBottom: 24,
   },
   textPrimary: {
-    color: Colors.textPrimary,
+    color: colors.text,
     fontSize: 16,
     fontWeight: "600",
   },
   textSecondary: {
-    color: Colors.textSecondary,
+    color: colors.secondaryText,
     fontSize: 16,
     fontWeight: "600",
   },
