@@ -248,6 +248,15 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={true}
+        alwaysBounceVertical={true}
+        scrollEventThrottle={8}
+        decelerationRate={0.992}
+        removeClippedSubviews={false}
+        overScrollMode="never"
+        nestedScrollEnabled={true}
+        directionalLockEnabled={true}
+        showsHorizontalScrollIndicator={false}
       >
         <View style={styles.header}>
           <View>
@@ -389,11 +398,11 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         </TouchableOpacity>
       </View>
 
-      {onLogout && (
+      {/* {onLogout && (
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
-      )}
+      )} */}
     </SafeAreaView>
   );
 }
