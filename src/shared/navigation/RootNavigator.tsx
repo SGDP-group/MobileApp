@@ -5,9 +5,9 @@ import { GoogleSignin, User } from "@react-native-google-signin/google-signin";
 import { NavigationProp } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingScreen } from "@shared/components/LoadingScreen";
+import { tokenManager } from "@utils/tokenManager";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
-import { tokenManager } from "@utils/tokenManager";
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -25,6 +25,15 @@ export function RootNavigator() {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const handleLoginSuccess = (currentUser: User) => {
+    try {
+      setUserInfo(currentUser);
+      setIsLoggedIn(true);
+    } catch (error) {
+      console.error("Error during login success handler:", error);
+    }
+  };
+
   useEffect(() => {
     const configureGoogleSignin = async () => {
       if (Platform.OS === "web") {
@@ -37,7 +46,7 @@ export function RootNavigator() {
 
         if (!webClientId && !iosClientId) {
           console.error(
-            "Google Client IDs not configured. Please set EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB and EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS in your .env file"
+            "Google Client IDs not configured. Please set EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB and EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS in your .env file",
           );
           return;
         }
@@ -78,15 +87,6 @@ export function RootNavigator() {
 
     initializeAuth();
   }, []);
-
-  function handleLoginSuccess(currentUser: User) {
-    try {
-      setUserInfo(currentUser);
-      setIsLoggedIn(true);
-    } catch (error) {
-      console.error("Error during login success handler:", error);
-    }
-  }
 
   const handleLogout = async () => {
     try {
@@ -133,7 +133,3 @@ export function RootNavigator() {
     </Stack.Navigator>
   );
 }
-function handleLoginSuccess(currentUser: User) {
-  throw new Error("Function not implemented.");
-}
-

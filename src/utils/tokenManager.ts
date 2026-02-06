@@ -40,12 +40,6 @@ class TokenManager {
       // Optionally store in secure store for persistence
       try {
         await SecureStore.setItemAsync(TOKEN_KEY, tokens.accessToken);
-        if (tokens.refreshToken) {
-          await SecureStore.setItemAsync(
-            REFRESH_TOKEN_KEY,
-            tokens.refreshToken,
-          );
-        }
       } catch (storageError) {
         // Secure store might not be available on all platforms
         console.warn("Could not store token securely:", storageError);
