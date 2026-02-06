@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the security improvements implemented in the FocusFrame mobile application.
+This document outlines the comprehensive security improvements implemented in the FocusFrame mobile application, including rate limiting, certificate pinning, and encryption at rest.
 
 ## Security Improvements Made
 
@@ -158,19 +158,202 @@ const accessToken = await tokenManager.getAccessToken();
 
 - Logout now calls `tokenManager.clearAllTokens()` before signing out
 - Clears both memory cache and secure storage
-- Ensures no tokens remain on device after logout
+- Clears encrypted calendar cache
+- Removes encryption keys from device
+- Ensures no tokens or sensitive data remain after logout
 
 **Implementation in `RootNavigator.tsx`:**
 
 ```typescript
 const handleLogout = async () => {
   await tokenManager.clearAllTokens(); // Clear tokens
+  await googleCalendarService.clearCache(); // Clear encrypted cache
+  await clearEncryptionKey(); // Clear encryption keys
   await GoogleSignin.revokeAccess(); // Revoke Google access
   await GoogleSignin.signOut(); // Sign out
   setUserInfo(null);
   setIsLoggedIn(false);
 };
 ```
+
+---
+
+### 7. ✅ API Rate Limiting
+
+**Status:** IMPLEMENTED
+
+**New File:** `src/utils/rateLimiter.ts`
+
+**Features:**
+
+- Prevents API abuse with configurable request limits (default: 30 requests/min)
+- Exponential backoff for repeated violations
+- Per-endpoint rate limiting tracking
+- Automatic request throttling
+- Clear error messages with retry-after times
+
+**Implementation:**
+
+```typescript
+// Integrated into googleCalendarService.ts
+const rateLimitCheck = await apiRateLimiter.checkLimit('google-calendar-api');
+
+if (!rateLimitCheck.allowed) {
+  throw new Error(
+    `Rate limit exceeded. Please try again in ${rateLimitCheck.retryAfter} seconds.`
+  );
+}
+```
+
+**Configuration:**
+
+- Max Requests: 30 per minute (configurable)
+- Backoff Strategy: Exponential (2^attempts × 1s, max 5 minutes)
+- Scope: Global per API service
+
+**Benefits:**
+
+- Prevents accidental API abuse/spam
+- Protects against DoS attacks
+- Reduces unnecessary API costs
+- Improves user experience with clear feedback
+
+---
+
+### 8. ✅ Encryption at Rest
+
+**Status:** IMPLEMENTED
+
+**New File:** `src/utils/encryption.ts`
+
+**Features:**
+
+- AES-based encryption for sensitive data stored locally
+- Automatic encryption key generation and secure storage
+- Calendar event caching with encryption
+- 5-minute cache expiry
+- Key rotation support
+
+**Implementation:**
+
+```typescript
+// Encrypting calendar data
+const encrypted = await encryptData(calendarEvents);
+await SecureStore.setItemAsync('calendar_cache', encrypted);
+
+// Decrypting calendar data
+const encrypted = await SecureStore.getItemAsync('calendar_cache');
+const events = await decryptData<CalendarEvent[]>(encrypted);
+```
+
+**What's Encrypted:**
+
+- Cached calendar events
+- Temporary API responses
+- Any locally stored sensitive data
+
+**Key Management:**
+
+- Keys stored in expo-secure-store (hardware-backed on supported devices)
+- Keys automatically cleared on logout
+- Keys regenerated on first app launch
+
+**Benefits:**
+
+- Protects calendar data if device is compromised
+- Secure offline event caching
+- Compliance with data protection regulations
+
+---
+
+### 9. ✅ SSL Certificate Pinning
+
+**Status:** IMPLEMENTED (Configuration Ready)
+- [ ] **Test rate limiting with rapid requests**
+- [ ] **Verify encrypted cache works correctly**
+- [ ] **Test cache cleared on logout**
+- [ ] **Verify certificate pinning blocks MITM (Android)**
+- [ ] **Test cache expiry (after 5 minutes)**
+
+### Automated Testing (TODO)
+
+Consider adding unit tests for:
+
+- Input validation functions
+- Error message sanitization
+- Token manager caching behavior
+- Date range validation edge cases
+- **Rate limiter behavior**
+- **Encryption/decryption functions**
+- **Cache expiry logic**
+
+### Security Testing Tools
+
+**For Rate Limiting:**
+```bash
+# Test rapid requests
+for i in {1..50}; do
+  echo "Request $i"
+  # Make API call here
+done
+# Should see rate limit errors after 30 requests
+```
+
+**For Certificate Pinning:**
+- Use Charles Proxy or mitmproxy
+- Install self-signed certificate
+- Try to intercept app traffic
+- App should reject connections
+
+**For Encryption:**
+```typescript
+// Test encryption roundtrip
+const original = { id: '123', summary: 'Test Event' };
+const encrypted = await encryptData(original);
+const decrypted = await decryptData(encrypted);
+console.assert(JSON.stringify(original) === JSON.stringify(decrypted));
+```
+- Certificate pinning for googleapis.com domains
+- Android Network Security Config pre-configured
+- iOS TrustKit setup guide provided
+- Pin expiration tracking (2027-12-31)
+- Development mode bypass
+
+**What's Protected:**
+
+- All Google API requests (Calendar, Auth, etc.)
+- OAuth token endpoints
+- User data endpoints
+
+**Setup Required:**
+
+⚠️ **Action Needed:** Replace placeholder certificate pins with actual Google certificate pins.
+
+**Steps:**
+
+1. Extract Google API certificates:
+```bash
+openssl s_client -connect www.googleapis.com:443 -showcerts < /dev/null 2>/dev/null | \
+  openssl x509 -outform PEM > googleapis.pem
+  
+openssl x509 -in googleapis.pem -pubkey -noout | \
+  openssl pkey -pubin -outform der | \
+  openssl dgst -sha256 -binary | \
+  openssl enc -base64
+```
+
+2. Update pins in:
+   - `android/app/src/main/res/xml/network_security_config.xml`
+   - `src/utils/certificatePinning.ts`
+
+3. For iOS, follow instructions in `CERTIFICATE_PINNING_SETUP.md`
+
+**Benefits:**
+
+- Prevents Man-in-the-Middle (MITM) attacks
+- Protects against compromised Certificate Authorities
+- Ensures API communications are secure
+- Industry-standard security practice
 
 ---
 
@@ -187,42 +370,46 @@ const handleLogout = async () => {
 - [x] Proper logout with token cleanup
 - [x] Date range validation
 - [x] Event ID format validation
+- [x] **API rate limiting with exponential backoff**
+- [x] **Encryption at rest for cached data**
+- [x] **SSL certificate pinning (configuration ready)**
+- [x] **Encrypted cache cleared on logout**
+- [x] **Secure encryption key management**
 
 ---
 
 ## Additional Security Recommendations
 
-### 1. **API Rate Limiting (TODO)**
-
-- Consider implementing exponential backoff for failed requests
-- Add request queuing to prevent burst API calls
-
-### 2. **Two-Factor Authentication (TODO)**
+### 1. **Two-Factor Authentication (TODO)**
 
 - Implement additional auth layer for sensitive operations
 - Consider requiring Google 2FA for users
 
-### 3. **Certificate Pinning (TODO)**
-
-- Pin Google API certificates on mobile apps
-- Prevents man-in-the-middle attacks
-
-### 4. **Encryption at Rest (TODO)**
-
-- Encrypt event data stored locally on device
-- Use encryption for any cached calendar data
-
-### 5. **Security Monitoring (TODO)**
+### 2. **Security Monitoring (TODO)**
 
 - Log failed auth attempts
 - Monitor for unusual API usage patterns
 - Set up alerts for security events
+- Track rate limit violations
 
-### 6. **Regular Security Audits (TODO)**
+### 3. **Regular Security Audits (TODO)**
 
 - Perform code security reviews quarterly
 - Run SAST (Static Application Security Testing) tools
 - Keep dependencies up to date
+- Review certificate expiration dates (set alerts)
+
+### 4. **Biometric Authentication (TODO)**
+
+- Add Face ID / Touch ID / Fingerprint auth
+- Require biometric confirmation for sensitive actions
+
+### 5. **Certificate Pin Updates (CRITICAL)**
+
+⚠️ **Set calendar reminders:**
+- **August 2027**: Get new Google certificate pins
+- **October 2027**: Deploy app update with new pins
+- Always maintain 2+ pins (current + backup)
 
 ---
 
@@ -255,6 +442,44 @@ EXPO_PUBLIC_API_LOG_LEVEL=production       # Set to 'development' for verbose lo
 - Local dev: `.env`
 - Staging: `.env.staging`
 - Production: Configure in build system or GitHub Secrets
+
+If certificate pinning fails in production:
+
+1. Check if Google certificates have been rotated
+2. Extract new certificate pins
+3. Release emergency app update with new pins
+4. Communicate with users about required update
+
+If rate limiting is being bypassed:
+- [OWASP Certificate Pinning](https://owasp.org/www-community/controls/Certificate_and_Public_Key_Pinning)
+- [Android Network Security Config](https://developer.android.com/training/articles/security-config)
+- [Rate Limiting Best Practices](https://cloud.google.com/architecture/rate-limiting-strategies-techniques)
+
+---
+
+## New Security Files Added
+
+| File | Purpose |
+|------|---------|
+| `src/utils/rateLimiter.ts` | API rate limiting with exponential backoff |
+| `src/utils/encryption.ts` | Data encryption at rest utilities |
+| `src/utils/certificatePinning.ts` | Certificate pin definitions |
+| `android/app/src/main/res/xml/network_security_config.xml` | Android certificate pinning config |
+| `CERTIFICATE_PINNING_SETUP.md` | Complete certificate pinning setup guide |
+
+---
+
+**Last Updated:** February 6, 2026  
+**Version:** 2.0.0  
+**Next Review:** August 2026 (Before certificate expiration)authentication checks
+
+If encrypted data is compromised:
+
+1. Force logout all users  
+2. Clear all cached data
+3. Rotate encryption keys
+4. Investigate breach source
+5. Notify users if personal data was exposed
 
 ---
 

@@ -8,6 +8,8 @@ import { LoadingScreen } from "@shared/components/LoadingScreen";
 import { tokenManager } from "@utils/tokenManager";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
+import { clearEncryptionKey } from "@utils/encryption";
+import { googleCalendarService } from "@services/googleCalendarService";
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -90,9 +92,19 @@ export function RootNavigator() {
 
   const handleLogout = async () => {
     try {
+      // Clear all tokens
       await tokenManager.clearAllTokens();
+      
+      // Clear encrypted cache
+      await googleCalendarService.clearCache();
+      
+      // Clear encryption keys
+      await clearEncryptionKey();
+      
+      // Revoke Google access and sign out
       await GoogleSignin.revokeAccess();
       await GoogleSignin.signOut();
+      
       setUserInfo(null);
       setIsLoggedIn(false);
     } catch (error) {
