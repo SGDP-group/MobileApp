@@ -196,11 +196,11 @@ const handleLogout = async () => {
 
 ```typescript
 // Integrated into googleCalendarService.ts
-const rateLimitCheck = await apiRateLimiter.checkLimit('google-calendar-api');
+const rateLimitCheck = await apiRateLimiter.checkLimit("google-calendar-api");
 
 if (!rateLimitCheck.allowed) {
   throw new Error(
-    `Rate limit exceeded. Please try again in ${rateLimitCheck.retryAfter} seconds.`
+    `Rate limit exceeded. Please try again in ${rateLimitCheck.retryAfter} seconds.`,
   );
 }
 ```
@@ -239,10 +239,10 @@ if (!rateLimitCheck.allowed) {
 ```typescript
 // Encrypting calendar data
 const encrypted = await encryptData(calendarEvents);
-await SecureStore.setItemAsync('calendar_cache', encrypted);
+await SecureStore.setItemAsync("calendar_cache", encrypted);
 
 // Decrypting calendar data
-const encrypted = await SecureStore.getItemAsync('calendar_cache');
+const encrypted = await SecureStore.getItemAsync("calendar_cache");
 const events = await decryptData<CalendarEvent[]>(encrypted);
 ```
 
@@ -269,6 +269,7 @@ const events = await decryptData<CalendarEvent[]>(encrypted);
 ### 9. ✅ SSL Certificate Pinning
 
 **Status:** IMPLEMENTED (Configuration Ready)
+
 - [ ] **Test rate limiting with rapid requests**
 - [ ] **Verify encrypted cache works correctly**
 - [ ] **Test cache cleared on logout**
@@ -290,6 +291,7 @@ Consider adding unit tests for:
 ### Security Testing Tools
 
 **For Rate Limiting:**
+
 ```bash
 # Test rapid requests
 for i in {1..50}; do
@@ -300,19 +302,22 @@ done
 ```
 
 **For Certificate Pinning:**
+
 - Use Charles Proxy or mitmproxy
 - Install self-signed certificate
 - Try to intercept app traffic
 - App should reject connections
 
 **For Encryption:**
+
 ```typescript
 // Test encryption roundtrip
-const original = { id: '123', summary: 'Test Event' };
+const original = { id: "123", summary: "Test Event" };
 const encrypted = await encryptData(original);
 const decrypted = await decryptData(encrypted);
 console.assert(JSON.stringify(original) === JSON.stringify(decrypted));
 ```
+
 - Certificate pinning for googleapis.com domains
 - Android Network Security Config pre-configured
 - iOS TrustKit setup guide provided
@@ -332,10 +337,11 @@ console.assert(JSON.stringify(original) === JSON.stringify(decrypted));
 **Steps:**
 
 1. Extract Google API certificates:
+
 ```bash
 openssl s_client -connect www.googleapis.com:443 -showcerts < /dev/null 2>/dev/null | \
   openssl x509 -outform PEM > googleapis.pem
-  
+
 openssl x509 -in googleapis.pem -pubkey -noout | \
   openssl pkey -pubin -outform der | \
   openssl dgst -sha256 -binary | \
@@ -407,6 +413,7 @@ openssl x509 -in googleapis.pem -pubkey -noout | \
 ### 5. **Certificate Pin Updates (CRITICAL)**
 
 ⚠️ **Set calendar reminders:**
+
 - **August 2027**: Get new Google certificate pins
 - **October 2027**: Deploy app update with new pins
 - Always maintain 2+ pins (current + backup)
@@ -451,6 +458,7 @@ If certificate pinning fails in production:
 4. Communicate with users about required update
 
 If rate limiting is being bypassed:
+
 - [OWASP Certificate Pinning](https://owasp.org/www-community/controls/Certificate_and_Public_Key_Pinning)
 - [Android Network Security Config](https://developer.android.com/training/articles/security-config)
 - [Rate Limiting Best Practices](https://cloud.google.com/architecture/rate-limiting-strategies-techniques)
@@ -459,13 +467,13 @@ If rate limiting is being bypassed:
 
 ## New Security Files Added
 
-| File | Purpose |
-|------|---------|
-| `src/utils/rateLimiter.ts` | API rate limiting with exponential backoff |
-| `src/utils/encryption.ts` | Data encryption at rest utilities |
-| `src/utils/certificatePinning.ts` | Certificate pin definitions |
-| `android/app/src/main/res/xml/network_security_config.xml` | Android certificate pinning config |
-| `CERTIFICATE_PINNING_SETUP.md` | Complete certificate pinning setup guide |
+| File                                                       | Purpose                                    |
+| ---------------------------------------------------------- | ------------------------------------------ |
+| `src/utils/rateLimiter.ts`                                 | API rate limiting with exponential backoff |
+| `src/utils/encryption.ts`                                  | Data encryption at rest utilities          |
+| `src/utils/certificatePinning.ts`                          | Certificate pin definitions                |
+| `android/app/src/main/res/xml/network_security_config.xml` | Android certificate pinning config         |
+| `CERTIFICATE_PINNING_SETUP.md`                             | Complete certificate pinning setup guide   |
 
 ---
 
@@ -475,7 +483,7 @@ If rate limiting is being bypassed:
 
 If encrypted data is compromised:
 
-1. Force logout all users  
+1. Force logout all users
 2. Clear all cached data
 3. Rotate encryption keys
 4. Investigate breach source

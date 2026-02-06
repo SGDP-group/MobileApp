@@ -4,12 +4,12 @@ import HomeScreen from "@features/HomePage/HomeScreen";
 import { GoogleSignin, User } from "@react-native-google-signin/google-signin";
 import { NavigationProp } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { googleCalendarService } from "@services/googleCalendarService";
 import { LoadingScreen } from "@shared/components/LoadingScreen";
+import { clearEncryptionKey } from "@utils/encryption";
 import { tokenManager } from "@utils/tokenManager";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
-import { clearEncryptionKey } from "@utils/encryption";
-import { googleCalendarService } from "@services/googleCalendarService";
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -94,17 +94,17 @@ export function RootNavigator() {
     try {
       // Clear all tokens
       await tokenManager.clearAllTokens();
-      
+
       // Clear encrypted cache
       await googleCalendarService.clearCache();
-      
+
       // Clear encryption keys
       await clearEncryptionKey();
-      
+
       // Revoke Google access and sign out
       await GoogleSignin.revokeAccess();
       await GoogleSignin.signOut();
-      
+
       setUserInfo(null);
       setIsLoggedIn(false);
     } catch (error) {

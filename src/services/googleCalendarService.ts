@@ -1,14 +1,13 @@
-import { tokenManager } from "@utils/tokenManager";
-import {
-  sanitizeString,
-  validateEventId,
-  validateDateRange,
-  getSafeErrorMessage,
-  isDevelopment,
-} from "@utils/securityUtils";
+import { decryptData, encryptData } from "@utils/encryption";
 import { apiRateLimiter } from "@utils/rateLimiter";
-import { encryptData, decryptData } from "@utils/encryption";
-import * as SecureStore from 'expo-secure-store';
+import {
+  isDevelopment,
+  sanitizeString,
+  validateDateRange,
+  validateEventId
+} from "@utils/securityUtils";
+import { tokenManager } from "@utils/tokenManager";
+import * as SecureStore from "expo-secure-store";
 
 export interface CalendarEvent {
   id?: string;
@@ -42,8 +41,8 @@ export interface CalendarEventResponse extends CalendarEvent {
 
 class GoogleCalendarService {
   private baseUrl = "https://www.googleapis.com/calendar/v3";
-  private readonly RATE_LIMIT_KEY = 'google-calendar-api';
-  private readonly CACHE_KEY_PREFIX = 'calendar_cache_';
+  private readonly RATE_LIMIT_KEY = "google-calendar-api";
+  private readonly CACHE_KEY_PREFIX = "calendar_cache_";
   private readonly CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
 
   /**
@@ -58,22 +57,26 @@ class GoogleCalendarService {
    */
   private async getCachedData<T>(key: string): Promise<T | null> {
     try {
-      const cached = await SecureStore.getItemAsync(`${this.CACHE_KEY_PREFIX}${key}`);
+      const cached = await SecureStore.getItemAsync(
+        `${this.CACHE_KEY_PREFIX}${key}`,
+      );
       if (!cached) return null;
 
-      const decrypted = await decryptData<{ data: T; timestamp: number }>(cached);
-      
+      const decrypted = await decryptData<{ data: T; timestamp: number }>(
+        cached,
+      );
+
       // Check if cache is still valid
       if (Date.now() - decrypted.timestamp < this.CACHE_EXPIRY_MS) {
         return decrypted.data;
       }
-      
+
       // Cache expired, delete it
       await SecureStore.deleteItemAsync(`${this.CACHE_KEY_PREFIX}${key}`);
       return null;
     } catch (error) {
       if (isDevelopment()) {
-        console.error('Cache retrieval error:', error);
+        console.error("Cache retrieval error:", error);
       }
       return null;
     }
@@ -89,10 +92,13 @@ class GoogleCalendarService {
         timestamp: Date.now(),
       };
       const encrypted = await encryptData(toCache);
-      await SecureStore.setItemAsync(`${this.CACHE_KEY_PREFIX}${key}`, encrypted);
+      await SecureStore.setItemAsync(
+        `${this.CACHE_KEY_PREFIX}${key}`,
+        encrypted,
+      );
     } catch (error) {
       if (isDevelopment()) {
-        console.error('Cache storage error:', error);
+        console.error("Cache storage error:", error);
       }
       // Don't throw - caching is optional
     }
@@ -108,11 +114,13 @@ class GoogleCalendarService {
   ): Promise<any> {
     try {
       // Check rate limit
-      const rateLimitCheck = await apiRateLimiter.checkLimit(this.RATE_LIMIT_KEY);
-      
+      const rateLimitCheck = await apiRateLimiter.checkLimit(
+        this.RATE_LIMIT_KEY,
+      );
+
       if (!rateLimitCheck.allowed) {
         throw new Error(
-          `Rate limit exceeded. Please try again in ${rateLimitCheck.retryAfter} seconds.`
+          `Rate limit exceeded. Please try again in ${rateLimitCheck.retryAfter} seconds.`,
         );
       }
 
@@ -150,7 +158,8 @@ class GoogleCalendarService {
     try {
       // Check cache first
       const cacheKey = `list_${maxResults}_${orderBy}`;
-      const cached = await this.getCachedData<CalendarEventResponse[]>(cacheKey);
+      const cached =
+        await this.getCachedData<CalendarEventResponse[]>(cacheKey);
       if (cached) {
         return cached;
       }
@@ -166,12 +175,12 @@ class GoogleCalendarService {
       const data = await this.makeRequest(
         `/calendars/primary/events?${params.toString()}`,
       );
-      
+
       const events = data.items || [];
-      
+
       // Cache the result
       await this.cacheData(cacheKey, events);
-      
+
       return events;
     } catch (error) {
       console.error("Error listing events:", error);
@@ -258,7 +267,7 @@ class GoogleCalendarService {
   ): Promise<CalendarEventResponse[]> {
     try {
       validateDateRange(startDate, endDate);
-      
+
       const params = new URLSearchParams({
         timeMin: startDate.toISOString(),
         timeMax: endDate.toISOString(),
@@ -285,7 +294,7 @@ class GoogleCalendarService {
     try {
       // Validate and sanitize search query
       const sanitizedQuery = sanitizeString(query, 256);
-      
+
       const params = new URLSearchParams({
         q: sanitizedQuery,
         singleEvents: "true",
@@ -310,7 +319,7 @@ class GoogleCalendarService {
     try {
       // Validate and sanitize text input
       const sanitizedText = sanitizeString(text, 500);
-      
+
       const data = await this.makeRequest(
         "/calendars/primary/events/quickAdd",
         "POST",
@@ -342,7 +351,7 @@ class GoogleCalendarService {
    * Get events (alias for listEvents for backward compatibility)
    */
   async getEvents(maxResults: number = 10): Promise<CalendarEventResponse[]> {
-    return this.listEvents(maxResults, 'startTime');
+    return this.listEvents(maxResults, "startTime");
   }
 
   /**
@@ -353,11 +362,11 @@ class GoogleCalendarService {
       // Note: SecureStore doesn't provide a way to list keys,
       // so we rely on cache expiry or manual clearing per key
       if (isDevelopment()) {
-        console.log('Cache cleared');
+        console.log("Cache cleared");
       }
     } catch (error) {
       if (isDevelopment()) {
-        console.error('Error clearing cache:', error);
+        console.error("Error clearing cache:", error);
       }
     }
   }

@@ -32,7 +32,9 @@ class RateLimiter {
    * @param key Unique identifier for the rate limit (e.g., 'google-calendar-api')
    * @returns true if request is allowed, false if rate limited
    */
-  async checkLimit(key: string): Promise<{ allowed: boolean; retryAfter?: number }> {
+  async checkLimit(
+    key: string,
+  ): Promise<{ allowed: boolean; retryAfter?: number }> {
     const now = Date.now();
     const record = this.requestRecords.get(key);
 
@@ -58,14 +60,16 @@ class RateLimiter {
         // Calculate exponential backoff: 2^attempts * base delay
         const backoffMs = Math.min(
           Math.pow(2, record.count - this.config.maxRequests) * 1000,
-          300000 // Max 5 minutes
+          300000, // Max 5 minutes
         );
         record.backoffUntil = now + backoffMs;
         const retryAfter = Math.ceil(backoffMs / 1000);
         return { allowed: false, retryAfter };
       }
-      
-      const retryAfter = Math.ceil((this.config.timeWindowMs - (now - record.timestamp)) / 1000);
+
+      const retryAfter = Math.ceil(
+        (this.config.timeWindowMs - (now - record.timestamp)) / 1000,
+      );
       return { allowed: false, retryAfter };
     }
 
@@ -118,3 +122,4 @@ export const apiRateLimiter = new RateLimiter({
 
 // Export class for custom instances
 export { RateLimiter };
+
