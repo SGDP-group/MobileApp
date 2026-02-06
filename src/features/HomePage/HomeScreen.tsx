@@ -5,6 +5,7 @@ import {
   googleCalendarService,
 } from "@services/googleCalendarService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
+import { getSafeErrorMessage } from "@utils/securityUtils";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -102,11 +103,12 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
     const loadEvents = async () => {
       try {
         setIsLoadingEvents(true);
-        const data = await googleCalendarService.listEvents(12);
+        const data = await googleCalendarService.getEvents(12);
         setEvents(data);
       } catch (error) {
-        console.error("Error loading calendar events:", error);
-        Alert.alert("Calendar", "Unable to load events right now.");
+        // Use safe error message that doesn't expose sensitive details
+        const safeMessage = getSafeErrorMessage(error);
+        Alert.alert("Calendar", safeMessage);
       } finally {
         setIsLoadingEvents(false);
       }
@@ -449,11 +451,11 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         </TouchableOpacity>
       </View>
 
-      {/* {onLogout && (
+      {onLogout && (
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
-      )} */}
+      )}
     </SafeAreaView>
   );
 }

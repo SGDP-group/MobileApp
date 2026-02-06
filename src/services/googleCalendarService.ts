@@ -1,4 +1,11 @@
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { tokenManager } from "@utils/tokenManager";
+import {
+  sanitizeString,
+  validateEventId,
+  validateDateRange,
+  getSafeErrorMessage,
+  isDevelopment,
+} from "@utils/securityUtils";
 
 export interface CalendarEvent {
   id?: string;
@@ -34,16 +41,10 @@ class GoogleCalendarService {
   private baseUrl = "https://www.googleapis.com/calendar/v3";
 
   /**
-   * Get access token from Google Sign-In
+   * Get access token from Google Sign-In (with caching)
    */
   private async getAccessToken(): Promise<string> {
-    try {
-      const tokens = await GoogleSignin.getTokens();
-      return tokens.accessToken;
-    } catch (error) {
-      console.error("Error getting access token:", error);
-      throw new Error("Failed to get access token");
-    }
+    return tokenManager.getAccessToken();
   }
 
   /**
@@ -75,14 +76,11 @@ class GoogleCalendarService {
 
       return await response.json();
     } catch (error) {
-      console.error("API Request Error:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * GET: List all events in the primary calendar
-   */
+      // Only log detailed errors in development
+      if (isDevelopment()) {
+        console.error("API Request Error:", error);
+      }
+    }}
   async listEvents(
     maxResults: number = 10,
     orderBy: string = "startTime",
@@ -111,12 +109,15 @@ class GoogleCalendarService {
    */
   async getEvent(eventId: string): Promise<CalendarEventResponse> {
     try {
+      validateEventId(eventId);
       const data = await this.makeRequest(
         `/calendars/primary/events/${eventId}`,
       );
       return data;
     } catch (error) {
-      console.error("Error getting event:", error);
+      if (isDevelopment()) {
+        console.error("Error getting event:", error);
+      }
       throw error;
     }
   }
@@ -163,9 +164,12 @@ class GoogleCalendarService {
    */
   async deleteEvent(eventId: string): Promise<void> {
     try {
+      validateEventId(eventId);
       await this.makeRequest(`/calendars/primary/events/${eventId}`, "DELETE");
     } catch (error) {
-      console.error("Error deleting event:", error);
+      if (isDevelopment()) {
+        console.error("Error deleting event:", error);
+      }
       throw error;
     }
   }
@@ -178,6 +182,8 @@ class GoogleCalendarService {
     endDate: Date,
   ): Promise<CalendarEventResponse[]> {
     try {
+      validateDateRange(startDate, endDate);
+      
       const params = new URLSearchParams({
         timeMin: startDate.toISOString(),
         timeMax: endDate.toISOString(),
@@ -190,7 +196,9 @@ class GoogleCalendarService {
       );
       return data.items || [];
     } catch (error) {
-      console.error("Error getting events by date range:", error);
+      if (isDevelopment()) {
+        console.error("Error getting events by date range:", error);
+      }
       throw error;
     }
   }
@@ -200,8 +208,11 @@ class GoogleCalendarService {
    */
   async searchEvents(query: string): Promise<CalendarEventResponse[]> {
     try {
+      // Validate and sanitize search query
+      const sanitizedQuery = sanitizeString(query, 256);
+      
       const params = new URLSearchParams({
-        q: query,
+        q: sanitizedQuery,
         singleEvents: "true",
       });
 
@@ -210,7 +221,9 @@ class GoogleCalendarService {
       );
       return data.items || [];
     } catch (error) {
-      console.error("Error searching events:", error);
+      if (isDevelopment()) {
+        console.error("Error searching events:", error);
+      }
       throw error;
     }
   }
@@ -220,14 +233,19 @@ class GoogleCalendarService {
    */
   async quickAddEvent(text: string): Promise<CalendarEventResponse> {
     try {
+      // Validate and sanitize text input
+      const sanitizedText = sanitizeString(text, 500);
+      
       const data = await this.makeRequest(
         "/calendars/primary/events/quickAdd",
         "POST",
-        { text },
+        { text: sanitizedText },
       );
       return data;
     } catch (error) {
-      console.error("Error quick adding event:", error);
+      if (isDevelopment()) {
+        console.error("Error quick adding event:", error);
+      }
       throw error;
     }
   }
@@ -241,6 +259,36 @@ class GoogleCalendarService {
       return data.items || [];
     } catch (error) {
       console.error("Error listing calendars:", error);
+      throw error;
+    }
+  }
+
+  async getEvents(maxResults: number = 10): Promise<CalendarEventResponse[]> {
+    try {
+      const accessToken = await this.getAccessToken();
+      
+      const timeMin = new Date().toISOString();
+      const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
+        `maxResults=${maxResults}&` +
+        `timeMin=${timeMin}&` +
+        `orderBy=startTime&` +
+        `singleEvents=true`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch events: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.items || [];
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
       throw error;
     }
   }
