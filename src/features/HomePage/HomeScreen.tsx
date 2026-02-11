@@ -301,8 +301,8 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         showsVerticalScrollIndicator={false}
         bounces={true}
         alwaysBounceVertical={true}
-        scrollEventThrottle={8}
-        decelerationRate={0.992}
+        scrollEventThrottle={16}
+        decelerationRate={0.998}
         removeClippedSubviews={false}
         overScrollMode="never"
         nestedScrollEnabled={true}
@@ -376,10 +376,9 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.upNextRow}
           nestedScrollEnabled
-          decelerationRate="fast"
+          decelerationRate={0.99}
           snapToInterval={snapInterval}
           snapToAlignment="center"
-          disableIntervalMomentum
           getItemLayout={(_, index) => ({
             length: snapInterval,
             offset: snapInterval * index,
