@@ -65,6 +65,10 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 18,
   },
+  descriptionContainer: {
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
   eventTime: {
     fontSize: 12,
     color: colors.primary,
@@ -173,5 +177,64 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999",
     marginTop: 6,
+  },
+  detailModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  detailModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    maxHeight: "80%",
+    width: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  detailModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  detailModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  detailModalActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  detailModalBody: {
+    padding: 16,
+  },
+  detailSection: {
+    marginBottom: 20,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.primary,
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+  detailTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  detailText: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
   },
 });

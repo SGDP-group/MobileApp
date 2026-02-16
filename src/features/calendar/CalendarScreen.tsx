@@ -1,26 +1,31 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-    CalendarEventResponse,
-    googleCalendarService,
+  CalendarEventResponse,
+  googleCalendarService,
 } from "@services/googleCalendarService";
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import EventDescription from "./components/EventDescription";
 import { styles } from "./styles/calendar.styles";
 
 export default function CalendarScreen() {
   const [events, setEvents] = useState<CalendarEventResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [detailEvent, setDetailEvent] = useState<CalendarEventResponse | null>(
+    null,
+  );
   const [editingEvent, setEditingEvent] =
     useState<CalendarEventResponse | null>(null);
   const [formData, setFormData] = useState({
@@ -58,6 +63,11 @@ export default function CalendarScreen() {
       location: "",
     });
     setIsModalVisible(true);
+  };
+
+  const handleViewEventDetails = (event: CalendarEventResponse) => {
+    setDetailEvent(event);
+    setIsDetailModalVisible(true);
   };
 
   const handleEditEvent = (event: CalendarEventResponse) => {
@@ -145,36 +155,37 @@ export default function CalendarScreen() {
   };
 
   const renderEventItem = ({ item }: { item: CalendarEventResponse }) => (
-    <View style={styles.eventCard}>
-      <View style={styles.eventContent}>
-        <Text style={styles.eventTitle}>{item.summary}</Text>
-        {item.description && (
-          <Text style={styles.eventDescription} numberOfLines={2}>
-            {item.description}
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => handleViewEventDetails(item)}
+    >
+      <View style={styles.eventCard}>
+        <View style={styles.eventContent}>
+          <Text style={styles.eventTitle}>{item.summary}</Text>
+          {item.description && <EventDescription html={item.description} />}
+          <Text style={styles.eventTime}>
+            {formatDateTime(item.start?.dateTime)}
           </Text>
-        )}
-        <Text style={styles.eventTime}>
-          {formatDateTime(item.start?.dateTime)}
-        </Text>
-        {item.location && (
-          <Text style={styles.eventLocation}>📍 {item.location}</Text>
-        )}
+          {item.location && (
+            <Text style={styles.eventLocation}>📍 {item.location}</Text>
+          )}
+        </View>
+        <View style={styles.eventActions}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => handleEditEvent(item)}
+          >
+            <Ionicons name="pencil" size={18} color="#007AFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteEvent(item.id)}
+          >
+            <Ionicons name="trash" size={18} color="#FF3B30" />
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.eventActions}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => handleEditEvent(item)}
-        >
-          <Ionicons name="pencil" size={18} color="#007AFF" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteEvent(item.id)}
-        >
-          <Ionicons name="trash" size={18} color="#FF3B30" />
-        </TouchableOpacity>
-      </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -210,6 +221,85 @@ export default function CalendarScreen() {
           onRefresh={loadEvents}
         />
       )}
+
+      {/* Modal for viewing event details */}
+      <Modal
+        visible={isDetailModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setIsDetailModalVisible(false)}
+      >
+        <View style={styles.detailModalOverlay}>
+          <View style={styles.detailModalContent}>
+            <View style={styles.detailModalHeader}>
+              <TouchableOpacity onPress={() => setIsDetailModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+              <Text style={styles.detailModalTitle}>Event Details</Text>
+              <View style={styles.detailModalActions}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setIsDetailModalVisible(false);
+                    detailEvent && handleEditEvent(detailEvent);
+                  }}
+                >
+                  <Ionicons name="pencil" size={24} color="#007AFF" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (detailEvent) {
+                      setIsDetailModalVisible(false);
+                      handleDeleteEvent(detailEvent.id);
+                    }
+                  }}
+                >
+                  r
+                  <Ionicons name="trash" size={24} color="#FF3B30" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <ScrollView style={styles.detailModalBody}>
+              {detailEvent && (
+                <>
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Title</Text>
+                    <Text style={styles.detailTitle}>
+                      {detailEvent.summary}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Date & Time</Text>
+                    <Text style={styles.detailText}>
+                      {formatDateTime(detailEvent.start?.dateTime)}
+                    </Text>
+                  </View>
+
+                  {detailEvent.location && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailLabel}>Location</Text>
+                      <Text style={styles.detailText}>
+                        {detailEvent.location}
+                      </Text>
+                    </View>
+                  )}
+
+                  {detailEvent.description && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailLabel}>Description</Text>
+                      <EventDescription
+                        html={detailEvent.description}
+                        showFull={true}
+                      />
+                    </View>
+                  )}
+                </>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal for creating/editing events */}
       <Modal
@@ -255,7 +345,7 @@ export default function CalendarScreen() {
                   setFormData({ ...formData, description: text })
                 }
                 multiline
-                numberOfLines={4}
+                numberOfLines={6}
                 placeholderTextColor="#999"
               />
             </View>
