@@ -4,18 +4,11 @@ import {
   googleCalendarService,
 } from "@services/googleCalendarService";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  FlatList,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EventDescription from "./components/EventDescription";
+import EventDetailModal from "./components/EventDetailModal";
+import EventFormModal from "./components/EventFormModal";
 import { styles } from "./styles/calendar.styles";
 
 export default function CalendarScreen() {
@@ -222,177 +215,25 @@ export default function CalendarScreen() {
         />
       )}
 
-      {/* Modal for viewing event details */}
-      <Modal
+      {/* Detail Modal */}
+      <EventDetailModal
         visible={isDetailModalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setIsDetailModalVisible(false)}
-      >
-        <View style={styles.detailModalOverlay}>
-          <View style={styles.detailModalContent}>
-            <View style={styles.detailModalHeader}>
-              <TouchableOpacity onPress={() => setIsDetailModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-              <Text style={styles.detailModalTitle}>Event Details</Text>
-              <View style={styles.detailModalActions}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setIsDetailModalVisible(false);
-                    detailEvent && handleEditEvent(detailEvent);
-                  }}
-                >
-                  <Ionicons name="pencil" size={24} color="#007AFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (detailEvent) {
-                      setIsDetailModalVisible(false);
-                      handleDeleteEvent(detailEvent.id);
-                    }
-                  }}
-                >
-                  r
-                  <Ionicons name="trash" size={24} color="#FF3B30" />
-                </TouchableOpacity>
-              </View>
-            </View>
+        event={detailEvent}
+        onClose={() => setIsDetailModalVisible(false)}
+        onEdit={handleEditEvent}
+        onDelete={handleDeleteEvent}
+        formatDateTime={formatDateTime}
+      />
 
-            <ScrollView style={styles.detailModalBody}>
-              {detailEvent && (
-                <>
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Title</Text>
-                    <Text style={styles.detailTitle}>
-                      {detailEvent.summary}
-                    </Text>
-                  </View>
-
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailLabel}>Date & Time</Text>
-                    <Text style={styles.detailText}>
-                      {formatDateTime(detailEvent.start?.dateTime)}
-                    </Text>
-                  </View>
-
-                  {detailEvent.location && (
-                    <View style={styles.detailSection}>
-                      <Text style={styles.detailLabel}>Location</Text>
-                      <Text style={styles.detailText}>
-                        {detailEvent.location}
-                      </Text>
-                    </View>
-                  )}
-
-                  {detailEvent.description && (
-                    <View style={styles.detailSection}>
-                      <Text style={styles.detailLabel}>Description</Text>
-                      <EventDescription
-                        html={detailEvent.description}
-                        showFull={true}
-                      />
-                    </View>
-                  )}
-                </>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal for creating/editing events */}
-      <Modal
+      {/* Form Modal */}
+      <EventFormModal
         visible={isModalVisible}
-        animationType="slide"
-        presentationStyle="formSheet"
-        onRequestClose={() => setIsModalVisible(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-              <Text style={styles.cancelButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {editingEvent ? "Edit Event" : "New Event"}
-            </Text>
-            <TouchableOpacity onPress={handleSaveEvent}>
-              <Text style={styles.saveButton}>Save</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Event Title *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter event title"
-                value={formData.summary}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, summary: text })
-                }
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Enter event description"
-                value={formData.description}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, description: text })
-                }
-                multiline
-                numberOfLines={6}
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Start Date & Time *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="2024-02-05T10:00:00"
-                value={formData.startDateTime}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, startDateTime: text })
-                }
-                placeholderTextColor="#999"
-              />
-              <Text style={styles.hint}>Format: YYYY-MM-DDTHH:MM:SS</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>End Date & Time</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="2024-02-05T11:00:00"
-                value={formData.endDateTime}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, endDateTime: text })
-                }
-                placeholderTextColor="#999"
-              />
-              <Text style={styles.hint}>Format: YYYY-MM-DDTHH:MM:SS</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Location</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter location"
-                value={formData.location}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, location: text })
-                }
-                placeholderTextColor="#999"
-              />
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+        editingEvent={editingEvent}
+        formData={formData}
+        onClose={() => setIsModalVisible(false)}
+        onFormDataChange={setFormData}
+        onSave={handleSaveEvent}
+      />
     </SafeAreaView>
   );
 }
