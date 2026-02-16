@@ -3,6 +3,7 @@ import {
   CalendarEventResponse,
   googleCalendarService,
 } from "@services/googleCalendarService";
+import { TaskItem, googleTasksService } from "@services/googleTasksService";
 import React, { useEffect, useState } from "react";
 import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,16 +12,22 @@ import EventDetailModal from "./components/EventDetailModal";
 import EventFormModal from "./components/EventFormModal";
 import { styles } from "./styles/calendar.styles";
 
+type CombinedItem = CalendarEventResponse | (TaskItem & { isTask: true });
+
 export default function CalendarScreen() {
-  const [events, setEvents] = useState<CalendarEventResponse[]>([]);
+  const [items, setItems] = useState<CombinedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [detailEvent, setDetailEvent] = useState<CalendarEventResponse | null>(
     null,
   );
   const [editingEvent, setEditingEvent] =
     useState<CalendarEventResponse | null>(null);
+  const [editingTask, setEditingTask] = useState<
+    (TaskItem & { isTask: true }) | null
+  >(null);
   const [formData, setFormData] = useState({
     summary: "",
     description: "",
@@ -30,17 +37,39 @@ export default function CalendarScreen() {
   });
 
   useEffect(() => {
-    loadEvents();
+    loadItems();
   }, []);
 
-  const loadEvents = async () => {
+  const loadItems = async () => {
     try {
       setIsLoading(true);
-      const calendarEvents = await googleCalendarService.listEvents(20);
-      setEvents(calendarEvents);
+      const [calendarEvents, tasks] = await Promise.all([
+        googleCalendarService.listEvents(20),
+        googleTasksService.getTasks(20),
+      ]);
+
+      const combinedItems: CombinedItem[] = [
+        ...calendarEvents,
+        ...tasks.map((task) => ({ ...task, isTask: true as const })),
+      ];
+
+      // Sort by start date/time or due date
+      combinedItems.sort((a, b) => {
+        const dateA =
+          (a as CalendarEventResponse).start?.dateTime ||
+          (a as TaskItem & { isTask: true }).due ||
+          "";
+        const dateB =
+          (b as CalendarEventResponse).start?.dateTime ||
+          (b as TaskItem & { isTask: true }).due ||
+          "";
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
+      });
+
+      setItems(combinedItems);
     } catch (error) {
-      console.error("Error loading events:", error);
-      Alert.alert("Error", "Failed to load calendar events");
+      console.error("Error loading items:", error);
+      Alert.alert("Error", "Failed to load calendar events and tasks");
     } finally {
       setIsLoading(false);
     }
@@ -48,6 +77,22 @@ export default function CalendarScreen() {
 
   const handleAddEvent = () => {
     setEditingEvent(null);
+    setEditingTask(null);
+    setIsCreatingTask(false);
+    setFormData({
+      summary: "",
+      description: "",
+      startDateTime: "",
+      endDateTime: "",
+      location: "",
+    });
+    setIsModalVisible(true);
+  };
+
+  const handleAddTask = () => {
+    setEditingEvent(null);
+    setEditingTask(null);
+    setIsCreatingTask(true);
     setFormData({
       summary: "",
       description: "",
@@ -77,43 +122,76 @@ export default function CalendarScreen() {
 
   const handleSaveEvent = async () => {
     if (!formData.summary.trim()) {
-      Alert.alert("Validation", "Event title is required");
+      Alert.alert("Validation", "Title is required");
       return;
     }
 
     if (!formData.startDateTime.trim()) {
-      Alert.alert("Validation", "Start date/time is required");
+      Alert.alert("Validation", "Date is required");
       return;
     }
 
     try {
-      const eventData = {
-        summary: formData.summary,
-        description: formData.description,
-        location: formData.location,
-        start: {
-          dateTime: formData.startDateTime,
-          timeZone: "UTC",
-        },
-        end: {
-          dateTime: formData.endDateTime || formData.startDateTime,
-          timeZone: "UTC",
-        },
-      };
-
-      if (editingEvent) {
+      // Handle task save/update
+      if (editingTask) {
+        await googleTasksService.updateTask(editingTask.id, {
+          title: formData.summary,
+          notes: formData.description,
+          due: formData.startDateTime,
+        });
+        Alert.alert("Success", "Task updated successfully");
+      } else if (isCreatingTask) {
+        // Create new task
+        await googleTasksService.createTask(
+          formData.summary,
+          formData.description,
+          formData.startDateTime,
+        );
+        Alert.alert("Success", "Task created successfully");
+      } else if (editingEvent) {
+        // Handle event update
+        const eventData = {
+          summary: formData.summary,
+          description: formData.description,
+          location: formData.location,
+          start: {
+            dateTime: formData.startDateTime,
+            timeZone: "UTC",
+          },
+          end: {
+            dateTime: formData.endDateTime || formData.startDateTime,
+            timeZone: "UTC",
+          },
+        };
         await googleCalendarService.updateEvent(editingEvent.id, eventData);
         Alert.alert("Success", "Event updated successfully");
       } else {
+        // Handle new event creation
+        const eventData = {
+          summary: formData.summary,
+          description: formData.description,
+          location: formData.location,
+          start: {
+            dateTime: formData.startDateTime,
+            timeZone: "UTC",
+          },
+          end: {
+            dateTime: formData.endDateTime || formData.startDateTime,
+            timeZone: "UTC",
+          },
+        };
         await googleCalendarService.createEvent(eventData);
         Alert.alert("Success", "Event created successfully");
       }
 
       setIsModalVisible(false);
-      loadEvents();
+      setEditingEvent(null);
+      setEditingTask(null);
+      setIsCreatingTask(false);
+      loadItems();
     } catch (error) {
-      console.error("Error saving event:", error);
-      Alert.alert("Error", "Failed to save event");
+      console.error("Error saving:", error);
+      Alert.alert("Error", "Failed to save");
     }
   };
 
@@ -126,7 +204,7 @@ export default function CalendarScreen() {
           try {
             await googleCalendarService.deleteEvent(eventId);
             Alert.alert("Success", "Event deleted successfully");
-            loadEvents();
+            loadItems();
           } catch (error) {
             console.error("Error deleting event:", error);
             Alert.alert("Error", "Failed to delete event");
@@ -147,56 +225,127 @@ export default function CalendarScreen() {
     }
   };
 
-  const renderEventItem = ({ item }: { item: CalendarEventResponse }) => (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => handleViewEventDetails(item)}
-    >
-      <View style={styles.eventCard}>
-        <View style={styles.eventContent}>
-          <Text style={styles.eventTitle}>{item.summary}</Text>
-          {item.description && <EventDescription html={item.description} />}
-          <Text style={styles.eventTime}>
-            {formatDateTime(item.start?.dateTime)}
-          </Text>
-          {item.location && (
-            <Text style={styles.eventLocation}>📍 {item.location}</Text>
-          )}
+  const handleEditTask = (task: TaskItem & { isTask: true }) => {
+    setEditingTask(task);
+    setFormData({
+      summary: task.title,
+      description: task.notes || "",
+      startDateTime: task.due || "",
+      endDateTime: "",
+      location: "",
+    });
+    setIsModalVisible(true);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
+      { text: "Cancel", onPress: () => {} },
+      {
+        text: "Delete",
+        onPress: async () => {
+          try {
+            await googleTasksService.deleteTask(taskId);
+            Alert.alert("Success", "Task deleted successfully");
+            loadItems();
+          } catch (error) {
+            console.error("Error deleting task:", error);
+            Alert.alert("Error", "Failed to delete task");
+          }
+        },
+        style: "destructive",
+      },
+    ]);
+  };
+
+  const renderEventItem = ({ item }: { item: CombinedItem }) => {
+    const isTask = "isTask" in item && item.isTask;
+    const event = item as CalendarEventResponse;
+    const task = item as TaskItem & { isTask: true };
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => !isTask && handleViewEventDetails(event)}
+      >
+        <View style={[styles.eventCard, isTask && styles.taskCard]}>
+          <View style={styles.eventContent}>
+            <View style={styles.itemHeader}>
+              <Text style={styles.eventTitle}>
+                {isTask ? task.title : event.summary}
+              </Text>
+              {isTask && (
+                <View style={styles.taskBadge}>
+                  <Text style={styles.taskBadgeText}>Task</Text>
+                </View>
+              )}
+            </View>
+            {!isTask && event.description && (
+              <EventDescription html={event.description} />
+            )}
+            {isTask && task.notes && (
+              <Text style={styles.eventDescription}>{task.notes}</Text>
+            )}
+            <Text style={styles.eventTime}>
+              {isTask
+                ? formatDateTime(task.due)
+                : formatDateTime(event.start?.dateTime)}
+            </Text>
+            {!isTask && event.location && (
+              <Text style={styles.eventLocation}>📍 {event.location}</Text>
+            )}
+          </View>
+          <View style={styles.eventActions}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => {
+                if (isTask) {
+                  handleEditTask(task);
+                } else {
+                  handleEditEvent(event);
+                }
+              }}
+            >
+              <Ionicons name="pencil" size={18} color="#007AFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => {
+                if (isTask) {
+                  handleDeleteTask(task.id);
+                } else {
+                  handleDeleteEvent(event.id);
+                }
+              }}
+            >
+              <Ionicons name="trash" size={18} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.eventActions}>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => handleEditEvent(item)}
-          >
-            <Ionicons name="pencil" size={18} color="#007AFF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteEvent(item.id)}
-          >
-            <Ionicons name="trash" size={18} color="#FF3B30" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Google Calendar</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddEvent}>
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
+            <Ionicons name="checkmark-circle" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddEvent}>
+            <Ionicons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <Text>Loading events...</Text>
+          <Text>Loading events and tasks...</Text>
         </View>
-      ) : events.length === 0 ? (
+      ) : items.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>No upcoming events</Text>
+          <Text style={styles.emptyText}>No upcoming events or tasks</Text>
           <TouchableOpacity
             style={styles.addEventButton}
             onPress={handleAddEvent}
@@ -206,12 +355,12 @@ export default function CalendarScreen() {
         </View>
       ) : (
         <FlatList
-          data={events}
+          data={items}
           renderItem={renderEventItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshing={isLoading}
-          onRefresh={loadEvents}
+          onRefresh={loadItems}
         />
       )}
 

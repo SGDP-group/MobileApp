@@ -21,6 +21,10 @@ export const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#fff",
   },
+  headerActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
   addButton: {
     width: 44,
     height: 44,
@@ -83,6 +87,26 @@ export const styles = StyleSheet.create({
   eventActions: {
     flexDirection: "row",
     gap: 12,
+  },
+  taskCard: {
+    borderLeftColor: "#FF9500",
+  },
+  itemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  taskBadge: {
+    backgroundColor: "#FF9500",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  taskBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#fff",
   },
   editButton: {
     padding: 8,
