@@ -6,6 +6,8 @@ export interface TaskItem {
   title: string;
   notes?: string;
   due?: string;
+  startDateTime?: string;
+  endDateTime?: string;
   completed?: boolean;
   updated: string;
   subtasks?: TaskItem[];
@@ -140,6 +142,8 @@ class GoogleTasksService {
         title: task.title,
         notes: task.notes,
         due: task.due,
+        startDateTime: task.updated,
+        endDateTime: task.due,
         completed: task.status === "completed",
         updated: task.updated,
         parentId: task.parent,
@@ -186,6 +190,8 @@ class GoogleTasksService {
           title: task.title,
           notes: task.notes,
           due: task.due,
+          startDateTime: task.updated,
+          endDateTime: task.due,
           completed: task.status === "completed",
           updated: task.updated,
           parentId: task.parent,
@@ -239,6 +245,8 @@ class GoogleTasksService {
         title: task.title,
         notes: task.notes,
         due: task.due,
+        startDateTime: task.updated,
+        endDateTime: task.due,
         completed: task.status === "completed",
         updated: task.updated,
         parentId: task.parent,
@@ -282,6 +290,8 @@ class GoogleTasksService {
         title: data.title,
         notes: data.notes,
         due: data.due,
+        startDateTime: data.updated,
+        endDateTime: data.due,
         completed: data.status === "completed",
         updated: data.updated,
       };
@@ -324,6 +334,8 @@ class GoogleTasksService {
         title: data.title,
         notes: data.notes,
         due: data.due,
+        startDateTime: data.updated,
+        endDateTime: data.due,
         completed: data.status === "completed",
         updated: data.updated,
       };

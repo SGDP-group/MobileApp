@@ -289,6 +289,16 @@ export const styles = StyleSheet.create({
     color: colors.secondary,
     lineHeight: 20,
   },
+  detailListItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  detailListMeta: {
+    fontSize: 12,
+    color: "#8DA7B5",
+  },
   tasksContainer: {
     marginBottom: 4,
   },
@@ -347,6 +357,11 @@ export const styles = StyleSheet.create({
   },
   checkboxContainer: {
     marginRight: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxContainerRight: {
+    marginLeft: 8,
     justifyContent: "center",
     alignItems: "center",
   },

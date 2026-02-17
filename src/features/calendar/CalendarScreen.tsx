@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import EventDescription from "./components/EventDescription";
 import EventDetailModal from "./components/EventDetailModal";
 import EventFormModal from "./components/EventFormModal";
+import TaskDetailModal from "./components/TaskDetailModal";
 import { styles } from "./styles/calendar.styles";
 import { loadItems } from "./utils/dataLoader";
 import {
@@ -33,15 +34,16 @@ export default function CalendarScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [isTaskDetailModalVisible, setIsTaskDetailModalVisible] =
+    useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [detailEvent, setDetailEvent] = useState<CalendarEventResponse | null>(
     null,
   );
+  const [detailTask, setDetailTask] = useState<TaskItem | null>(null);
   const [editingEvent, setEditingEvent] =
     useState<CalendarEventResponse | null>(null);
-  const [editingTask, setEditingTask] = useState<
-    (TaskItem & { isTask: true }) | null
-  >(null);
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [temporarilyCompletedTasks, setTemporarilyCompletedTasks] = useState<
     Set<string>
@@ -79,6 +81,11 @@ export default function CalendarScreen() {
   const handleViewEventDetails = (event: CalendarEventResponse) => {
     setDetailEvent(event);
     setIsDetailModalVisible(true);
+  };
+
+  const handleViewTaskDetails = (task: TaskItem) => {
+    setDetailTask(task);
+    setIsTaskDetailModalVisible(true);
   };
 
   const handleEditEvent = (event: CalendarEventResponse) => {
@@ -126,7 +133,7 @@ export default function CalendarScreen() {
     handleDeleteTask(taskId, initializeItems);
   };
 
-  const handleEditTask = (task: TaskItem & { isTask: true }) => {
+  const handleEditTask = (task: TaskItem) => {
     setEditingTask(task);
     setFormData({
       summary: task.title,
@@ -189,6 +196,7 @@ export default function CalendarScreen() {
       isTask && temporarilyCompletedTasks.has(task.id);
     const isTaskCompleted =
       isTask && (task.completed || isTemporarilyCompleted);
+    const taskEndDateTime = isTask ? task.endDateTime || task.due : undefined;
 
     return (
       <View style={styles.tasksContainer}>
@@ -203,37 +211,35 @@ export default function CalendarScreen() {
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
-                if (isTask && hasSubtasks) {
-                  toggleTaskExpanded(task.id);
-                } else if (!isTask) {
+                if (!isTask) {
                   handleViewEventDetails(event);
+                } else if (isTask) {
+                  handleViewTaskDetails(task);
+                }
+              }}
+              onLongPress={() => {
+                if (isTask) {
+                  handleViewTaskDetails(task);
                 }
               }}
               style={{ flexDirection: "row", flex: 1 }}
             >
-              {isTask && (
-                <TouchableOpacity
-                  onPress={() => handleToggleTaskCompleteWrapper(task)}
-                  style={styles.checkboxContainer}
-                >
-                  <Ionicons
-                    name={
-                      isTaskCompleted ? "checkmark-circle" : "ellipse-outline"
-                    }
-                    size={24}
-                    color={isTaskCompleted ? "#34C759" : "#C7C7CC"}
-                  />
-                </TouchableOpacity>
-              )}
               <View style={styles.eventContent}>
                 <View style={styles.itemHeader}>
                   {hasSubtasks && (
-                    <Ionicons
-                      name={isExpanded ? "chevron-down" : "chevron-forward"}
-                      size={20}
-                      color="#007AFF"
-                      style={styles.chevron}
-                    />
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        toggleTaskExpanded(task.id);
+                      }}
+                    >
+                      <Ionicons
+                        name={isExpanded ? "chevron-down" : "chevron-forward"}
+                        size={20}
+                        color="#007AFF"
+                        style={styles.chevron}
+                      />
+                    </TouchableOpacity>
                   )}
                   <Text
                     style={[
@@ -253,7 +259,13 @@ export default function CalendarScreen() {
                   <EventDescription html={event.description} />
                 )}
                 {isTask && task.notes && (
-                  <Text style={styles.eventDescription}>{task.notes}</Text>
+                  <Text
+                    style={styles.eventDescription}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {task.notes}
+                  </Text>
                 )}
 
                 {/* Start Session At / Due Date */}
@@ -266,7 +278,7 @@ export default function CalendarScreen() {
                     </Text>
                   </View>
                 )}
-                {isTask && task.due && (
+                {isTask && taskEndDateTime && (
                   <View style={styles.metaRow}>
                     <Ionicons
                       name="calendar-outline"
@@ -274,7 +286,9 @@ export default function CalendarScreen() {
                       color="#FF9500"
                     />
                     <Text style={styles.metaLabel}>Due Date: </Text>
-                    <Text style={styles.metaValue}>{formatDate(task.due)}</Text>
+                    <Text style={styles.metaValue}>
+                      {formatDate(taskEndDateTime)}
+                    </Text>
                   </View>
                 )}
 
@@ -330,6 +344,20 @@ export default function CalendarScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+              {isTask && (
+                <TouchableOpacity
+                  onPress={() => handleToggleTaskCompleteWrapper(task)}
+                  style={styles.checkboxContainerRight}
+                >
+                  <Ionicons
+                    name={
+                      isTaskCompleted ? "checkmark-circle" : "ellipse-outline"
+                    }
+                    size={24}
+                    color={isTaskCompleted ? "#34C759" : "#C7C7CC"}
+                  />
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
             {/* <View style={styles.eventActions}>
                 <TouchableOpacity
@@ -370,22 +398,6 @@ export default function CalendarScreen() {
                     subtask.completed && styles.completedCard,
                   ]}
                 >
-                  <TouchableOpacity
-                    onPress={() =>
-                      handleToggleSubtaskCompleteWrapper(subtask, task)
-                    }
-                    style={styles.checkboxContainer}
-                  >
-                    <Ionicons
-                      name={
-                        subtask.completed
-                          ? "checkmark-circle"
-                          : "ellipse-outline"
-                      }
-                      size={20}
-                      color={subtask.completed ? "#34C759" : "#C7C7CC"}
-                    />
-                  </TouchableOpacity>
                   <View style={styles.subtaskContent}>
                     <Text
                       style={[
@@ -398,12 +410,36 @@ export default function CalendarScreen() {
                     {subtask.notes && (
                       <Text style={styles.subtaskNotes}>{subtask.notes}</Text>
                     )}
-                    {subtask.due && (
-                      <Text style={styles.subtaskTime}>
-                        {formatDateTime(subtask.due)}
-                      </Text>
+                    {(subtask.endDateTime || subtask.due) && (
+                      <View style={styles.metaRow}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={12}
+                          color="#FF9500"
+                        />
+                        <Text style={styles.metaLabel}>Due: </Text>
+                        <Text style={styles.metaValue}>
+                          {formatDate(subtask.endDateTime || subtask.due)}
+                        </Text>
+                      </View>
                     )}
                   </View>
+                  <TouchableOpacity
+                    onPress={() =>
+                      handleToggleSubtaskCompleteWrapper(subtask, task)
+                    }
+                    style={styles.checkboxContainerRight}
+                  >
+                    <Ionicons
+                      name={
+                        subtask.completed
+                          ? "checkmark-circle"
+                          : "ellipse-outline"
+                      }
+                      size={20}
+                      color={subtask.completed ? "#34C759" : "#C7C7CC"}
+                    />
+                  </TouchableOpacity>
                 </View>
               ))}
             </View>
@@ -460,6 +496,15 @@ export default function CalendarScreen() {
         onEdit={handleEditEvent}
         onDelete={handleDeleteEventWrapper}
         formatDateTime={formatDateTime}
+      />
+
+      <TaskDetailModal
+        visible={isTaskDetailModalVisible}
+        task={detailTask}
+        onClose={() => setIsTaskDetailModalVisible(false)}
+        onEdit={handleEditTask}
+        onDelete={handleDeleteTaskWrapper}
+        formatDate={formatDate}
       />
 
       {/* Form Modal */}

@@ -99,7 +99,7 @@ export const saveEvent = async (
 
 export const saveTask = async (
   formData: FormData,
-  editingTask: (TaskItem & { isTask: true }) | null,
+  editingTask: TaskItem | null,
   isCreatingTask: boolean,
 ): Promise<void> => {
   if (editingTask) {
