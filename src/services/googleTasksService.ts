@@ -16,7 +16,7 @@ export interface TaskList {
 }
 
 class GoogleTasksService {
-  private baseUrl = "https://www.googleapis.com/tasks/v1";
+  private baseUrl = "https://tasks.googleapis.com/tasks/v1";
 
   /**
    * Get access token from Google Sign-In
