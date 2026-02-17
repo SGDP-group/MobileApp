@@ -72,7 +72,7 @@ export const styles = StyleSheet.create({
   },
   eventDescription: {
     fontSize: 13,
-    color: "#8DA7B5",
+    color: colors.secondary,
     marginBottom: 8,
     lineHeight: 18,
   },
@@ -282,11 +282,11 @@ export const styles = StyleSheet.create({
   detailTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#FFFFFF",
+    color: colors.text,
   },
   detailText: {
     fontSize: 14,
-    color: "#8DA7B5",
+    color: colors.secondary,
     lineHeight: 20,
   },
   tasksContainer: {
@@ -325,18 +325,18 @@ export const styles = StyleSheet.create({
   subtaskTitle: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#FFFFFF",
+    color: colors.text,
     marginBottom: 4,
   },
   subtaskNotes: {
     fontSize: 12,
-    color: "#8DA7B5",
+    color: colors.secondary,
     marginBottom: 4,
     lineHeight: 16,
   },
   subtaskTime: {
     fontSize: 11,
-    color: "#8DA7B5",
+    color: colors.secondary,
     marginBottom: 0,
     fontWeight: "400",
   },
@@ -357,17 +357,18 @@ export const styles = StyleSheet.create({
     textDecorationLine: "line-through",
   },
   bottomRow: {
-    flexDirection: "column",
-    justifyContent: "flex-start",
-    alignItems: "stretch",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 8,
-    gap: 8,
+    gap: 12,
   },
   startButton: {
     backgroundColor: "#5AC8FA",
+    flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 6,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
   },

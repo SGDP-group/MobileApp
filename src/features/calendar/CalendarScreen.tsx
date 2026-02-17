@@ -1,9 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-  CalendarEventResponse,
-  googleCalendarService,
-} from "@services/googleCalendarService";
-import { TaskItem, googleTasksService } from "@services/googleTasksService";
+import { CalendarEventResponse } from "@services/googleCalendarService";
+import { TaskItem } from "@services/googleTasksService";
 import React, { useEffect, useState } from "react";
 import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,8 +8,25 @@ import EventDescription from "./components/EventDescription";
 import EventDetailModal from "./components/EventDetailModal";
 import EventFormModal from "./components/EventFormModal";
 import { styles } from "./styles/calendar.styles";
-
-type CombinedItem = CalendarEventResponse | (TaskItem & { isTask: true });
+import { loadItems } from "./utils/dataLoader";
+import {
+  calculateDuration,
+  formatDate,
+  formatDateTime,
+  formatTime,
+} from "./utils/dateFormatting";
+import {
+  handleDeleteEvent,
+  handleDeleteTask,
+  saveEvent,
+  saveTask,
+  validateFormData,
+} from "./utils/eventHandlers";
+import {
+  handleToggleSubtaskComplete,
+  handleToggleTaskComplete,
+} from "./utils/taskHandlers";
+import { CombinedItem, emptyFormData } from "./utils/types";
 
 export default function CalendarScreen() {
   const [items, setItems] = useState<CombinedItem[]>([]);
@@ -32,64 +46,25 @@ export default function CalendarScreen() {
   const [temporarilyCompletedTasks, setTemporarilyCompletedTasks] = useState<
     Set<string>
   >(new Set());
-  const [formData, setFormData] = useState({
-    summary: "",
-    description: "",
-    startDateTime: "",
-    endDateTime: "",
-    location: "",
-  });
+  const [formData, setFormData] = useState(emptyFormData);
 
+  // Load items on mount
   useEffect(() => {
-    loadItems();
+    initializeItems();
   }, []);
 
-  const loadItems = async () => {
-    try {
-      setIsLoading(true);
-      const [calendarEvents, tasks] = await Promise.all([
-        googleCalendarService.listEvents(20),
-        googleTasksService.getTasks(20),
-      ]);
-
-      const combinedItems: CombinedItem[] = [
-        ...calendarEvents,
-        ...tasks.map((task) => ({ ...task, isTask: true as const })),
-      ];
-
-      // Sort by start date/time or due date
-      combinedItems.sort((a, b) => {
-        const dateA =
-          (a as CalendarEventResponse).start?.dateTime ||
-          (a as TaskItem & { isTask: true }).due ||
-          "";
-        const dateB =
-          (b as CalendarEventResponse).start?.dateTime ||
-          (b as TaskItem & { isTask: true }).due ||
-          "";
-        return new Date(dateA).getTime() - new Date(dateB).getTime();
-      });
-
-      setItems(combinedItems);
-    } catch (error) {
-      console.error("Error loading items:", error);
-      Alert.alert("Error", "Failed to load calendar events and tasks");
-    } finally {
-      setIsLoading(false);
-    }
+  const initializeItems = async () => {
+    setIsLoading(true);
+    const items = await loadItems();
+    setItems(items);
+    setIsLoading(false);
   };
 
   const handleAddEvent = () => {
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(false);
-    setFormData({
-      summary: "",
-      description: "",
-      startDateTime: "",
-      endDateTime: "",
-      location: "",
-    });
+    setFormData(emptyFormData);
     setIsModalVisible(true);
   };
 
@@ -97,13 +72,7 @@ export default function CalendarScreen() {
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(true);
-    setFormData({
-      summary: "",
-      description: "",
-      startDateTime: "",
-      endDateTime: "",
-      location: "",
-    });
+    setFormData(emptyFormData);
     setIsModalVisible(true);
   };
 
@@ -125,156 +94,36 @@ export default function CalendarScreen() {
   };
 
   const handleSaveEvent = async () => {
-    if (!formData.summary.trim()) {
-      Alert.alert("Validation", "Title is required");
-      return;
-    }
-
-    if (!formData.startDateTime.trim()) {
-      Alert.alert("Validation", "Date is required");
+    if (!validateFormData(formData)) {
       return;
     }
 
     try {
       // Handle task save/update
-      if (editingTask) {
-        await googleTasksService.updateTask(editingTask.id, {
-          title: formData.summary,
-          notes: formData.description,
-          due: formData.startDateTime,
-        });
-        Alert.alert("Success", "Task updated successfully");
-      } else if (isCreatingTask) {
-        // Create new task
-        await googleTasksService.createTask(
-          formData.summary,
-          formData.description,
-          formData.startDateTime,
-        );
-        Alert.alert("Success", "Task created successfully");
-      } else if (editingEvent) {
-        // Handle event update
-        const eventData = {
-          summary: formData.summary,
-          description: formData.description,
-          location: formData.location,
-          start: {
-            dateTime: formData.startDateTime,
-            timeZone: "UTC",
-          },
-          end: {
-            dateTime: formData.endDateTime || formData.startDateTime,
-            timeZone: "UTC",
-          },
-        };
-        await googleCalendarService.updateEvent(editingEvent.id, eventData);
-        Alert.alert("Success", "Event updated successfully");
+      if (editingTask || isCreatingTask) {
+        await saveTask(formData, editingTask, isCreatingTask);
       } else {
-        // Handle new event creation
-        const eventData = {
-          summary: formData.summary,
-          description: formData.description,
-          location: formData.location,
-          start: {
-            dateTime: formData.startDateTime,
-            timeZone: "UTC",
-          },
-          end: {
-            dateTime: formData.endDateTime || formData.startDateTime,
-            timeZone: "UTC",
-          },
-        };
-        await googleCalendarService.createEvent(eventData);
-        Alert.alert("Success", "Event created successfully");
+        // Handle event save/update
+        await saveEvent(formData, editingEvent);
       }
 
       setIsModalVisible(false);
       setEditingEvent(null);
       setEditingTask(null);
       setIsCreatingTask(false);
-      loadItems();
+      initializeItems();
     } catch (error) {
       console.error("Error saving:", error);
       Alert.alert("Error", "Failed to save");
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    Alert.alert("Delete Event", "Are you sure you want to delete this event?", [
-      { text: "Cancel", onPress: () => {} },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            await googleCalendarService.deleteEvent(eventId);
-            Alert.alert("Success", "Event deleted successfully");
-            loadItems();
-          } catch (error) {
-            console.error("Error deleting event:", error);
-            Alert.alert("Error", "Failed to delete event");
-          }
-        },
-        style: "destructive",
-      },
-    ]);
+  const handleDeleteEventWrapper = (eventId: string) => {
+    handleDeleteEvent(eventId, initializeItems);
   };
 
-  const formatDateTime = (dateString: string | undefined): string => {
-    if (!dateString) return "No date";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString();
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatDate = (dateString: string | undefined): string => {
-    if (!dateString) return "No date";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString();
-    } catch {
-      return dateString;
-    }
-  };
-
-  const formatTime = (dateString: string | undefined): string => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return "";
-    }
-  };
-
-  const calculateDuration = (
-    start: string | undefined,
-    end: string | undefined,
-  ): string => {
-    if (!start || !end) return "";
-    try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      const diffMs = endDate.getTime() - startDate.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      const hours = Math.floor(diffMins / 60);
-      const minutes = diffMins % 60;
-
-      if (hours > 0 && minutes > 0) {
-        return `${hours}h ${minutes}m`;
-      } else if (hours > 0) {
-        return `${hours}h`;
-      } else {
-        return `${minutes}m`;
-      }
-    } catch {
-      return "";
-    }
+  const handleDeleteTaskWrapper = (taskId: string) => {
+    handleDeleteTask(taskId, initializeItems);
   };
 
   const handleEditTask = (task: TaskItem & { isTask: true }) => {
@@ -289,24 +138,27 @@ export default function CalendarScreen() {
     setIsModalVisible(true);
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
-      { text: "Cancel", onPress: () => {} },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            await googleTasksService.deleteTask(taskId);
-            Alert.alert("Success", "Task deleted successfully");
-            loadItems();
-          } catch (error) {
-            console.error("Error deleting task:", error);
-            Alert.alert("Error", "Failed to delete task");
-          }
-        },
-        style: "destructive",
+  const handleToggleSubtaskCompleteWrapper = (
+    subtask: TaskItem,
+    parentTask: TaskItem & { isTask: true },
+  ) => {
+    handleToggleSubtaskComplete(
+      subtask,
+      parentTask,
+      (callback) => {
+        initializeItems();
+        callback();
       },
-    ]);
+      async (parentTask) => {
+        await handleToggleTaskComplete(parentTask, true, initializeItems);
+      },
+    );
+  };
+
+  const handleToggleTaskCompleteWrapper = (
+    task: TaskItem & { isTask: true },
+  ) => {
+    handleToggleTaskComplete(task, false, initializeItems);
   };
 
   const toggleTaskExpanded = (taskId: string) => {
@@ -317,185 +169,6 @@ export default function CalendarScreen() {
       newExpandedTasks.add(taskId);
     }
     setExpandedTasks(newExpandedTasks);
-  };
-
-  const handleToggleSubtaskComplete = async (
-    subtask: TaskItem,
-    parentTask: TaskItem & { isTask: true },
-  ) => {
-    const action = subtask.completed
-      ? "mark as incomplete"
-      : "mark as complete";
-
-    Alert.alert("Update Subtask", `Do you want to ${action} this subtask?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Confirm",
-        onPress: async () => {
-          try {
-            await googleTasksService.updateTask(subtask.id, {
-              ...subtask,
-              completed: !subtask.completed,
-            });
-
-            // Check if all subtasks are completed
-            const allSubtasksCompleted = parentTask.subtasks?.every((st) =>
-              st.id === subtask.id ? !subtask.completed : st.completed,
-            );
-
-            if (
-              allSubtasksCompleted &&
-              parentTask.subtasks &&
-              parentTask.subtasks.length > 0
-            ) {
-              // Temporarily mark parent as completed
-              const newTempCompleted = new Set(temporarilyCompletedTasks);
-              newTempCompleted.add(parentTask.id);
-              setTemporarilyCompletedTasks(newTempCompleted);
-
-              Alert.alert(
-                "All Subtasks Completed",
-                "All subtasks are completed. Do you want to mark the main task as complete?",
-                [
-                  {
-                    text: "Not Yet",
-                    onPress: () => {
-                      const newTempCompleted = new Set(
-                        temporarilyCompletedTasks,
-                      );
-                      newTempCompleted.delete(parentTask.id);
-                      setTemporarilyCompletedTasks(newTempCompleted);
-                    },
-                  },
-                  {
-                    text: "Complete",
-                    onPress: async () => {
-                      await handleToggleTaskComplete(parentTask, true);
-                    },
-                  },
-                ],
-              );
-            }
-
-            loadItems();
-          } catch (error) {
-            console.error("Error toggling subtask:", error);
-            Alert.alert("Error", "Failed to update subtask");
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleToggleTaskComplete = async (
-    task: TaskItem & { isTask: true },
-    skipConfirmation: boolean = false,
-  ) => {
-    const action = task.completed ? "mark as incomplete" : "mark as complete";
-
-    if (!skipConfirmation) {
-      if (!task.completed && task.subtasks && task.subtasks.length > 0) {
-        // Completing main task - ask for confirmation to complete all subtasks
-        Alert.alert(
-          "Complete Task",
-          "Do you want to mark all subtasks as complete too?",
-          [
-            {
-              text: "Cancel",
-              style: "cancel",
-            },
-            {
-              text: "Task Only",
-              onPress: async () => {
-                try {
-                  await googleTasksService.updateTask(task.id, {
-                    ...task,
-                    completed: true,
-                  });
-                  const newTempCompleted = new Set(temporarilyCompletedTasks);
-                  newTempCompleted.delete(task.id);
-                  setTemporarilyCompletedTasks(newTempCompleted);
-                  loadItems();
-                } catch (error) {
-                  console.error("Error completing task:", error);
-                  Alert.alert("Error", "Failed to complete task");
-                }
-              },
-            },
-            {
-              text: "All",
-              onPress: async () => {
-                try {
-                  // Complete main task
-                  await googleTasksService.updateTask(task.id, {
-                    ...task,
-                    completed: true,
-                  });
-
-                  // Complete all subtasks
-                  if (task.subtasks) {
-                    await Promise.all(
-                      task.subtasks.map((subtask) =>
-                        googleTasksService.updateTask(subtask.id, {
-                          ...subtask,
-                          completed: true,
-                        }),
-                      ),
-                    );
-                  }
-
-                  const newTempCompleted = new Set(temporarilyCompletedTasks);
-                  newTempCompleted.delete(task.id);
-                  setTemporarilyCompletedTasks(newTempCompleted);
-                  loadItems();
-                } catch (error) {
-                  console.error("Error completing task and subtasks:", error);
-                  Alert.alert("Error", "Failed to complete task");
-                }
-              },
-            },
-          ],
-        );
-      } else {
-        // Simple toggle with confirmation
-        Alert.alert("Update Task", `Do you want to ${action} this task?`, [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Confirm",
-            onPress: async () => {
-              try {
-                await googleTasksService.updateTask(task.id, {
-                  ...task,
-                  completed: !task.completed,
-                });
-                const newTempCompleted = new Set(temporarilyCompletedTasks);
-                newTempCompleted.delete(task.id);
-                setTemporarilyCompletedTasks(newTempCompleted);
-                loadItems();
-              } catch (error) {
-                console.error("Error toggling task:", error);
-                Alert.alert("Error", "Failed to update task");
-              }
-            },
-          },
-        ]);
-      }
-    } else {
-      // Skip confirmation (called from subtask completion)
-      try {
-        await googleTasksService.updateTask(task.id, {
-          ...task,
-          completed: !task.completed,
-        });
-        const newTempCompleted = new Set(temporarilyCompletedTasks);
-        newTempCompleted.delete(task.id);
-        setTemporarilyCompletedTasks(newTempCompleted);
-        loadItems();
-      } catch (error) {
-        console.error("Error toggling task:", error);
-        Alert.alert("Error", "Failed to update task");
-      }
-    }
   };
 
   const handleStartNow = (item: CombinedItem) => {
@@ -540,7 +213,7 @@ export default function CalendarScreen() {
             >
               {isTask && (
                 <TouchableOpacity
-                  onPress={() => handleToggleTaskComplete(task)}
+                  onPress={() => handleToggleTaskCompleteWrapper(task)}
                   style={styles.checkboxContainer}
                 >
                   <Ionicons
@@ -638,6 +311,18 @@ export default function CalendarScreen() {
 
                 <View style={styles.bottomRow}>
                   <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => {
+                      if (isTask) {
+                        handleEditTask(task);
+                      } else {
+                        handleEditEvent(event);
+                      }
+                    }}
+                  >
+                    <Ionicons name="pencil" size={18} color="#007AFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     style={styles.startButton}
                     onPress={() => handleStartNow(item)}
                   >
@@ -646,32 +331,32 @@ export default function CalendarScreen() {
                 </View>
               </View>
             </TouchableOpacity>
-            <View style={styles.eventActions}>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => {
-                  if (isTask) {
-                    handleEditTask(task);
-                  } else {
-                    handleEditEvent(event);
-                  }
-                }}
-              >
-                <Ionicons name="pencil" size={18} color="#007AFF" />
-              </TouchableOpacity>
+            {/* <View style={styles.eventActions}>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => {
+                    if (isTask) {
+                      handleDeleteTaskWrapper(task.id);
+                    } else {
+                      handleDeleteEventWrapper(event.id);
+                    }
+                  }}
+                >
+                  <Ionicons name="trash" size={18} color="#FF3B30" />
+                </TouchableOpacity>
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => {
                   if (isTask) {
-                    handleDeleteTask(task.id);
+                    handleDeleteTaskWrapper(task.id);
                   } else {
-                    handleDeleteEvent(event.id);
+                    handleDeleteEventWrapper(event.id);
                   }
                 }}
               >
                 <Ionicons name="trash" size={18} color="#FF3B30" />
               </TouchableOpacity>
-            </View>
+            </View> */}
           </View>
 
           {/* Render Subtasks */}
@@ -686,7 +371,9 @@ export default function CalendarScreen() {
                   ]}
                 >
                   <TouchableOpacity
-                    onPress={() => handleToggleSubtaskComplete(subtask, task)}
+                    onPress={() =>
+                      handleToggleSubtaskCompleteWrapper(subtask, task)
+                    }
                     style={styles.checkboxContainer}
                   >
                     <Ionicons
@@ -761,7 +448,7 @@ export default function CalendarScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshing={isLoading}
-          onRefresh={loadItems}
+          onRefresh={initializeItems}
         />
       )}
 
@@ -771,7 +458,7 @@ export default function CalendarScreen() {
         event={detailEvent}
         onClose={() => setIsDetailModalVisible(false)}
         onEdit={handleEditEvent}
-        onDelete={handleDeleteEvent}
+        onDelete={handleDeleteEventWrapper}
         formatDateTime={formatDateTime}
       />
 

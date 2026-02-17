@@ -2,6 +2,7 @@ import React from "react";
 import { View, useWindowDimensions } from "react-native";
 import RenderHtml from "react-native-render-html";
 import { styles } from "../styles/calendar.styles";
+import { colors } from "@/src/shared/theme/colors";
 
 interface EventDescriptionProps {
   html: string;
@@ -24,23 +25,23 @@ export default function EventDescription({ html, showFull = false }: EventDescri
         source={{ html }}
         tagsStyles={{
           body: {
-            color: "#666",
+            color: colors.text,
             fontSize: 14,
             lineHeight: 20,
           },
           p: {
-            color: "#666",
+            color: colors.text,
             fontSize: 14,
             lineHeight: 20,
             marginVertical: 0,
           },
           strong: {
             fontWeight: "bold",
-            color: "#333",
+            color: colors.text,
           },
           em: {
             fontStyle: "italic",
-            color: "#666",
+            color: colors.secondary,
           },
           a: {
             color: "#007AFF",

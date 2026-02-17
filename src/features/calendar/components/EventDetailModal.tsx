@@ -4,6 +4,7 @@ import React from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { styles } from "../styles/calendar.styles";
 import EventDescription from "./EventDescription";
+import { colors } from "@/src/shared/theme/colors";
 
 interface EventDetailModalProps {
   visible: boolean;
@@ -33,7 +34,7 @@ export default function EventDetailModal({
         <View style={styles.detailModalContent}>
           <View style={styles.detailModalHeader}>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color={colors.primary} />
             </TouchableOpacity>
             <Text style={styles.detailModalTitle}>Event Details</Text>
             <View style={styles.detailModalActions}>
