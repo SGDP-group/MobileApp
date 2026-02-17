@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-    CalendarEventResponse,
-    googleCalendarService,
+  CalendarEventResponse,
+  googleCalendarService,
 } from "@services/googleCalendarService";
 import { TaskItem, googleTasksService } from "@services/googleTasksService";
 import React, { useEffect, useState } from "react";
@@ -28,7 +28,6 @@ export default function CalendarScreen() {
   const [editingTask, setEditingTask] = useState<
     (TaskItem & { isTask: true }) | null
   >(null);
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     summary: "",
     description: "",
@@ -258,134 +257,71 @@ export default function CalendarScreen() {
     ]);
   };
 
-  const toggleTaskExpanded = (taskId: string) => {
-    const newExpandedTasks = new Set(expandedTasks);
-    if (newExpandedTasks.has(taskId)) {
-      newExpandedTasks.delete(taskId);
-    } else {
-      newExpandedTasks.add(taskId);
-    }
-    setExpandedTasks(newExpandedTasks);
-  };
-
   const renderEventItem = ({ item }: { item: CombinedItem }) => {
     const isTask = "isTask" in item && item.isTask;
     const event = item as CalendarEventResponse;
     const task = item as TaskItem & { isTask: true };
-    const isExpanded = isTask && expandedTasks.has(task.id);
-    const hasSubtasks = isTask && task.subtasks && task.subtasks.length > 0;
 
     return (
-      <View style={styles.tasksContainer}>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => {
-            if (isTask && hasSubtasks) {
-              toggleTaskExpanded(task.id);
-            } else if (!isTask) {
-              handleViewEventDetails(event);
-            }
-          }}
-        >
-          <View style={[styles.eventCard, isTask && styles.taskCard]}>
-            <View style={styles.eventContent}>
-              <View style={styles.itemHeader}>
-                {hasSubtasks && (
-                  <Ionicons
-                    name={isExpanded ? "chevron-down" : "chevron-forward"}
-                    size={20}
-                    color="#007AFF"
-                    style={styles.chevron}
-                  />
-                )}
-                <Text style={styles.eventTitle}>
-                  {isTask ? task.title : event.summary}
-                </Text>
-                {isTask && (
-                  <View style={styles.taskBadge}>
-                    <Text style={styles.taskBadgeText}>Task</Text>
-                  </View>
-                )}
-              </View>
-              {!isTask && event.description && (
-                <EventDescription html={event.description} />
-              )}
-              {isTask && task.notes && (
-                <Text style={styles.eventDescription}>{task.notes}</Text>
-              )}
-              <Text style={styles.eventTime}>
-                {isTask
-                  ? formatDateTime(task.due)
-                  : formatDateTime(event.start?.dateTime)}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => !isTask && handleViewEventDetails(event)}
+      >
+        <View style={[styles.eventCard, isTask && styles.taskCard]}>
+          <View style={styles.eventContent}>
+            <View style={styles.itemHeader}>
+              <Text style={styles.eventTitle}>
+                {isTask ? task.title : event.summary}
               </Text>
-              {!isTask && event.location && (
-                <Text style={styles.eventLocation}>📍 {event.location}</Text>
+              {isTask && (
+                <View style={styles.taskBadge}>
+                  <Text style={styles.taskBadgeText}>Task</Text>
+                </View>
               )}
             </View>
-            <View style={styles.eventActions}>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => {
-                  if (isTask) {
-                    handleEditTask(task);
-                  } else {
-                    handleEditEvent(event);
-                  }
-                }}
-              >
-                <Ionicons name="pencil" size={18} color="#007AFF" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => {
-                  if (isTask) {
-                    handleDeleteTask(task.id);
-                  } else {
-                    handleDeleteEvent(event.id);
-                  }
-                }}
-              >
-                <Ionicons name="trash" size={18} color="#FF3B30" />
-              </TouchableOpacity>
-            </View>
+            {!isTask && event.description && (
+              <EventDescription html={event.description} />
+            )}
+            {isTask && task.notes && (
+              <Text style={styles.eventDescription}>{task.notes}</Text>
+            )}
+            <Text style={styles.eventTime}>
+              {isTask
+                ? formatDateTime(task.due)
+                : formatDateTime(event.start?.dateTime)}
+            </Text>
+            {!isTask && event.location && (
+              <Text style={styles.eventLocation}>📍 {event.location}</Text>
+            )}
           </View>
-        </TouchableOpacity>
-
-        {/* Render Subtasks */}
-        {isExpanded && hasSubtasks && (
-          <View style={styles.subtasksContainer}>
-            {task.subtasks!.map((subtask) => (
-              <View key={subtask.id} style={styles.subtaskItem}>
-                <View style={styles.subtaskContent}>
-                  <Text style={styles.subtaskTitle}>{subtask.title}</Text>
-                  {subtask.notes && (
-                    <Text style={styles.subtaskNotes}>{subtask.notes}</Text>
-                  )}
-                  {subtask.due && (
-                    <Text style={styles.subtaskTime}>
-                      Due: {formatDateTime(subtask.due)}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.subtaskActions}>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditTask({ ...subtask, isTask: true })}
-                  >
-                    <Ionicons name="pencil" size={16} color="#007AFF" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => handleDeleteTask(subtask.id)}
-                  >
-                    <Ionicons name="trash" size={16} color="#FF3B30" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+          <View style={styles.eventActions}>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => {
+                if (isTask) {
+                  handleEditTask(task);
+                } else {
+                  handleEditEvent(event);
+                }
+              }}
+            >
+              <Ionicons name="pencil" size={18} color="#007AFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => {
+                if (isTask) {
+                  handleDeleteTask(task.id);
+                } else {
+                  handleDeleteEvent(event.id);
+                }
+              }}
+            >
+              <Ionicons name="trash" size={18} color="#FF3B30" />
+            </TouchableOpacity>
           </View>
-        )}
-      </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 

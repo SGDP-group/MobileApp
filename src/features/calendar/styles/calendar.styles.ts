@@ -40,7 +40,7 @@ export const styles = StyleSheet.create({
   eventCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    marginBottom: 1,
+    marginBottom: 12,
     padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -61,7 +61,7 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#333",
-    flex: 1,
+    marginBottom: 6,
   },
   eventDescription: {
     fontSize: 13,
@@ -93,10 +93,9 @@ export const styles = StyleSheet.create({
   },
   itemHeader: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "flex-start",
     marginBottom: 6,
-    gap: 8,
   },
   taskBadge: {
     backgroundColor: "#FF9500",
@@ -262,62 +261,4 @@ export const styles = StyleSheet.create({
     color: "#666",
     lineHeight: 20,
   },
-  tasksContainer: {
-    marginBottom: 4,
-  },
-  chevron: {
-    marginRight: 8,
-  },
-  subtasksContainer: {
-    marginTop: -12,
-    marginBottom: 0,
-    marginHorizontal: -12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  subtaskItem: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 1,
-    padding: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    borderLeftWidth: 4,
-    borderLeftColor: "#FF9500",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  subtaskContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  subtaskTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 6,
-  },
-  subtaskNotes: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  subtaskTime: {
-    fontSize: 12,
-    color: colors.primary,
-    marginBottom: 4,
-    fontWeight: "500",
-  },
-  subtaskActions: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-  },
 });
-
-
