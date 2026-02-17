@@ -125,7 +125,7 @@ export default function TaskDetailModal({
                                 <Text style={styles.metaLabel}>Due: </Text>
                                 <Text style={styles.metaValue}>
                                   {formatDate(
-                                    subtask.endDateTime || subtask.due
+                                    subtask.endDateTime || subtask.due,
                                   )}
                                 </Text>
                               </View>
