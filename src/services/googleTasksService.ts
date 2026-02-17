@@ -8,6 +8,8 @@ export interface TaskItem {
   due?: string;
   completed?: boolean;
   updated: string;
+  subtasks?: TaskItem[];
+  parentId?: string;
 }
 
 export interface TaskList {
@@ -23,6 +25,42 @@ class GoogleTasksService {
    */
   private async getAccessToken(): Promise<string> {
     return tokenManager.getAccessToken();
+  }
+
+  /**
+   * Organize tasks hierarchically by collapsing subtasks under parent tasks
+   */
+  private organizeTasksHierarchically(flatTasks: TaskItem[]): TaskItem[] {
+    const taskMap = new Map<string, TaskItem>();
+    const rootTasks: TaskItem[] = [];
+
+    // First pass: Create task map with empty subtasks array
+    flatTasks.forEach((task) => {
+      const taskCopy = { ...task, subtasks: [] as TaskItem[] };
+      taskMap.set(task.id, taskCopy);
+    });
+
+    // Second pass: Organize hierarchy
+    flatTasks.forEach((task) => {
+      if (task.parentId) {
+        const parentTask = taskMap.get(task.parentId);
+        const taskInMap = taskMap.get(task.id);
+        if (parentTask && taskInMap) {
+          if (!parentTask.subtasks) {
+            parentTask.subtasks = [];
+          }
+          parentTask.subtasks.push(taskInMap);
+        }
+      } else {
+        // Only add root tasks to the result
+        const taskInMap = taskMap.get(task.id);
+        if (taskInMap) {
+          rootTasks.push(taskInMap);
+        }
+      }
+    });
+
+    return rootTasks;
   }
 
   /**
@@ -97,14 +135,18 @@ class GoogleTasksService {
         `/lists/${primaryListId}/tasks?${params.toString()}`,
       );
 
-      return (data.items || []).map((task: any) => ({
+      const flatTasks = (data.items || []).map((task: any) => ({
         id: task.id,
         title: task.title,
         notes: task.notes,
         due: task.due,
         completed: task.status === "completed",
         updated: task.updated,
+        parentId: task.parent,
       }));
+
+      // Organize tasks hierarchically with subtasks collapsed under parent
+      return this.organizeTasksHierarchically(flatTasks);
     } catch (error) {
       console.error("Error listing tasks:", error);
       throw error;
@@ -116,19 +158,88 @@ class GoogleTasksService {
    */
   async getTodaysTasks(): Promise<TaskItem[]> {
     try {
-      const tasks = await this.getTasks(20);
+      const lists = await this.getTaskLists();
+      if (lists.length === 0) {
+        return [];
+      }
+
+      const primaryListId = lists[0].id;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      return tasks.filter((task) => {
-        if (!task.due) return false;
-        const dueDate = new Date(task.due);
-        dueDate.setHours(0, 0, 0, 0);
-        return dueDate.getTime() === today.getTime();
+      const params = new URLSearchParams({
+        maxResults: "20",
+        showCompleted: "false",
+        showHidden: "false",
       });
+
+      const data = await this.makeRequest(
+        `/lists/${primaryListId}/tasks?${params.toString()}`,
+      );
+
+      const flatTasks = (data.items || [])
+        .map((task: any) => ({
+          id: task.id,
+          title: task.title,
+          notes: task.notes,
+          due: task.due,
+          completed: task.status === "completed",
+          updated: task.updated,
+          parentId: task.parent,
+        }))
+        .filter((task: TaskItem) => {
+          if (!task.due) return false;
+          const dueDate = new Date(task.due);
+          dueDate.setHours(0, 0, 0, 0);
+          return dueDate.getTime() === today.getTime();
+        });
+
+      // Organize tasks hierarchically with subtasks collapsed under parent
+      return this.organizeTasksHierarchically(flatTasks);
     } catch (error) {
       console.error("Error getting today's tasks:", error);
       return [];
+    }
+  }
+
+  /**
+   * Get subtasks for a specific parent task
+   */
+  async getSubtasks(
+    parentTaskId: string,
+    maxResults: number = 50,
+  ): Promise<TaskItem[]> {
+    try {
+      const lists = await this.getTaskLists();
+      if (lists.length === 0) {
+        return [];
+      }
+
+      const primaryListId = lists[0].id;
+
+      const params = new URLSearchParams({
+        maxResults: maxResults.toString(),
+        parent: parentTaskId,
+        showCompleted: "false",
+        showHidden: "false",
+      });
+
+      const data = await this.makeRequest(
+        `/lists/${primaryListId}/tasks?${params.toString()}`,
+      );
+
+      return (data.items || []).map((task: any) => ({
+        id: task.id,
+        title: task.title,
+        notes: task.notes,
+        due: task.due,
+        completed: task.status === "completed",
+        updated: task.updated,
+        parentId: task.parent,
+      }));
+    } catch (error) {
+      console.error("Error getting subtasks:", error);
+      throw error;
     }
   }
 
