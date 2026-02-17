@@ -91,6 +91,23 @@ export const styles = StyleSheet.create({
     color: "#8DA7B5",
     marginTop: 4,
   },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    gap: 4,
+  },
+  metaLabel: {
+    fontSize: 12,
+    color: "#8DA7B5",
+    fontWeight: "500",
+    marginLeft: 4,
+  },
+  metaValue: {
+    fontSize: 12,
+    color: "#FFFFFF",
+    fontWeight: "400",
+  },
   eventActions: {
     flexDirection: "row",
     gap: 12,
@@ -365,9 +382,9 @@ export const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 16,
   },
-    subtaskStartButtonText: {
-      color: "#fff",
-      fontSize: 10,
-      fontWeight: "600",
-    },
-  });
+  subtaskStartButtonText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "600",
+  },
+});
