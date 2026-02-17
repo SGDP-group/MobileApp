@@ -55,8 +55,11 @@ export function RootNavigator() {
           webClientId: webClientId || undefined,
           iosClientId: iosClientId || undefined,
           scopes: [
+            "profile",
+            "email",
             "https://www.googleapis.com/auth/calendar",
             "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/tasks",
           ],
           offlineAccess: true,
           forceCodeForRefreshToken: true,

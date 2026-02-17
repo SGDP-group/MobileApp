@@ -1,63 +1,91 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import {
-    CalendarEventResponse,
-    googleCalendarService,
-} from "@services/googleCalendarService";
+import { CalendarEventResponse } from "@services/googleCalendarService";
+import { TaskItem } from "@services/googleTasksService";
 import React, { useEffect, useState } from "react";
-import {
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import EventDescription from "./components/EventDescription";
+import EventDetailModal from "./components/EventDetailModal";
+import EventFormModal from "./components/EventFormModal";
+import TaskDetailModal from "./components/TaskDetailModal";
 import { styles } from "./styles/calendar.styles";
+import { loadItems } from "./utils/dataLoader";
+import {
+  calculateDuration,
+  formatDate,
+  formatDateTime,
+  formatTime,
+} from "./utils/dateFormatting";
+import {
+  handleDeleteEvent,
+  handleDeleteTask,
+  saveEvent,
+  saveTask,
+  validateFormData,
+} from "./utils/eventHandlers";
+import {
+  handleToggleSubtaskComplete,
+  handleToggleTaskComplete,
+} from "./utils/taskHandlers";
+import { CombinedItem, emptyFormData } from "./utils/types";
 
 export default function CalendarScreen() {
-  const [events, setEvents] = useState<CalendarEventResponse[]>([]);
+  const [items, setItems] = useState<CombinedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [isTaskDetailModalVisible, setIsTaskDetailModalVisible] =
+    useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [detailEvent, setDetailEvent] = useState<CalendarEventResponse | null>(
+    null,
+  );
+  const [detailTask, setDetailTask] = useState<TaskItem | null>(null);
   const [editingEvent, setEditingEvent] =
     useState<CalendarEventResponse | null>(null);
-  const [formData, setFormData] = useState({
-    summary: "",
-    description: "",
-    startDateTime: "",
-    endDateTime: "",
-    location: "",
-  });
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [temporarilyCompletedTasks, setTemporarilyCompletedTasks] = useState<
+    Set<string>
+  >(new Set());
+  const [formData, setFormData] = useState(emptyFormData);
 
+  // Load items on mount
   useEffect(() => {
-    loadEvents();
+    initializeItems();
   }, []);
 
-  const loadEvents = async () => {
-    try {
-      setIsLoading(true);
-      const calendarEvents = await googleCalendarService.listEvents(20);
-      setEvents(calendarEvents);
-    } catch (error) {
-      console.error("Error loading events:", error);
-      Alert.alert("Error", "Failed to load calendar events");
-    } finally {
-      setIsLoading(false);
-    }
+  const initializeItems = async () => {
+    setIsLoading(true);
+    const items = await loadItems();
+    setItems(items);
+    setIsLoading(false);
   };
 
   const handleAddEvent = () => {
     setEditingEvent(null);
-    setFormData({
-      summary: "",
-      description: "",
-      startDateTime: "",
-      endDateTime: "",
-      location: "",
-    });
+    setEditingTask(null);
+    setIsCreatingTask(false);
+    setFormData(emptyFormData);
     setIsModalVisible(true);
+  };
+
+  const handleAddTask = () => {
+    setEditingEvent(null);
+    setEditingTask(null);
+    setIsCreatingTask(true);
+    setFormData(emptyFormData);
+    setIsModalVisible(true);
+  };
+
+  const handleViewEventDetails = (event: CalendarEventResponse) => {
+    setDetailEvent(event);
+    setIsDetailModalVisible(true);
+  };
+
+  const handleViewTaskDetails = (task: TaskItem) => {
+    setDetailTask(task);
+    setIsTaskDetailModalVisible(true);
   };
 
   const handleEditEvent = (event: CalendarEventResponse) => {
@@ -73,126 +101,375 @@ export default function CalendarScreen() {
   };
 
   const handleSaveEvent = async () => {
-    if (!formData.summary.trim()) {
-      Alert.alert("Validation", "Event title is required");
-      return;
-    }
-
-    if (!formData.startDateTime.trim()) {
-      Alert.alert("Validation", "Start date/time is required");
+    if (!validateFormData(formData)) {
       return;
     }
 
     try {
-      const eventData = {
-        summary: formData.summary,
-        description: formData.description,
-        location: formData.location,
-        start: {
-          dateTime: formData.startDateTime,
-          timeZone: "UTC",
-        },
-        end: {
-          dateTime: formData.endDateTime || formData.startDateTime,
-          timeZone: "UTC",
-        },
-      };
-
-      if (editingEvent) {
-        await googleCalendarService.updateEvent(editingEvent.id, eventData);
-        Alert.alert("Success", "Event updated successfully");
+      // Handle task save/update
+      if (editingTask || isCreatingTask) {
+        await saveTask(formData, editingTask, isCreatingTask);
       } else {
-        await googleCalendarService.createEvent(eventData);
-        Alert.alert("Success", "Event created successfully");
+        // Handle event save/update
+        await saveEvent(formData, editingEvent);
       }
 
       setIsModalVisible(false);
-      loadEvents();
+      setEditingEvent(null);
+      setEditingTask(null);
+      setIsCreatingTask(false);
+      initializeItems();
     } catch (error) {
-      console.error("Error saving event:", error);
-      Alert.alert("Error", "Failed to save event");
+      console.error("Error saving:", error);
+      Alert.alert("Error", "Failed to save");
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    Alert.alert("Delete Event", "Are you sure you want to delete this event?", [
-      { text: "Cancel", onPress: () => {} },
-      {
-        text: "Delete",
-        onPress: async () => {
-          try {
-            await googleCalendarService.deleteEvent(eventId);
-            Alert.alert("Success", "Event deleted successfully");
-            loadEvents();
-          } catch (error) {
-            console.error("Error deleting event:", error);
-            Alert.alert("Error", "Failed to delete event");
-          }
-        },
-        style: "destructive",
+  const handleDeleteEventWrapper = (eventId: string) => {
+    handleDeleteEvent(eventId, initializeItems);
+  };
+
+  const handleDeleteTaskWrapper = (taskId: string) => {
+    handleDeleteTask(taskId, initializeItems);
+  };
+
+  const handleEditTask = (task: TaskItem) => {
+    setEditingTask(task);
+    setFormData({
+      summary: task.title,
+      description: task.notes || "",
+      startDateTime: task.due || "",
+      endDateTime: "",
+      location: "",
+    });
+    setIsModalVisible(true);
+  };
+
+  const handleToggleSubtaskCompleteWrapper = (
+    subtask: TaskItem,
+    parentTask: TaskItem & { isTask: true },
+  ) => {
+    handleToggleSubtaskComplete(
+      subtask,
+      parentTask,
+      (callback) => {
+        initializeItems();
+        callback();
       },
-    ]);
+      async (parentTask) => {
+        await handleToggleTaskComplete(parentTask, true, initializeItems);
+      },
+    );
   };
 
-  const formatDateTime = (dateString: string | undefined): string => {
-    if (!dateString) return "No date";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString();
-    } catch {
-      return dateString;
+  const handleToggleTaskCompleteWrapper = (
+    task: TaskItem & { isTask: true },
+  ) => {
+    handleToggleTaskComplete(task, false, initializeItems);
+  };
+
+  const toggleTaskExpanded = (taskId: string) => {
+    const newExpandedTasks = new Set(expandedTasks);
+    if (newExpandedTasks.has(taskId)) {
+      newExpandedTasks.delete(taskId);
+    } else {
+      newExpandedTasks.add(taskId);
     }
+    setExpandedTasks(newExpandedTasks);
   };
 
-  const renderEventItem = ({ item }: { item: CalendarEventResponse }) => (
-    <View style={styles.eventCard}>
-      <View style={styles.eventContent}>
-        <Text style={styles.eventTitle}>{item.summary}</Text>
-        {item.description && (
-          <Text style={styles.eventDescription} numberOfLines={2}>
-            {item.description}
-          </Text>
-        )}
-        <Text style={styles.eventTime}>
-          {formatDateTime(item.start?.dateTime)}
-        </Text>
-        {item.location && (
-          <Text style={styles.eventLocation}>📍 {item.location}</Text>
-        )}
-      </View>
-      <View style={styles.eventActions}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => handleEditEvent(item)}
+  const handleStartNow = (item: CombinedItem) => {
+    const isTask = "isTask" in item && item.isTask;
+    const title = isTask
+      ? (item as TaskItem).title
+      : (item as CalendarEventResponse).summary;
+    Alert.alert("Start Now", `Starting: ${title}`, [{ text: "OK" }]);
+  };
+
+  const renderEventItem = ({ item }: { item: CombinedItem }) => {
+    const isTask = "isTask" in item && item.isTask;
+    const event = item as CalendarEventResponse;
+    const task = item as TaskItem & { isTask: true };
+    const isExpanded = isTask && expandedTasks.has(task.id);
+    const hasSubtasks = isTask && task.subtasks && task.subtasks.length > 0;
+    const isTemporarilyCompleted =
+      isTask && temporarilyCompletedTasks.has(task.id);
+    const isTaskCompleted =
+      isTask && (task.completed || isTemporarilyCompleted);
+    const taskEndDateTime = isTask ? task.endDateTime || task.due : undefined;
+
+    return (
+      <View style={styles.tasksContainer}>
+        <View
+          style={[
+            styles.eventCard,
+            isTask && styles.taskCard,
+            isTaskCompleted && styles.completedCard,
+          ]}
         >
-          <Ionicons name="pencil" size={18} color="#007AFF" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteEvent(item.id)}
-        >
-          <Ionicons name="trash" size={18} color="#FF3B30" />
-        </TouchableOpacity>
+          <View style={styles.mainTaskRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                if (!isTask) {
+                  handleViewEventDetails(event);
+                } else if (isTask) {
+                  handleViewTaskDetails(task);
+                }
+              }}
+              onLongPress={() => {
+                if (isTask) {
+                  handleViewTaskDetails(task);
+                }
+              }}
+              style={{ flexDirection: "row", flex: 1 }}
+            >
+              <View style={styles.eventContent}>
+                <View style={styles.itemHeader}>
+                  {hasSubtasks && (
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        toggleTaskExpanded(task.id);
+                      }}
+                    >
+                      <Ionicons
+                        name={isExpanded ? "chevron-down" : "chevron-forward"}
+                        size={20}
+                        color="#007AFF"
+                        style={styles.chevron}
+                      />
+                    </TouchableOpacity>
+                  )}
+                  <Text
+                    style={[
+                      styles.eventTitle,
+                      isTaskCompleted && styles.completedText,
+                    ]}
+                  >
+                    {isTask ? task.title : event.summary}
+                  </Text>
+                  {isTask && (
+                    <View style={styles.taskBadge}>
+                      <Text style={styles.taskBadgeText}>Task</Text>
+                    </View>
+                  )}
+                </View>
+                {!isTask && event.description && (
+                  <EventDescription html={event.description} />
+                )}
+                {isTask && task.notes && (
+                  <Text
+                    style={styles.eventDescription}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {task.notes}
+                  </Text>
+                )}
+
+                {/* Start Session At / Due Date */}
+                {!isTask && event.start?.dateTime && (
+                  <View style={styles.metaRow}>
+                    <Ionicons name="time-outline" size={14} color="#3FD3FF" />
+                    <Text style={styles.metaLabel}>Start Session: </Text>
+                    <Text style={styles.metaValue}>
+                      {formatTime(event.start.dateTime)}
+                    </Text>
+                  </View>
+                )}
+                {isTask && taskEndDateTime && (
+                  <View style={styles.metaRow}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={14}
+                      color="#FF9500"
+                    />
+                    <Text style={styles.metaLabel}>Due Date: </Text>
+                    <Text style={styles.metaValue}>
+                      {formatDate(taskEndDateTime)}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Duration (for events only) */}
+                {!isTask && event.start?.dateTime && event.end?.dateTime && (
+                  <View style={styles.metaRow}>
+                    <Ionicons
+                      name="hourglass-outline"
+                      size={14}
+                      color="#3FD3FF"
+                    />
+                    <Text style={styles.metaLabel}>Duration: </Text>
+                    <Text style={styles.metaValue}>
+                      {calculateDuration(
+                        event.start.dateTime,
+                        event.end.dateTime,
+                      )}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Location */}
+                {!isTask && event.location && (
+                  <View style={styles.metaRow}>
+                    <Ionicons
+                      name="location-outline"
+                      size={14}
+                      color="#3FD3FF"
+                    />
+                    <Text style={styles.metaLabel}>Location: </Text>
+                    <Text style={styles.metaValue}>{event.location}</Text>
+                  </View>
+                )}
+
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => {
+                      if (isTask) {
+                        handleEditTask(task);
+                      } else {
+                        handleEditEvent(event);
+                      }
+                    }}
+                  >
+                    <Ionicons name="pencil" size={18} color="#007AFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.startButton}
+                    onPress={() => handleStartNow(item)}
+                  >
+                    <Text style={styles.startButtonText}>START NOW</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {isTask && (
+                <TouchableOpacity
+                  onPress={() => handleToggleTaskCompleteWrapper(task)}
+                  style={styles.checkboxContainerRight}
+                >
+                  <Ionicons
+                    name={
+                      isTaskCompleted ? "checkmark-circle" : "ellipse-outline"
+                    }
+                    size={24}
+                    color={isTaskCompleted ? "#34C759" : "#C7C7CC"}
+                  />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+            {/* <View style={styles.eventActions}>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => {
+                    if (isTask) {
+                      handleDeleteTaskWrapper(task.id);
+                    } else {
+                      handleDeleteEventWrapper(event.id);
+                    }
+                  }}
+                >
+                  <Ionicons name="trash" size={18} color="#FF3B30" />
+                </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => {
+                  if (isTask) {
+                    handleDeleteTaskWrapper(task.id);
+                  } else {
+                    handleDeleteEventWrapper(event.id);
+                  }
+                }}
+              >
+                <Ionicons name="trash" size={18} color="#FF3B30" />
+              </TouchableOpacity>
+            </View> */}
+          </View>
+
+          {/* Render Subtasks */}
+          {isExpanded && hasSubtasks && (
+            <View style={styles.subtasksContainer}>
+              {task.subtasks!.map((subtask) => (
+                <View
+                  key={subtask.id}
+                  style={[
+                    styles.subtaskItem,
+                    subtask.completed && styles.completedCard,
+                  ]}
+                >
+                  <View style={styles.subtaskContent}>
+                    <Text
+                      style={[
+                        styles.subtaskTitle,
+                        subtask.completed && styles.completedText,
+                      ]}
+                    >
+                      {subtask.title}
+                    </Text>
+                    {subtask.notes && (
+                      <Text style={styles.subtaskNotes}>{subtask.notes}</Text>
+                    )}
+                    {(subtask.endDateTime || subtask.due) && (
+                      <View style={styles.metaRow}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={12}
+                          color="#FF9500"
+                        />
+                        <Text style={styles.metaLabel}>Due: </Text>
+                        <Text style={styles.metaValue}>
+                          {formatDate(subtask.endDateTime || subtask.due)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() =>
+                      handleToggleSubtaskCompleteWrapper(subtask, task)
+                    }
+                    style={styles.checkboxContainerRight}
+                  >
+                    <Ionicons
+                      name={
+                        subtask.completed
+                          ? "checkmark-circle"
+                          : "ellipse-outline"
+                      }
+                      size={20}
+                      color={subtask.completed ? "#34C759" : "#C7C7CC"}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Google Calendar</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddEvent}>
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
+            <Ionicons name="checkmark-circle" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton} onPress={handleAddEvent}>
+            <Ionicons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <Text>Loading events...</Text>
+          <Text>Loading events and tasks...</Text>
         </View>
-      ) : events.length === 0 ? (
+      ) : items.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>No upcoming events</Text>
+          <Text style={styles.emptyText}>No upcoming events or tasks</Text>
           <TouchableOpacity
             style={styles.addEventButton}
             onPress={handleAddEvent}
@@ -202,107 +479,43 @@ export default function CalendarScreen() {
         </View>
       ) : (
         <FlatList
-          data={events}
+          data={items}
           renderItem={renderEventItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           refreshing={isLoading}
-          onRefresh={loadEvents}
+          onRefresh={initializeItems}
         />
       )}
 
-      {/* Modal for creating/editing events */}
-      <Modal
+      {/* Detail Modal */}
+      <EventDetailModal
+        visible={isDetailModalVisible}
+        event={detailEvent}
+        onClose={() => setIsDetailModalVisible(false)}
+        onEdit={handleEditEvent}
+        onDelete={handleDeleteEventWrapper}
+        formatDateTime={formatDateTime}
+      />
+
+      <TaskDetailModal
+        visible={isTaskDetailModalVisible}
+        task={detailTask}
+        onClose={() => setIsTaskDetailModalVisible(false)}
+        onEdit={handleEditTask}
+        onDelete={handleDeleteTaskWrapper}
+        formatDate={formatDate}
+      />
+
+      {/* Form Modal */}
+      <EventFormModal
         visible={isModalVisible}
-        animationType="slide"
-        presentationStyle="formSheet"
-        onRequestClose={() => setIsModalVisible(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-              <Text style={styles.cancelButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {editingEvent ? "Edit Event" : "New Event"}
-            </Text>
-            <TouchableOpacity onPress={handleSaveEvent}>
-              <Text style={styles.saveButton}>Save</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Event Title *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter event title"
-                value={formData.summary}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, summary: text })
-                }
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Enter event description"
-                value={formData.description}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, description: text })
-                }
-                multiline
-                numberOfLines={4}
-                placeholderTextColor="#999"
-              />
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Start Date & Time *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="2024-02-05T10:00:00"
-                value={formData.startDateTime}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, startDateTime: text })
-                }
-                placeholderTextColor="#999"
-              />
-              <Text style={styles.hint}>Format: YYYY-MM-DDTHH:MM:SS</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>End Date & Time</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="2024-02-05T11:00:00"
-                value={formData.endDateTime}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, endDateTime: text })
-                }
-                placeholderTextColor="#999"
-              />
-              <Text style={styles.hint}>Format: YYYY-MM-DDTHH:MM:SS</Text>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Location</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter location"
-                value={formData.location}
-                onChangeText={(text) =>
-                  setFormData({ ...formData, location: text })
-                }
-                placeholderTextColor="#999"
-              />
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+        editingEvent={editingEvent}
+        formData={formData}
+        onClose={() => setIsModalVisible(false)}
+        onFormDataChange={setFormData}
+        onSave={handleSaveEvent}
+      />
     </SafeAreaView>
   );
 }
