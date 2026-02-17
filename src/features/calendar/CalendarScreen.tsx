@@ -1,7 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  CalendarEventResponse,
-  googleCalendarService,
+    CalendarEventResponse,
+    googleCalendarService,
 } from "@services/googleCalendarService";
 import { TaskItem, googleTasksService } from "@services/googleTasksService";
 import React, { useEffect, useState } from "react";
@@ -29,9 +29,6 @@ export default function CalendarScreen() {
     (TaskItem & { isTask: true }) | null
   >(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
-  const [temporarilyCompletedTasks, setTemporarilyCompletedTasks] = useState<
-    Set<string>
-  >(new Set());
   const [formData, setFormData] = useState({
     summary: "",
     description: "",
@@ -271,287 +268,60 @@ export default function CalendarScreen() {
     setExpandedTasks(newExpandedTasks);
   };
 
-  const handleToggleSubtaskComplete = async (
-    subtask: TaskItem,
-    parentTask: TaskItem & { isTask: true },
-  ) => {
-    const action = subtask.completed
-      ? "mark as incomplete"
-      : "mark as complete";
-
-    Alert.alert("Update Subtask", `Do you want to ${action} this subtask?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Confirm",
-        onPress: async () => {
-          try {
-            await googleTasksService.updateTask(subtask.id, {
-              ...subtask,
-              completed: !subtask.completed,
-            });
-
-            // Check if all subtasks are completed
-            const allSubtasksCompleted = parentTask.subtasks?.every((st) =>
-              st.id === subtask.id ? !subtask.completed : st.completed,
-            );
-
-            if (
-              allSubtasksCompleted &&
-              parentTask.subtasks &&
-              parentTask.subtasks.length > 0
-            ) {
-              // Temporarily mark parent as completed
-              const newTempCompleted = new Set(temporarilyCompletedTasks);
-              newTempCompleted.add(parentTask.id);
-              setTemporarilyCompletedTasks(newTempCompleted);
-
-              Alert.alert(
-                "All Subtasks Completed",
-                "All subtasks are completed. Do you want to mark the main task as complete?",
-                [
-                  {
-                    text: "Not Yet",
-                    onPress: () => {
-                      const newTempCompleted = new Set(
-                        temporarilyCompletedTasks,
-                      );
-                      newTempCompleted.delete(parentTask.id);
-                      setTemporarilyCompletedTasks(newTempCompleted);
-                    },
-                  },
-                  {
-                    text: "Complete",
-                    onPress: async () => {
-                      await handleToggleTaskComplete(parentTask, true);
-                    },
-                  },
-                ],
-              );
-            }
-
-            loadItems();
-          } catch (error) {
-            console.error("Error toggling subtask:", error);
-            Alert.alert("Error", "Failed to update subtask");
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleToggleTaskComplete = async (
-    task: TaskItem & { isTask: true },
-    skipConfirmation: boolean = false,
-  ) => {
-    const action = task.completed ? "mark as incomplete" : "mark as complete";
-
-    if (!skipConfirmation) {
-      if (!task.completed && task.subtasks && task.subtasks.length > 0) {
-        // Completing main task - ask for confirmation to complete all subtasks
-        Alert.alert(
-          "Complete Task",
-          "Do you want to mark all subtasks as complete too?",
-          [
-            {
-              text: "Cancel",
-              style: "cancel",
-            },
-            {
-              text: "Task Only",
-              onPress: async () => {
-                try {
-                  await googleTasksService.updateTask(task.id, {
-                    ...task,
-                    completed: true,
-                  });
-                  const newTempCompleted = new Set(temporarilyCompletedTasks);
-                  newTempCompleted.delete(task.id);
-                  setTemporarilyCompletedTasks(newTempCompleted);
-                  loadItems();
-                } catch (error) {
-                  console.error("Error completing task:", error);
-                  Alert.alert("Error", "Failed to complete task");
-                }
-              },
-            },
-            {
-              text: "All",
-              onPress: async () => {
-                try {
-                  // Complete main task
-                  await googleTasksService.updateTask(task.id, {
-                    ...task,
-                    completed: true,
-                  });
-
-                  // Complete all subtasks
-                  if (task.subtasks) {
-                    await Promise.all(
-                      task.subtasks.map((subtask) =>
-                        googleTasksService.updateTask(subtask.id, {
-                          ...subtask,
-                          completed: true,
-                        }),
-                      ),
-                    );
-                  }
-
-                  const newTempCompleted = new Set(temporarilyCompletedTasks);
-                  newTempCompleted.delete(task.id);
-                  setTemporarilyCompletedTasks(newTempCompleted);
-                  loadItems();
-                } catch (error) {
-                  console.error("Error completing task and subtasks:", error);
-                  Alert.alert("Error", "Failed to complete task");
-                }
-              },
-            },
-          ],
-        );
-      } else {
-        // Simple toggle with confirmation
-        Alert.alert("Update Task", `Do you want to ${action} this task?`, [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Confirm",
-            onPress: async () => {
-              try {
-                await googleTasksService.updateTask(task.id, {
-                  ...task,
-                  completed: !task.completed,
-                });
-                const newTempCompleted = new Set(temporarilyCompletedTasks);
-                newTempCompleted.delete(task.id);
-                setTemporarilyCompletedTasks(newTempCompleted);
-                loadItems();
-              } catch (error) {
-                console.error("Error toggling task:", error);
-                Alert.alert("Error", "Failed to update task");
-              }
-            },
-          },
-        ]);
-      }
-    } else {
-      // Skip confirmation (called from subtask completion)
-      try {
-        await googleTasksService.updateTask(task.id, {
-          ...task,
-          completed: !task.completed,
-        });
-        const newTempCompleted = new Set(temporarilyCompletedTasks);
-        newTempCompleted.delete(task.id);
-        setTemporarilyCompletedTasks(newTempCompleted);
-        loadItems();
-      } catch (error) {
-        console.error("Error toggling task:", error);
-        Alert.alert("Error", "Failed to update task");
-      }
-    }
-  };
-
-  const handleStartNow = (item: CombinedItem) => {
-    const isTask = "isTask" in item && item.isTask;
-    const title = isTask
-      ? (item as TaskItem).title
-      : (item as CalendarEventResponse).summary;
-    Alert.alert("Start Now", `Starting: ${title}`, [{ text: "OK" }]);
-  };
-
   const renderEventItem = ({ item }: { item: CombinedItem }) => {
     const isTask = "isTask" in item && item.isTask;
     const event = item as CalendarEventResponse;
     const task = item as TaskItem & { isTask: true };
     const isExpanded = isTask && expandedTasks.has(task.id);
     const hasSubtasks = isTask && task.subtasks && task.subtasks.length > 0;
-    const isTemporarilyCompleted =
-      isTask && temporarilyCompletedTasks.has(task.id);
-    const isTaskCompleted =
-      isTask && (task.completed || isTemporarilyCompleted);
 
     return (
       <View style={styles.tasksContainer}>
-        <View
-          style={[
-            styles.eventCard,
-            isTask && styles.taskCard,
-            isTaskCompleted && styles.completedCard,
-          ]}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            if (isTask && hasSubtasks) {
+              toggleTaskExpanded(task.id);
+            } else if (!isTask) {
+              handleViewEventDetails(event);
+            }
+          }}
         >
-          <View style={styles.mainTaskRow}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                if (isTask && hasSubtasks) {
-                  toggleTaskExpanded(task.id);
-                } else if (!isTask) {
-                  handleViewEventDetails(event);
-                }
-              }}
-              style={{ flexDirection: "row", flex: 1 }}
-            >
-              {isTask && (
-                <TouchableOpacity
-                  onPress={() => handleToggleTaskComplete(task)}
-                  style={styles.checkboxContainer}
-                >
+          <View style={[styles.eventCard, isTask && styles.taskCard]}>
+            <View style={styles.eventContent}>
+              <View style={styles.itemHeader}>
+                {hasSubtasks && (
                   <Ionicons
-                    name={
-                      isTaskCompleted ? "checkmark-circle" : "ellipse-outline"
-                    }
-                    size={24}
-                    color={isTaskCompleted ? "#34C759" : "#C7C7CC"}
+                    name={isExpanded ? "chevron-down" : "chevron-forward"}
+                    size={20}
+                    color="#007AFF"
+                    style={styles.chevron}
                   />
-                </TouchableOpacity>
-              )}
-              <View style={styles.eventContent}>
-                <View style={styles.itemHeader}>
-                  {hasSubtasks && (
-                    <Ionicons
-                      name={isExpanded ? "chevron-down" : "chevron-forward"}
-                      size={20}
-                      color="#007AFF"
-                      style={styles.chevron}
-                    />
-                  )}
-                  <Text
-                    style={[
-                      styles.eventTitle,
-                      isTaskCompleted && styles.completedText,
-                    ]}
-                  >
-                    {isTask ? task.title : event.summary}
-                  </Text>
-                  {isTask && (
-                    <View style={styles.taskBadge}>
-                      <Text style={styles.taskBadgeText}>Task</Text>
-                    </View>
-                  )}
-                </View>
-                {!isTask && event.description && (
-                  <EventDescription html={event.description} />
                 )}
-                {isTask && task.notes && (
-                  <Text style={styles.eventDescription}>{task.notes}</Text>
-                )}
-                <View style={styles.bottomRow}>
-                  <Text style={styles.eventTime}>
-                    {isTask
-                      ? formatDateTime(task.due)
-                      : formatDateTime(event.start?.dateTime)}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.startButton}
-                    onPress={() => handleStartNow(item)}
-                  >
-                    <Text style={styles.startButtonText}>START NOW</Text>
-                  </TouchableOpacity>
-                </View>
-                {!isTask && event.location && (
-                  <Text style={styles.eventLocation}>📍 {event.location}</Text>
+                <Text style={styles.eventTitle}>
+                  {isTask ? task.title : event.summary}
+                </Text>
+                {isTask && (
+                  <View style={styles.taskBadge}>
+                    <Text style={styles.taskBadgeText}>Task</Text>
+                  </View>
                 )}
               </View>
-            </TouchableOpacity>
+              {!isTask && event.description && (
+                <EventDescription html={event.description} />
+              )}
+              {isTask && task.notes && (
+                <Text style={styles.eventDescription}>{task.notes}</Text>
+              )}
+              <Text style={styles.eventTime}>
+                {isTask
+                  ? formatDateTime(task.due)
+                  : formatDateTime(event.start?.dateTime)}
+              </Text>
+              {!isTask && event.location && (
+                <Text style={styles.eventLocation}>📍 {event.location}</Text>
+              )}
+            </View>
             <View style={styles.eventActions}>
               <TouchableOpacity
                 style={styles.editButton}
@@ -579,55 +349,42 @@ export default function CalendarScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </TouchableOpacity>
 
-          {/* Render Subtasks */}
-          {isExpanded && hasSubtasks && (
-            <View style={styles.subtasksContainer}>
-              {task.subtasks!.map((subtask) => (
-                <View
-                  key={subtask.id}
-                  style={[
-                    styles.subtaskItem,
-                    subtask.completed && styles.completedCard,
-                  ]}
-                >
-                  <TouchableOpacity
-                    onPress={() => handleToggleSubtaskComplete(subtask, task)}
-                    style={styles.checkboxContainer}
-                  >
-                    <Ionicons
-                      name={
-                        subtask.completed
-                          ? "checkmark-circle"
-                          : "ellipse-outline"
-                      }
-                      size={20}
-                      color={subtask.completed ? "#34C759" : "#C7C7CC"}
-                    />
-                  </TouchableOpacity>
-                  <View style={styles.subtaskContent}>
-                    <Text
-                      style={[
-                        styles.subtaskTitle,
-                        subtask.completed && styles.completedText,
-                      ]}
-                    >
-                      {subtask.title}
+        {/* Render Subtasks */}
+        {isExpanded && hasSubtasks && (
+          <View style={styles.subtasksContainer}>
+            {task.subtasks!.map((subtask) => (
+              <View key={subtask.id} style={styles.subtaskItem}>
+                <View style={styles.subtaskContent}>
+                  <Text style={styles.subtaskTitle}>{subtask.title}</Text>
+                  {subtask.notes && (
+                    <Text style={styles.subtaskNotes}>{subtask.notes}</Text>
+                  )}
+                  {subtask.due && (
+                    <Text style={styles.subtaskTime}>
+                      Due: {formatDateTime(subtask.due)}
                     </Text>
-                    {subtask.notes && (
-                      <Text style={styles.subtaskNotes}>{subtask.notes}</Text>
-                    )}
-                    {subtask.due && (
-                      <Text style={styles.subtaskTime}>
-                        {formatDateTime(subtask.due)}
-                      </Text>
-                    )}
-                  </View>
+                  )}
                 </View>
-              ))}
-            </View>
-          )}
-        </View>
+                <View style={styles.subtaskActions}>
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => handleEditTask({ ...subtask, isTask: true })}
+                  >
+                    <Ionicons name="pencil" size={16} color="#007AFF" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDeleteTask(subtask.id)}
+                  >
+                    <Ionicons name="trash" size={16} color="#FF3B30" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     );
   };

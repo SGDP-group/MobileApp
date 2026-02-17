@@ -127,7 +127,7 @@ class GoogleTasksService {
 
       const params = new URLSearchParams({
         maxResults: maxResults.toString(),
-        showCompleted: "true",
+        showCompleted: "false",
         showHidden: "false",
       });
 
@@ -146,10 +146,7 @@ class GoogleTasksService {
       }));
 
       // Organize tasks hierarchically with subtasks collapsed under parent
-      const organizedTasks = this.organizeTasksHierarchically(flatTasks);
-
-      // Filter out completed parent tasks, but keep their subtasks visible
-      return organizedTasks.filter((task) => !task.completed);
+      return this.organizeTasksHierarchically(flatTasks);
     } catch (error) {
       console.error("Error listing tasks:", error);
       throw error;
@@ -172,7 +169,7 @@ class GoogleTasksService {
 
       const params = new URLSearchParams({
         maxResults: "20",
-        showCompleted: "true",
+        showCompleted: "false",
         showHidden: "false",
       });
 
@@ -198,10 +195,7 @@ class GoogleTasksService {
         });
 
       // Organize tasks hierarchically with subtasks collapsed under parent
-      const organizedTasks = this.organizeTasksHierarchically(flatTasks);
-
-      // Filter out completed parent tasks, but keep their subtasks visible
-      return organizedTasks.filter((task) => !task.completed);
+      return this.organizeTasksHierarchically(flatTasks);
     } catch (error) {
       console.error("Error getting today's tasks:", error);
       return [];
@@ -226,7 +220,7 @@ class GoogleTasksService {
       const params = new URLSearchParams({
         maxResults: maxResults.toString(),
         parent: parentTaskId,
-        showCompleted: "true",
+        showCompleted: "false",
         showHidden: "false",
       });
 
