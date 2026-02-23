@@ -1,8 +1,18 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useNavigation } from "@react-navigation/native";
 import { CalendarEventResponse } from "@services/googleCalendarService";
 import { TaskItem } from "@services/googleTasksService";
+import { RootNavigationProp } from "@shared/navigation/RootNavigator";
+import { colors } from "@shared/theme/colors";
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EventDescription from "./components/EventDescription";
 import EventDetailModal from "./components/EventDetailModal";
@@ -30,31 +40,48 @@ import {
 import { CombinedItem, emptyFormData } from "./utils/types";
 
 export default function CalendarScreen() {
+  // ==================== HOOKS ====================
+  const navigation = useNavigation<RootNavigationProp>();
+
+  // ==================== STATE ====================
+  // Data state
   const [items, setItems] = useState<CombinedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Modal state
+  const [isCreateMenuVisible, setIsCreateMenuVisible] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [isTaskDetailModalVisible, setIsTaskDetailModalVisible] =
     useState(false);
+
+  // Form state
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [formData, setFormData] = useState(emptyFormData);
+
+  // Detail state
   const [detailEvent, setDetailEvent] = useState<CalendarEventResponse | null>(
     null,
   );
   const [detailTask, setDetailTask] = useState<TaskItem | null>(null);
+
+  // Edit state
   const [editingEvent, setEditingEvent] =
     useState<CalendarEventResponse | null>(null);
   const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+
+  // Task UI state
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [temporarilyCompletedTasks, setTemporarilyCompletedTasks] = useState<
     Set<string>
   >(new Set());
-  const [formData, setFormData] = useState(emptyFormData);
 
-  // Load items on mount
+  // ==================== EFFECTS ====================
   useEffect(() => {
     initializeItems();
   }, []);
 
+  // ==================== DATA HANDLERS ====================
   const initializeItems = async () => {
     setIsLoading(true);
     const items = await loadItems();
@@ -62,7 +89,19 @@ export default function CalendarScreen() {
     setIsLoading(false);
   };
 
+  // ==================== NAVIGATION HANDLERS ====================
+  const handleBackPress = () => {
+    setIsCreateMenuVisible(false);
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate("Home", {});
+  };
+
+  // ==================== CREATE HANDLERS ====================
   const handleAddEvent = () => {
+    setIsCreateMenuVisible(false);
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(false);
@@ -71,6 +110,7 @@ export default function CalendarScreen() {
   };
 
   const handleAddTask = () => {
+    setIsCreateMenuVisible(false);
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(true);
@@ -78,6 +118,7 @@ export default function CalendarScreen() {
     setIsModalVisible(true);
   };
 
+  // ==================== VIEW HANDLERS ====================
   const handleViewEventDetails = (event: CalendarEventResponse) => {
     setDetailEvent(event);
     setIsDetailModalVisible(true);
@@ -88,6 +129,7 @@ export default function CalendarScreen() {
     setIsTaskDetailModalVisible(true);
   };
 
+  // ==================== EDIT HANDLERS ====================
   const handleEditEvent = (event: CalendarEventResponse) => {
     setEditingEvent(event);
     setFormData({
@@ -100,17 +142,28 @@ export default function CalendarScreen() {
     setIsModalVisible(true);
   };
 
+  const handleEditTask = (task: TaskItem) => {
+    setEditingTask(task);
+    setFormData({
+      summary: task.title,
+      description: task.notes || "",
+      startDateTime: task.due || "",
+      endDateTime: "",
+      location: "",
+    });
+    setIsModalVisible(true);
+  };
+
+  // ==================== SAVE HANDLERS ====================
   const handleSaveEvent = async () => {
     if (!validateFormData(formData)) {
       return;
     }
 
     try {
-      // Handle task save/update
       if (editingTask || isCreatingTask) {
         await saveTask(formData, editingTask, isCreatingTask);
       } else {
-        // Handle event save/update
         await saveEvent(formData, editingEvent);
       }
 
@@ -125,6 +178,7 @@ export default function CalendarScreen() {
     }
   };
 
+  // ==================== DELETE HANDLERS ====================
   const handleDeleteEventWrapper = (eventId: string) => {
     handleDeleteEvent(eventId, initializeItems);
   };
@@ -133,16 +187,11 @@ export default function CalendarScreen() {
     handleDeleteTask(taskId, initializeItems);
   };
 
-  const handleEditTask = (task: TaskItem) => {
-    setEditingTask(task);
-    setFormData({
-      summary: task.title,
-      description: task.notes || "",
-      startDateTime: task.due || "",
-      endDateTime: "",
-      location: "",
-    });
-    setIsModalVisible(true);
+  // ==================== TASK COMPLETION HANDLERS ====================
+  const handleToggleTaskCompleteWrapper = (
+    task: TaskItem & { isTask: true },
+  ) => {
+    handleToggleTaskComplete(task, false, initializeItems);
   };
 
   const handleToggleSubtaskCompleteWrapper = (
@@ -162,12 +211,7 @@ export default function CalendarScreen() {
     );
   };
 
-  const handleToggleTaskCompleteWrapper = (
-    task: TaskItem & { isTask: true },
-  ) => {
-    handleToggleTaskComplete(task, false, initializeItems);
-  };
-
+  // ==================== UI INTERACTION HANDLERS ====================
   const toggleTaskExpanded = (taskId: string) => {
     const newExpandedTasks = new Set(expandedTasks);
     if (newExpandedTasks.has(taskId)) {
@@ -186,6 +230,7 @@ export default function CalendarScreen() {
     Alert.alert("Start Now", `Starting: ${title}`, [{ text: "OK" }]);
   };
 
+  // ==================== RENDER HELPERS ====================
   const renderEventItem = ({ item }: { item: CombinedItem }) => {
     const isTask = "isTask" in item && item.isTask;
     const event = item as CalendarEventResponse;
@@ -449,23 +494,48 @@ export default function CalendarScreen() {
     );
   };
 
+  // ==================== MAIN RENDER ====================
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Google Calendar</Text>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+          <Ionicons name="chevron-back" size={32} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Task Queue</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
-            <Ionicons name="checkmark-circle" size={24} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddEvent}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setIsCreateMenuVisible((prev) => !prev)}
+          >
             <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
+          {isCreateMenuVisible && (
+            <View style={styles.createMenu}>
+              <TouchableOpacity
+                style={styles.createMenuItem}
+                onPress={handleAddTask}
+              >
+                <Text style={styles.createMenuItemText}>Task</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.createMenuItem}
+                onPress={handleAddEvent}
+              >
+                <Text style={styles.createMenuItemText}>Event</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <Text>Loading events and tasks...</Text>
+          <ActivityIndicator
+            size="large"
+            color={colors.text}
+            style={styles.loadingIndicator}
+          />
+          <Text style={styles.emptyText}>Loading events and tasks...</Text>
         </View>
       ) : items.length === 0 ? (
         <View style={styles.centerContainer}>

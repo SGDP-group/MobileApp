@@ -44,9 +44,9 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
 
   const getGreeting = () => {
     const hour = currentDate.getHours();
+    if (hour < 5) return "Good Evening";
     if (hour < 12) return "Good Morning";
     if (hour < 17) return "Good Afternoon";
-    if (hour < 21) return "Good Evening";
     return "Good Evening";
   };
 
