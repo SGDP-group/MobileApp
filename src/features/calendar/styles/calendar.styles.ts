@@ -8,20 +8,29 @@ export const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  backButton: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   headerTitle: {
+    flex: 1,
     fontSize: 24,
     fontWeight: "bold",
     color: "#fff",
+    textAlign: "center",
   },
   headerActions: {
+    position: "relative",
     flexDirection: "row",
     gap: 8,
   },
@@ -32,6 +41,29 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  createMenu: {
+    position: "absolute",
+    top: 50,
+    right: 0,
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
+    minWidth: 120,
+    zIndex: 100,
+  },
+  createMenuItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  createMenuItemText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "500",
   },
   listContent: {
     paddingHorizontal: 12,
@@ -113,7 +145,7 @@ export const styles = StyleSheet.create({
     gap: 12,
   },
   taskCard: {
-    borderColor: "#FF9500",
+    borderColor: colors.dot,
     borderWidth: 1,
   },
   itemHeader: {
@@ -124,7 +156,10 @@ export const styles = StyleSheet.create({
     gap: 8,
   },
   taskBadge: {
-    backgroundColor: "#FF9500",
+    // backgroundColor: "#FF9500",
+    borderColor: colors.dot,
+    borderStyle: "solid",
+    borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -149,6 +184,9 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
+  },
+  loadingIndicator: {
+    marginBottom: 12,
   },
   emptyText: {
     fontSize: 18,
@@ -369,7 +407,7 @@ export const styles = StyleSheet.create({
     // Keep same design, no opacity or background change
   },
   completedText: {
-    textDecorationLine: "line-through",
+    textDecorationLine: "line-through"
   },
   bottomRow: {
     flexDirection: "row",

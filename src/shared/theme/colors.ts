@@ -1,7 +1,7 @@
 export const colors = {
   primary: "#4285F4",
   secondary: "#FFFFFF",
-  background: "#000000",
+  background: "#121F22",
   text: "#FFFFFF",
   secondaryText: "#888888",
   textMuted: "#888888",
@@ -17,6 +17,8 @@ export const colors = {
 
   overlay: "rgba(0,0,0,0.4)",
 };
+
+
 
 // Keep for backwards compatibility
 export const Colors = colors;
