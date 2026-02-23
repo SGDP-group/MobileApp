@@ -74,9 +74,9 @@ class GoogleTasksService {
     body?: any,
   ): Promise<any> {
     try {
-      const accessToken = await this.getAccessToken();
+      let accessToken = await this.getAccessToken();
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      let response = await fetch(`${this.baseUrl}${endpoint}`, {
         method,
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -84,6 +84,20 @@ class GoogleTasksService {
         },
         body: body ? JSON.stringify(body) : undefined,
       });
+
+      if (response.status === 401) {
+        tokenManager.clearCache();
+        accessToken = await this.getAccessToken();
+
+        response = await fetch(`${this.baseUrl}${endpoint}`, {
+          method,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json();

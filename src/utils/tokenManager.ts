@@ -14,6 +14,25 @@ class TokenManager {
   private lastFetchTime: number = 0;
   private readonly CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
+  private async fetchFreshAccessToken(): Promise<string> {
+    const tokens = await GoogleSignin.getTokens();
+
+    if (!tokens.accessToken) {
+      throw new Error("No access token available");
+    }
+
+    this.tokenCache = tokens.accessToken;
+    this.lastFetchTime = Date.now();
+
+    try {
+      await SecureStore.setItemAsync(TOKEN_KEY, tokens.accessToken);
+    } catch (storageError) {
+      console.warn("Could not store token securely:", storageError);
+    }
+
+    return tokens.accessToken;
+  }
+
   /**
    * Get access token with caching to reduce API calls
    */
@@ -26,40 +45,14 @@ class TokenManager {
     }
 
     try {
-      // Get fresh tokens from Google Sign-In
-      const tokens = await GoogleSignin.getTokens();
-
-      if (!tokens.accessToken) {
-        throw new Error("No access token available");
-      }
-
-      // Cache the token
-      this.tokenCache = tokens.accessToken;
-      this.lastFetchTime = now;
-
-      // Optionally store in secure store for persistence
+      return await this.fetchFreshAccessToken();
+    } catch {
       try {
-        await SecureStore.setItemAsync(TOKEN_KEY, tokens.accessToken);
-      } catch (storageError) {
-        // Secure store might not be available on all platforms
-        console.warn("Could not store token securely:", storageError);
+        await GoogleSignin.signInSilently();
+        return await this.fetchFreshAccessToken();
+      } catch {
+        throw new Error("Failed to get access token. Please sign in again.");
       }
-
-      return tokens.accessToken;
-    } catch (error) {
-      // Try to get from secure store as fallback
-      try {
-        const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
-        if (storedToken) {
-          this.tokenCache = storedToken;
-          this.lastFetchTime = now;
-          return storedToken;
-        }
-      } catch (storageError) {
-        // Ignore storage errors
-      }
-
-      throw new Error("Failed to get access token");
     }
   }
 
