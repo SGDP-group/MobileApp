@@ -4,6 +4,7 @@ import {
   CalendarEventResponse,
   googleCalendarService,
 } from "@services/googleCalendarService";
+import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import React, { useEffect, useMemo, useState } from "react";
@@ -285,14 +286,6 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
     }
   };
 
-  const handleBottomNav = (route: string) => {
-    if (route === "Home") {
-      return;
-    }
-
-    Alert.alert(route, `${route} is coming soon.`);
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -420,37 +413,8 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         </View>
       </ScrollView>
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.bottomItemActive}
-          onPress={() => handleBottomNav("Home")}
-        >
-          <Ionicons name="home" size={20} color="#54D2FF" />
-          <Text style={styles.bottomLabelActive}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bottomItem}
-          onPress={() => handleBottomNav("Start")}
-        >
-          <Ionicons name="play" size={20} color="#6E808A" />
-          <Text style={styles.bottomLabel}>Start</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bottomItem}
-          onPress={() => handleBottomNav("Analytics")}
-        >
-          <Ionicons name="stats-chart" size={20} color="#6E808A" />
-          <Text style={styles.bottomLabel}>Analytics</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bottomItem}
-          onPress={() => handleBottomNav("Settings")}
-        >
-          <Ionicons name="settings" size={20} color="#6E808A" />
-          <Text style={styles.bottomLabel}>Settings</Text>
-        </TouchableOpacity>
-      </View>
-
+      <BottomNav activeRoute="Home" />
+      
       {onLogout && (
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
           <Text style={styles.logoutText}>Sign Out</Text>

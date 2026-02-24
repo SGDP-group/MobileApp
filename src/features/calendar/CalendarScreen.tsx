@@ -2,6 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { CalendarEventResponse } from "@services/googleCalendarService";
 import { TaskItem } from "@services/googleTasksService";
+import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useEffect, useState } from "react";
@@ -557,6 +558,8 @@ export default function CalendarScreen() {
           onRefresh={initializeItems}
         />
       )}
+
+      <BottomNav activeRoute="Calendar" />
 
       {/* Detail Modal */}
       <EventDetailModal
