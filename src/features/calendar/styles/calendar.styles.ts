@@ -358,6 +358,12 @@ export const styles = StyleSheet.create({
     color: colors.secondary,
     lineHeight: 20,
   },
+  detailLink: {
+    fontSize: 14,
+    color: "#54D2FF",
+    textDecorationLine: "underline",
+    lineHeight: 20,
+  },
   detailListItem: {
     flexDirection: "row",
     justifyContent: "space-between",

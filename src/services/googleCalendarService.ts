@@ -35,6 +35,13 @@ export interface CalendarEventResponse extends CalendarEvent {
   updated: string;
   htmlLink: string;
   status: string;
+  hangoutLink?: string;
+  conferenceData?: {
+    entryPoints?: Array<{
+      entryPointType?: string;
+      uri?: string;
+    }>;
+  };
 }
 
 class GoogleCalendarService {

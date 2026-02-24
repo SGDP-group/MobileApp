@@ -1,7 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CalendarEventResponse } from "@services/googleCalendarService";
 import React from "react";
-import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  Linking,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { styles } from "../styles/calendar.styles";
 import EventDescription from "./EventDescription";
 import { colors } from "@/src/shared/theme/colors";
@@ -23,6 +30,39 @@ export default function EventDetailModal({
   onDelete,
   formatDateTime,
 }: EventDetailModalProps) {
+  const meetingLink = React.useMemo(() => {
+    if (!event) return null;
+
+    const links: string[] = [];
+
+    if (event.hangoutLink) {
+      links.push(event.hangoutLink);
+    }
+
+    const entryPoints = event.conferenceData?.entryPoints || [];
+    const videoEntry = entryPoints.find(
+      (entry) => entry.entryPointType === "video" && entry.uri,
+    );
+    const anyEntry = entryPoints.find((entry) => entry.uri);
+
+    if (videoEntry?.uri) {
+      links.push(videoEntry.uri);
+    } else if (anyEntry?.uri) {
+      links.push(anyEntry.uri);
+    }
+
+    const textSources = [event.location, event.description]
+      .filter(Boolean)
+      .join(" ");
+    const urlMatches = textSources.match(/https?:\/\/[^\s<]+/g);
+    if (urlMatches?.length) {
+      links.push(...urlMatches);
+    }
+
+    const unique = [...new Set(links)].filter(Boolean);
+    return unique.length ? unique[0] : null;
+  }, [event]);
+
   return (
     <Modal
       visible={visible}
@@ -78,6 +118,17 @@ export default function EventDetailModal({
                   <View style={styles.detailSection}>
                     <Text style={styles.detailLabel}>Location</Text>
                     <Text style={styles.detailText}>{event.location}</Text>
+                  </View>
+                )}
+
+                {meetingLink && (
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailLabel}>Meeting Link</Text>
+                    <TouchableOpacity
+                      onPress={() => Linking.openURL(meetingLink)}
+                    >
+                      <Text style={styles.detailLink}>{meetingLink}</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
 
