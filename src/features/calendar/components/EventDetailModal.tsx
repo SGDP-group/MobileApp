@@ -1,3 +1,4 @@
+import { colors } from "@/src/shared/theme/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CalendarEventResponse } from "@services/googleCalendarService";
 import React from "react";
@@ -11,7 +12,6 @@ import {
 } from "react-native";
 import { styles } from "../styles/calendar.styles";
 import EventDescription from "./EventDescription";
-import { colors } from "@/src/shared/theme/colors";
 
 interface EventDetailModalProps {
   visible: boolean;
