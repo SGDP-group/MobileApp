@@ -287,6 +287,21 @@ export const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: "#1A2429",
   },
+  pickerRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  pickerInput: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  pickerText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: "500",
+  },
   textArea: {
     textAlignVertical: "top",
     minHeight: 100,

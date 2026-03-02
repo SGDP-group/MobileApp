@@ -55,7 +55,7 @@ export default function AddTaskScreen() {
   const navigation = useNavigation<RootNavigationProp>();
 
   const handleAddTaskPress = () => {
-    Alert.alert("Add Task", "Add Task flow will be connected next.");
+    navigation.navigate("AddTaskDetails");
   };
 
   const handleAddEventPress = () => {

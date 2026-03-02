@@ -7,12 +7,12 @@ import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EventDescription from "./components/EventDescription";
@@ -22,21 +22,21 @@ import TaskDetailModal from "./components/TaskDetailModal";
 import { styles } from "./styles/calendar.styles";
 import { loadItems } from "./utils/dataLoader";
 import {
-    calculateDuration,
-    formatDate,
-    formatDateTime,
-    formatTime,
+  calculateDuration,
+  formatDate,
+  formatDateTime,
+  formatTime,
 } from "./utils/dateFormatting";
 import {
-    handleDeleteEvent,
-    handleDeleteTask,
-    saveEvent,
-    saveTask,
-    validateFormData,
+  handleDeleteEvent,
+  handleDeleteTask,
+  saveEvent,
+  saveTask,
+  validateFormData,
 } from "./utils/eventHandlers";
 import {
-    handleToggleSubtaskComplete,
-    handleToggleTaskComplete,
+  handleToggleSubtaskComplete,
+  handleToggleTaskComplete,
 } from "./utils/taskHandlers";
 import { CombinedItem, emptyFormData } from "./utils/types";
 
@@ -100,10 +100,18 @@ export default function CalendarScreen() {
 
   // ==================== CREATE HANDLERS ====================
   const handleAddEvent = () => {
+    const startDate = new Date();
+    const endDate = new Date(startDate);
+    endDate.setHours(endDate.getHours() + 1);
+
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(false);
-    setFormData(emptyFormData);
+    setFormData({
+      ...emptyFormData,
+      startDateTime: startDate.toISOString(),
+      endDateTime: endDate.toISOString(),
+    });
     setIsModalVisible(true);
   };
 
@@ -170,6 +178,9 @@ export default function CalendarScreen() {
       setIsCreatingTask(false);
       initializeItems();
     } catch (error) {
+      if (error instanceof Error && error.message === "VALIDATION_ERROR") {
+        return;
+      }
       console.error("Error saving:", error);
       Alert.alert("Error", "Failed to save");
     }
