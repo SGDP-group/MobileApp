@@ -4,8 +4,8 @@ import { useNavigation } from "@react-navigation/native";
 import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
-import React, { useState } from "react";
-import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import React from "react";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TaskActionType = "quick" | "ai";
@@ -37,7 +37,7 @@ function TaskActionCard({
       <View style={isAI ? styles.aiIconWrap : styles.optionIconWrap}>
         <Ionicons
           name={isAI ? "sparkles" : "add-circle-outline"}
-          size={24}
+          size={20}
           color={colors.text}
         />
       </View>
@@ -53,10 +53,13 @@ function TaskActionCard({
 
 export default function AddTaskScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-  const [taskName, setTaskName] = useState("");
 
-  const handleQuickAddPress = () => {
-    Alert.alert("Quick Add", "Quick Add flow will be connected next.");
+  const handleAddTaskPress = () => {
+    Alert.alert("Add Task", "Add Task flow will be connected next.");
+  };
+
+  const handleAddEventPress = () => {
+    Alert.alert("Add Event", "Add Event flow will be connected next.");
   };
 
   const handleAIBreakdownPress = () => {
@@ -72,7 +75,7 @@ export default function AddTaskScreen() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={34} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Add New Task</Text>
         <View style={styles.headerSpacer} />
@@ -81,24 +84,18 @@ export default function AddTaskScreen() {
       <View style={styles.divider} />
 
       <View style={styles.content}>
-        <Text style={styles.label}>Task Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="eg: Study for Physics exam"
-          placeholderTextColor={colors.secondaryText}
-          value={taskName}
-          onChangeText={setTaskName}
-          autoCapitalize="sentences"
-          autoCorrect
-          returnKeyType="done"
-          accessibilityLabel="Task name"
+        <TaskActionCard
+          type="quick"
+          title="Add Task"
+          subtitle="Set task details manually"
+          onPress={handleAddTaskPress}
         />
 
         <TaskActionCard
           type="quick"
-          title="Quick Add"
-          subtitle="Set time and duration manually"
-          onPress={handleQuickAddPress}
+          title="Add Event"
+          subtitle="Create a calendar event manually"
+          onPress={handleAddEventPress}
         />
 
         <TaskActionCard
