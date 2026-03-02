@@ -1,4 +1,5 @@
 import WelcomeScreen from "@features/auth/screens/WelcomeScreen";
+import AddTaskScreen from "@features/calendar/AddTask/AddTaskScreen";
 import CalendarScreen from "@features/calendar/CalendarScreen";
 import HomeScreen from "@features/HomePage/HomeScreen";
 import { GoogleSignin, User } from "@react-native-google-signin/google-signin";
@@ -13,6 +14,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   Home: { userInfo?: any };
   Calendar: undefined;
+  AddTask: undefined;
   Loading: undefined;
 };
 
@@ -125,6 +127,7 @@ export function RootNavigator() {
             )}
           </Stack.Screen>
           <Stack.Screen name="Calendar" component={CalendarScreen} />
+          <Stack.Screen name="AddTask" component={AddTaskScreen} />
         </>
       ) : (
         <Stack.Screen name="Welcome">

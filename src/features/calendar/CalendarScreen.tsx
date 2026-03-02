@@ -7,12 +7,12 @@ import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EventDescription from "./components/EventDescription";
@@ -22,21 +22,21 @@ import TaskDetailModal from "./components/TaskDetailModal";
 import { styles } from "./styles/calendar.styles";
 import { loadItems } from "./utils/dataLoader";
 import {
-  calculateDuration,
-  formatDate,
-  formatDateTime,
-  formatTime,
+    calculateDuration,
+    formatDate,
+    formatDateTime,
+    formatTime,
 } from "./utils/dateFormatting";
 import {
-  handleDeleteEvent,
-  handleDeleteTask,
-  saveEvent,
-  saveTask,
-  validateFormData,
+    handleDeleteEvent,
+    handleDeleteTask,
+    saveEvent,
+    saveTask,
+    validateFormData,
 } from "./utils/eventHandlers";
 import {
-  handleToggleSubtaskComplete,
-  handleToggleTaskComplete,
+    handleToggleSubtaskComplete,
+    handleToggleTaskComplete,
 } from "./utils/taskHandlers";
 import { CombinedItem, emptyFormData } from "./utils/types";
 
@@ -50,7 +50,6 @@ export default function CalendarScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal state
-  const [isCreateMenuVisible, setIsCreateMenuVisible] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [isTaskDetailModalVisible, setIsTaskDetailModalVisible] =
@@ -92,7 +91,6 @@ export default function CalendarScreen() {
 
   // ==================== NAVIGATION HANDLERS ====================
   const handleBackPress = () => {
-    setIsCreateMenuVisible(false);
     if (navigation.canGoBack()) {
       navigation.goBack();
       return;
@@ -102,7 +100,6 @@ export default function CalendarScreen() {
 
   // ==================== CREATE HANDLERS ====================
   const handleAddEvent = () => {
-    setIsCreateMenuVisible(false);
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(false);
@@ -111,7 +108,6 @@ export default function CalendarScreen() {
   };
 
   const handleAddTask = () => {
-    setIsCreateMenuVisible(false);
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(true);
@@ -506,26 +502,10 @@ export default function CalendarScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => setIsCreateMenuVisible((prev) => !prev)}
+            onPress={() => navigation.navigate("AddTask")}
           >
             <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
-          {isCreateMenuVisible && (
-            <View style={styles.createMenu}>
-              <TouchableOpacity
-                style={styles.createMenuItem}
-                onPress={handleAddTask}
-              >
-                <Text style={styles.createMenuItemText}>Task</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.createMenuItem}
-                onPress={handleAddEvent}
-              >
-                <Text style={styles.createMenuItemText}>Event</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
       </View>
 
