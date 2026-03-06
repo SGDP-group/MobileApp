@@ -16,6 +16,38 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Fast Android workflow (recommended)
+
+`expo run:android` does a native Gradle build, which can take a long time.
+Use it only when needed.
+
+1. First build (or after native dependency/config changes)
+
+   ```bash
+   npm run android:first-build
+   ```
+
+2. Daily development start (fast)
+
+   ```bash
+   npm run android:fast
+   ```
+
+3. If Metro cache is acting up
+
+   ```bash
+   npm run start:clean
+   ```
+
+Windows note: if your project is on `D:` and Gradle cache is on `C:`, Android builds can be much slower.
+Set Gradle cache to the same drive as your project:
+
+```powershell
+setx GRADLE_USER_HOME "D:\\GradleCache"
+```
+
+Then close and reopen the terminal before building again.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
