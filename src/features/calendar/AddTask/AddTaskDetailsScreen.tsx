@@ -22,11 +22,7 @@ type RepeatFrequency = "daily" | "weekly" | "monthly";
 
 const REPEAT_FREQUENCIES: RepeatFrequency[] = ["daily", "weekly", "monthly"];
 
-const getDefaultDeadlineTime = (): Date => {
-  const now = new Date();
-  now.setHours(9, 0, 0, 0);
-  return now;
-};
+const getDefaultDeadlineTime = (): Date => new Date();
 
 const formatDate = (value: Date): string => {
   const year = value.getFullYear();
@@ -98,7 +94,13 @@ export default function AddTaskDetailsScreen() {
         0,
       );
     } else {
-      dueDate.setHours(23, 59, 59, 0);
+      const now = new Date();
+      dueDate.setHours(
+        now.getHours(),
+        now.getMinutes(),
+        0,
+        0,
+      );
     }
     return dueDate.toISOString();
   };
@@ -230,7 +232,7 @@ export default function AddTaskDetailsScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Deadline Date *</Text>
+          <Text style={styles.label}>Set Date *</Text>
           <TouchableOpacity
             style={[styles.input, styles.pickerInput]}
             onPress={() => setShowDatePicker(true)}
@@ -258,28 +260,30 @@ export default function AddTaskDetailsScreen() {
           <Text style={styles.label}>Set Time</Text>
           <View style={styles.row}>
             <TouchableOpacity
-              style={[
-                styles.toggleButton,
-                setTime ? styles.toggleButtonActive : undefined,
-              ]}
-              onPress={() => setSetTime((prev) => !prev)}
+              style={[styles.input, styles.pickerInput, styles.timeInput]}
+              onPress={() => {
+                setSetTime(true);
+                setShowTimePicker(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Set deadline time"
             >
-              <Text style={styles.toggleText}>{setTime ? "Yes" : "No"}</Text>
+              <Text style={styles.pickerInputText}>
+                {setTime ? formatTime(deadlineTime) : "Set Time"}
+              </Text>
+              <Ionicons name="time-outline" size={18} color={colors.text} />
             </TouchableOpacity>
 
-            {setTime ? (
+            {setTime && (
               <TouchableOpacity
-                style={[styles.input, styles.pickerInput, styles.timeInput]}
-                onPress={() => setShowTimePicker(true)}
+                style={styles.removeSubtaskButton}
+                onPress={() => setSetTime(false)}
                 accessibilityRole="button"
-                accessibilityLabel="Select deadline time"
+                accessibilityLabel="Remove time"
               >
-                <Text style={styles.pickerInputText}>
-                  {formatTime(deadlineTime)}
-                </Text>
-                <Ionicons name="time-outline" size={18} color={colors.text} />
+                <Text style={styles.removeSubtaskText}>−</Text>
               </TouchableOpacity>
-            ) : null}
+            )}
           </View>
 
           {setTime && showTimePicker ? (
@@ -293,7 +297,7 @@ export default function AddTaskDetailsScreen() {
           ) : null}
 
           <Text style={styles.helperText}>
-            If time is off, task is created for the selected day.
+            If time is not set, task is created for the selected day.
           </Text>
         </View>
 

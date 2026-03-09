@@ -1,10 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { TaskItem } from "@services/googleTasksService";
+import { styles } from "@shared/styles/TaskDetailModal.styles";
 import { colors } from "@shared/theme/colors";
 import React from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { styles } from "../styles/calendar.styles";
-
 interface TaskDetailModalProps {
   visible: boolean;
   task: TaskItem | null;

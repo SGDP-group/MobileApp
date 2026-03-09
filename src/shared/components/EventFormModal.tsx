@@ -3,6 +3,7 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { CalendarEventResponse } from "@services/googleCalendarService";
+import { styles } from "@shared/styles/EventFormModal.styles";
 import { colors } from "@shared/theme/colors";
 import React, { useState } from "react";
 import {
@@ -14,7 +15,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { styles } from "../styles/calendar.styles";
 
 interface FormData {
   summary: string;
