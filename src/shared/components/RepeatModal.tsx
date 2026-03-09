@@ -4,6 +4,12 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { styles } from "@shared/styles/RepeatModal.styles";
 import { colors } from "@shared/theme/colors";
+import {
+  formatDateForStorage,
+  formatDateMonthDay,
+  formatTimeHHMM,
+  roundToNearestFifteenMinutes,
+} from "@utils/dateHelper";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -52,17 +58,6 @@ const FREQUENCIES = [
   { label: "year", value: "yearly" },
 ];
 
-const formatDate = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = value.toLocaleDateString("en-US", { month: "long" });
-  const day = value.getDate();
-  return `${month} ${day}`;
-};
-
-const formatDateForStorage = (value: Date): string => {
-  return value.toISOString().split("T")[0];
-};
-
 export default function RepeatModal({
   visible,
   recurrence,
@@ -70,31 +65,6 @@ export default function RepeatModal({
   onSave,
   initialDateTime,
 }: RepeatModalProps) {
-  // Helper function to round time to nearest upcoming multiple of 15 minutes
-  const roundToNearestFifteenMinutes = (date: Date): string => {
-    const minutes = date.getMinutes();
-    const hours = date.getHours();
-    
-    let roundedMinutes: number;
-    let roundedHours = hours;
-    
-    // Round up to next 15-minute interval
-    if (minutes === 0) {
-      roundedMinutes = 0;
-    } else if (minutes <= 15) {
-      roundedMinutes = 15;
-    } else if (minutes <= 30) {
-      roundedMinutes = 30;
-    } else if (minutes <= 45) {
-      roundedMinutes = 45;
-    } else {
-      roundedMinutes = 0;
-      roundedHours = (hours + 1) % 24;
-    }
-    
-    return `${roundedHours.toString().padStart(2, "0")}:${roundedMinutes.toString().padStart(2, "0")}`;
-  };
-
   // Parse initialDateTime for defaults
   const getInitialStartDate = () => {
     if (recurrence?.startDate) return recurrence.startDate;
@@ -106,7 +76,7 @@ export default function RepeatModal({
     if (recurrence?.setTime) return recurrence.setTime;
     if (initialDateTime) {
       const date = new Date(initialDateTime);
-      return roundToNearestFifteenMinutes(date);
+      return formatTimeHHMM(roundToNearestFifteenMinutes(date));
     }
     return null;
   };
@@ -148,7 +118,7 @@ export default function RepeatModal({
         // If no existing recurrence, use initialDateTime
         const date = new Date(initialDateTime);
         setStartDate(formatDateForStorage(date));
-        setSetTime(roundToNearestFifteenMinutes(date));
+        setSetTime(formatTimeHHMM(roundToNearestFifteenMinutes(date)));
       }
     }
   }, [visible, initialDateTime, recurrence]);
@@ -354,7 +324,7 @@ export default function RepeatModal({
               onPress={() => setShowStartPicker(true)}
             >
               <Text style={styles.dateText}>
-                {formatDate(new Date(startDate))}
+                {formatDateMonthDay(new Date(startDate))}
               </Text>
             </TouchableOpacity>
           </View>
@@ -404,7 +374,7 @@ export default function RepeatModal({
                     endType !== "on" && styles.endDateTextDisabled,
                   ]}
                 >
-                  {formatDate(new Date(endDate))}
+                  {formatDateMonthDay(new Date(endDate))}
                 </Text>
               </TouchableOpacity>
             </TouchableOpacity>

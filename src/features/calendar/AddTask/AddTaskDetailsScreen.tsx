@@ -1,57 +1,28 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
-    DateTimePickerEvent,
+  DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { googleTasksService } from "@services/googleTasksService";
 import RepeatModal, { RecurrenceData } from "@shared/components/RepeatModal";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
+import {
+  formatDateYYYYMMDD,
+  formatTimeHHMM,
+  roundToNearestFifteenMinutes,
+} from "@utils/dateHelper";
 import React, { useMemo, useState } from "react";
 import {
-    Alert,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/addTaskDetails.styles";
-
-const getDefaultDeadlineTime = (): Date => {
-  const now = new Date();
-  const minutes = now.getMinutes();
-  
-  // Round up to nearest upcoming 15-minute interval
-  if (minutes === 0) {
-    // Already at :00
-  } else if (minutes <= 15) {
-    now.setMinutes(15, 0, 0);
-  } else if (minutes <= 30) {
-    now.setMinutes(30, 0, 0);
-  } else if (minutes <= 45) {
-    now.setMinutes(45, 0, 0);
-  } else {
-    now.setHours(now.getHours() + 1);
-    now.setMinutes(0, 0, 0);
-  }
-  
-  return now;
-};
-
-const formatDate = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, "0");
-  const day = `${value.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const formatTime = (value: Date): string => {
-  const hours = `${value.getHours()}`.padStart(2, "0");
-  const minutes = `${value.getMinutes()}`.padStart(2, "0");
-  return `${hours}:${minutes}`;
-};
 
 export default function AddTaskDetailsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -60,7 +31,7 @@ export default function AddTaskDetailsScreen() {
   const [details, setDetails] = useState("");
   const [deadlineDate, setDeadlineDate] = useState(new Date());
   const [setTime, setSetTime] = useState(false);
-  const [deadlineTime, setDeadlineTime] = useState(getDefaultDeadlineTime);
+  const [deadlineTime, setDeadlineTime] = useState(roundToNearestFifteenMinutes);
   const [recurrence, setRecurrence] = useState<RecurrenceData | null>(null);
   const [showRepeatModal, setShowRepeatModal] = useState(false);
   const [subtasks, setSubtasks] = useState<string[]>([]);
@@ -399,7 +370,7 @@ export default function AddTaskDetailsScreen() {
             accessibilityLabel="Select deadline date"
           >
             <Text style={styles.pickerInputText}>
-              {formatDate(deadlineDate)}
+              {formatDateYYYYMMDD(deadlineDate)}
             </Text>
             <Ionicons name="calendar-outline" size={18} color={colors.text} />
           </TouchableOpacity>
@@ -428,7 +399,7 @@ export default function AddTaskDetailsScreen() {
               accessibilityLabel="Set deadline time"
             >
               <Text style={styles.pickerInputText}>
-                {setTime ? formatTime(deadlineTime) : "Set Time"}
+                {setTime ? formatTimeHHMM(deadlineTime) : "Set Time"}
               </Text>
               <Ionicons name="time-outline" size={18} color={colors.text} />
             </TouchableOpacity>

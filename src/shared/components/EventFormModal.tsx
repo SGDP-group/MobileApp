@@ -5,6 +5,7 @@ import DateTimePicker, {
 import { CalendarEventResponse } from "@services/googleCalendarService";
 import { styles } from "@shared/styles/EventFormModal.styles";
 import { colors } from "@shared/theme/colors";
+import { formatDateYYYYMMDD, formatTimeHHMM } from "@utils/dateHelper";
 import React, { useState } from "react";
 import {
   Modal,
@@ -46,19 +47,6 @@ const toSafeDate = (value?: string): Date => {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-};
-
-const formatDate = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, "0");
-  const day = `${value.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const formatTime = (value: Date): string => {
-  const hours = `${value.getHours()}`.padStart(2, "0");
-  const minutes = `${value.getMinutes()}`.padStart(2, "0");
-  return `${hours}:${minutes}`;
 };
 
 const getMinimumDate = (
@@ -207,7 +195,7 @@ export default function EventFormModal({
   ) => {
     const isDateMode = mode === "date";
     const iconName = isDateMode ? "calendar-outline" : "time-outline";
-    const displayText = isDateMode ? formatDate(value) : formatTime(value);
+    const displayText = isDateMode ? formatDateYYYYMMDD(value) : formatTimeHHMM(value);
 
     return (
       <TouchableOpacity
