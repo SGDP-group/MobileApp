@@ -2,14 +2,15 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { TaskItem } from "@services/googleTasksService";
 import { styles } from "@shared/styles/TaskDetailModal.styles";
 import { colors } from "@shared/theme/colors";
-import React from "react";
-import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import React, { useState } from "react";
+import { Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 interface TaskDetailModalProps {
   visible: boolean;
   task: TaskItem | null;
   onClose: () => void;
   onEdit: (task: TaskItem) => void;
   onDelete: (taskId: string) => void;
+  onAddSubtask: (taskId: string, subtaskTitle: string) => Promise<void>;
   formatDate: (dateString: string | undefined) => string;
 }
 
@@ -19,8 +20,28 @@ export default function TaskDetailModal({
   onClose,
   onEdit,
   onDelete,
+  onAddSubtask,
   formatDate,
 }: TaskDetailModalProps) {
+  const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleAddSubtask = async () => {
+    if (!task || !newSubtaskTitle.trim()) return;
+    
+    try {
+      setIsSubmitting(true);
+      await onAddSubtask(task.id, newSubtaskTitle.trim());
+      setNewSubtaskTitle("");
+      setIsAddingSubtask(false);
+    } catch (error) {
+      console.error("Error adding subtask:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -146,6 +167,54 @@ export default function TaskDetailModal({
                     </View>
                   </View>
                 )}
+
+                {/* Add Subtask Section */}
+                <View style={styles.addSubtaskSection}>
+                  {isAddingSubtask ? (
+                    <View style={styles.subtaskInputContainer}>
+                      <TextInput
+                        style={styles.subtaskInput}
+                        placeholder="Enter subtask title"
+                        placeholderTextColor="#999"
+                        value={newSubtaskTitle}
+                        onChangeText={setNewSubtaskTitle}
+                        autoFocus
+                      />
+                      <View style={styles.subtaskInputActions}>
+                        <TouchableOpacity
+                          style={styles.subtaskCancelButton}
+                          onPress={() => {
+                            setIsAddingSubtask(false);
+                            setNewSubtaskTitle("");
+                          }}
+                          disabled={isSubmitting}
+                        >
+                          <Text style={styles.subtaskCancelText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.subtaskSaveButton,
+                            (!newSubtaskTitle.trim() || isSubmitting) && styles.subtaskSaveButtonDisabled
+                          ]}
+                          onPress={handleAddSubtask}
+                          disabled={!newSubtaskTitle.trim() || isSubmitting}
+                        >
+                          <Text style={styles.subtaskSaveText}>
+                            {isSubmitting ? "Adding..." : "Add"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.addSubtaskButton}
+                      onPress={() => setIsAddingSubtask(true)}
+                    >
+                      <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+                      <Text style={styles.addSubtaskButtonText}>Add Sub Task</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </>
             )}
           </ScrollView>

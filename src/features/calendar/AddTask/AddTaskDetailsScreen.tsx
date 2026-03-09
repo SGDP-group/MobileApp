@@ -19,7 +19,26 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/addTaskDetails.styles";
 
-const getDefaultDeadlineTime = (): Date => new Date();
+const getDefaultDeadlineTime = (): Date => {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  
+  // Round up to nearest upcoming 15-minute interval
+  if (minutes === 0) {
+    // Already at :00
+  } else if (minutes <= 15) {
+    now.setMinutes(15, 0, 0);
+  } else if (minutes <= 30) {
+    now.setMinutes(30, 0, 0);
+  } else if (minutes <= 45) {
+    now.setMinutes(45, 0, 0);
+  } else {
+    now.setHours(now.getHours() + 1);
+    now.setMinutes(0, 0, 0);
+  }
+  
+  return now;
+};
 
 const formatDate = (value: Date): string => {
   const year = value.getFullYear();
@@ -44,7 +63,7 @@ export default function AddTaskDetailsScreen() {
   const [deadlineTime, setDeadlineTime] = useState(getDefaultDeadlineTime);
   const [recurrence, setRecurrence] = useState<RecurrenceData | null>(null);
   const [showRepeatModal, setShowRepeatModal] = useState(false);
-  const [subtasks, setSubtasks] = useState<string[]>([""]);
+  const [subtasks, setSubtasks] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -71,10 +90,7 @@ export default function AddTaskDetailsScreen() {
   };
 
   const removeSubtask = (index: number) => {
-    setSubtasks((prev) => {
-      const next = prev.filter((_, idx) => idx !== index);
-      return next.length ? next : [""];
-    });
+    setSubtasks((prev) => prev.filter((_, idx) => idx !== index));
   };
 
   const buildDueDateIso = (): string => {
@@ -142,6 +158,72 @@ export default function AddTaskDetailsScreen() {
     return text;
   };
 
+  const generateRecurringDates = (startDate: Date, count: number): Date[] => {
+    if (!recurrence) return [startDate];
+    
+    const { frequency, interval, byWeekDay, endType, endDate: recEndDate } = recurrence;
+    const dates: Date[] = [];
+    let currentDate = new Date(startDate);
+    const maxOccurrences = endType === "after" && recurrence.count ? recurrence.count : 
+                          endType === "never" ? 30 : // Limit "never" to 30 occurrences
+                          count;
+    
+    const endDateLimit = endType === "on" && recEndDate ? new Date(recEndDate) : null;
+    
+    for (let i = 0; i < maxOccurrences; i++) {
+      if (endDateLimit && currentDate > endDateLimit) break;
+      
+      // For weekly with specific days, check if current day matches
+      if (frequency === "weekly" && byWeekDay && byWeekDay.length > 0 && i > 0) {
+        // Skip to next occurrence on specified weekdays
+        let foundValidDay = false;
+        let attempts = 0;
+        
+        while (!foundValidDay && attempts < 7) {
+          const dayOfWeek = currentDate.getDay();
+          const dayMap = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+          const currentDay = dayMap[dayOfWeek];
+          
+          if (byWeekDay.includes(currentDay)) {
+            foundValidDay = true;
+          } else {
+            currentDate.setDate(currentDate.getDate() + 1);
+            attempts++;
+          }
+        }
+        
+        if (!foundValidDay) break;
+      }
+      
+      dates.push(new Date(currentDate));
+      
+      // Advance to next occurrence
+      if (i < maxOccurrences - 1) {
+        switch (frequency) {
+          case "daily":
+            currentDate.setDate(currentDate.getDate() + interval);
+            break;
+          case "weekly":
+            if (byWeekDay && byWeekDay.length > 0) {
+              // Advance to next day for next iteration
+              currentDate.setDate(currentDate.getDate() + 1);
+            } else {
+              currentDate.setDate(currentDate.getDate() + (7 * interval));
+            }
+            break;
+          case "monthly":
+            currentDate.setMonth(currentDate.getMonth() + interval);
+            break;
+          case "yearly":
+            currentDate.setFullYear(currentDate.getFullYear() + interval);
+            break;
+        }
+      }
+    }
+    
+    return dates;
+  };
+
   const handleSaveTask = async () => {
     const title = subject.trim();
     if (!title) {
@@ -162,57 +244,99 @@ export default function AddTaskDetailsScreen() {
     try {
       setIsSaving(true);
 
-      const notesParts = [details.trim()];
+      const baseNotes = details.trim();
+      
       if (recurrence) {
-        const { frequency, interval, byWeekDay, endType, setTime } = recurrence;
-        let repeatText = `Repeat: Every ${interval > 1 ? interval + " " : ""}${frequency}${interval > 1 ? "s" : ""}`;
+        // Generate recurring task dates
+        const recurringDates = generateRecurringDates(dueDate, 50);
         
-        if (frequency === "weekly" && byWeekDay && byWeekDay.length > 0) {
-          const days = byWeekDay.map(d => d.slice(0, 2)).join(", ");
-          repeatText += ` on ${days}`;
-        }
-        
-        if (setTime) {
-          repeatText += ` at ${setTime}`;
-        }
-        
-        if (endType === "on" && recurrence.endDate) {
-          repeatText += ` until ${recurrence.endDate}`;
-        } else if (endType === "after" && recurrence.count) {
-          repeatText += ` for ${recurrence.count} occurrences`;
-        }
-        
-        notesParts.push(repeatText);
-      }
-      const notes = notesParts.filter(Boolean).join("\n\n");
+        let createdCount = 0;
+        for (const taskDate of recurringDates) {
+          const taskDueIso = taskDate.toISOString();
+          
+          // Add recurrence info to notes for reference
+          const { frequency, interval, byWeekDay, endType, setTime } = recurrence;
+          let repeatText = `Repeat: Every ${interval > 1 ? interval + " " : ""}${frequency}${interval > 1 ? "s" : ""}`;
+          
+          if (frequency === "weekly" && byWeekDay && byWeekDay.length > 0) {
+            const days = byWeekDay.map(d => d.slice(0, 2)).join(", ");
+            repeatText += ` on ${days}`;
+          }
+          
+          if (setTime) {
+            repeatText += ` at ${setTime}`;
+          }
+          
+          if (endType === "on" && recurrence.endDate) {
+            repeatText += ` until ${recurrence.endDate}`;
+          } else if (endType === "after" && recurrence.count) {
+            repeatText += ` for ${recurrence.count} occurrences`;
+          }
+          
+          const notes = [baseNotes, repeatText, `Occurrence ${createdCount + 1} of ${recurringDates.length}`]
+            .filter(Boolean)
+            .join("\n\n");
+          
+          const createdTask = await googleTasksService.createTask(
+            title,
+            notes || undefined,
+            taskDueIso,
+          );
 
-      const createdTask = await googleTasksService.createTask(
-        title,
-        notes || undefined,
-        dueDateIso,
-      );
+          for (const subtaskTitle of validSubtasks) {
+            await googleTasksService.createSubtask(
+              createdTask.id,
+              subtaskTitle,
+              undefined,
+              taskDueIso,
+            );
+          }
+          
+          createdCount++;
+        }
 
-      for (const subtaskTitle of validSubtasks) {
-        await googleTasksService.createSubtask(
-          createdTask.id,
-          subtaskTitle,
-          undefined,
+        Alert.alert(
+          "Tasks Created",
+          `${createdCount} recurring task${createdCount > 1 ? "s" : ""} ${validSubtasks.length > 0 ? "with subtasks " : ""}created successfully.`,
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+      } else {
+        // Single task (no recurrence)
+        const notes = baseNotes || undefined;
+        
+        const createdTask = await googleTasksService.createTask(
+          title,
+          notes,
           dueDateIso,
         );
-      }
 
-      Alert.alert(
-        "Task Created",
-        validSubtasks.length > 0
-          ? "Task and subtasks were added successfully."
-          : "Task was added successfully.",
-        [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ],
-      );
+        for (const subtaskTitle of validSubtasks) {
+          await googleTasksService.createSubtask(
+            createdTask.id,
+            subtaskTitle,
+            undefined,
+            dueDateIso,
+          );
+        }
+
+        Alert.alert(
+          "Task Created",
+          validSubtasks.length > 0
+            ? "Task and subtasks were added successfully."
+            : "Task was added successfully.",
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+      }
     } catch (error) {
       console.error("Error creating task:", error);
       Alert.alert("Error", "Failed to create task. Please try again.");

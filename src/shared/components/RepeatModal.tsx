@@ -6,6 +6,7 @@ import { styles } from "@shared/styles/RepeatModal.styles";
 import { colors } from "@shared/theme/colors";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Modal,
   ScrollView,
   Text,
@@ -69,6 +70,31 @@ export default function RepeatModal({
   onSave,
   initialDateTime,
 }: RepeatModalProps) {
+  // Helper function to round time to nearest upcoming multiple of 15 minutes
+  const roundToNearestFifteenMinutes = (date: Date): string => {
+    const minutes = date.getMinutes();
+    const hours = date.getHours();
+    
+    let roundedMinutes: number;
+    let roundedHours = hours;
+    
+    // Round up to next 15-minute interval
+    if (minutes === 0) {
+      roundedMinutes = 0;
+    } else if (minutes <= 15) {
+      roundedMinutes = 15;
+    } else if (minutes <= 30) {
+      roundedMinutes = 30;
+    } else if (minutes <= 45) {
+      roundedMinutes = 45;
+    } else {
+      roundedMinutes = 0;
+      roundedHours = (hours + 1) % 24;
+    }
+    
+    return `${roundedHours.toString().padStart(2, "0")}:${roundedMinutes.toString().padStart(2, "0")}`;
+  };
+
   // Parse initialDateTime for defaults
   const getInitialStartDate = () => {
     if (recurrence?.startDate) return recurrence.startDate;
@@ -80,9 +106,7 @@ export default function RepeatModal({
     if (recurrence?.setTime) return recurrence.setTime;
     if (initialDateTime) {
       const date = new Date(initialDateTime);
-      const hours = date.getHours().toString().padStart(2, "0");
-      const minutes = date.getMinutes().toString().padStart(2, "0");
-      return `${hours}:${minutes}`;
+      return roundToNearestFifteenMinutes(date);
     }
     return null;
   };
@@ -124,9 +148,7 @@ export default function RepeatModal({
         // If no existing recurrence, use initialDateTime
         const date = new Date(initialDateTime);
         setStartDate(formatDateForStorage(date));
-        const hours = date.getHours().toString().padStart(2, "0");
-        const minutes = date.getMinutes().toString().padStart(2, "0");
-        setSetTime(`${hours}:${minutes}`);
+        setSetTime(roundToNearestFifteenMinutes(date));
       }
     }
   }, [visible, initialDateTime, recurrence]);
@@ -140,6 +162,16 @@ export default function RepeatModal({
   };
 
   const handleSave = () => {
+    // Validate end date is not before start date
+    if (endType === "on") {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (end < start) {
+        Alert.alert("Invalid Date", "End date cannot be before start date");
+        return;
+      }
+    }
+    
     const recurrenceData: RecurrenceData = {
       frequency,
       interval,
@@ -160,7 +192,15 @@ export default function RepeatModal({
   ) => {
     setShowStartPicker(false);
     if (event.type === "set" && selectedDate) {
-      setStartDate(formatDateForStorage(selectedDate));
+      const newStartDate = formatDateForStorage(selectedDate);
+      setStartDate(newStartDate);
+      
+      // If new start date is after current end date, update end date to match start date
+      const newStart = new Date(newStartDate);
+      const currentEnd = new Date(endDate);
+      if (newStart > currentEnd) {
+        setEndDate(newStartDate);
+      }
     }
   };
 
@@ -425,7 +465,14 @@ export default function RepeatModal({
 
         {showTimePicker && (
           <DateTimePicker
-            value={setTime ? new Date(`2000-01-01T${setTime}:00`) : new Date()}
+            value={(() => {
+              const date = new Date();
+              if (setTime) {
+                const [hours, minutes] = setTime.split(':').map(Number);
+                date.setHours(hours, minutes, 0, 0);
+              }
+              return date;
+            })()}
             mode="time"
             display="default"
             is24Hour={true}

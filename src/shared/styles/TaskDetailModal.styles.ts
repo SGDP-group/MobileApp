@@ -119,4 +119,73 @@ export const styles = StyleSheet.create({
   completedText: {
     textDecorationLine: "line-through",
   },
+  addSubtaskSection: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  addSubtaskButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary,
+    gap: 8,
+  },
+  addSubtaskButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  subtaskInputContainer: {
+    backgroundColor: "#0F1419",
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  subtaskInput: {
+    backgroundColor: "#1A2429",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    color: colors.text,
+    marginBottom: 12,
+  },
+  subtaskInputActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  subtaskCancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  subtaskCancelText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: colors.secondary,
+  },
+  subtaskSaveButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  subtaskSaveButtonDisabled: {
+    opacity: 0.5,
+  },
+  subtaskSaveText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
 });

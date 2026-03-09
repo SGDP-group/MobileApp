@@ -7,12 +7,12 @@ import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EventDescription from "./components/EventDescription";
@@ -22,21 +22,21 @@ import TaskDetailModal from "./components/TaskDetailModal";
 import { styles } from "./styles/calendar.styles";
 import { loadItems } from "./utils/dataLoader";
 import {
-  calculateDuration,
-  formatDate,
-  formatDateTime,
-  formatTime,
+    calculateDuration,
+    formatDate,
+    formatDateTime,
+    formatTime,
 } from "./utils/dateFormatting";
 import {
-  handleDeleteEvent,
-  handleDeleteTask,
-  saveEvent,
-  saveTask,
-  validateFormData,
+    handleDeleteEvent,
+    handleDeleteTask,
+    saveEvent,
+    saveTask,
+    validateFormData,
 } from "./utils/eventHandlers";
 import {
-  handleToggleSubtaskComplete,
-  handleToggleTaskComplete,
+    handleToggleSubtaskComplete,
+    handleToggleTaskComplete,
 } from "./utils/taskHandlers";
 import { CombinedItem, emptyFormData } from "./utils/types";
 
@@ -193,6 +193,32 @@ export default function CalendarScreen() {
 
   const handleDeleteTaskWrapper = (taskId: string) => {
     handleDeleteTask(taskId, initializeItems);
+  };
+
+  // ==================== SUBTASK HANDLER ====================
+  const handleAddSubtask = async (taskId: string, subtaskTitle: string) => {
+    try {
+      const task = items.find(
+        (item) => "isTask" in item && item.isTask && item.id === taskId
+      ) as TaskItem | undefined;
+      
+      if (!task) {
+        throw new Error("Task not found");
+      }
+
+      await googleTasksService.createSubtask(
+        taskId,
+        subtaskTitle,
+        undefined,
+        task.due || undefined
+      );
+      
+      Alert.alert("Success", "Subtask added successfully");
+      await initializeItems();
+    } catch (error) {
+      console.error("Error adding subtask:", error);
+      Alert.alert("Error", "Failed to add subtask. Please try again.");
+    }
   };
 
   // ==================== TASK COMPLETION HANDLERS ====================
@@ -568,6 +594,7 @@ export default function CalendarScreen() {
         onClose={() => setIsTaskDetailModalVisible(false)}
         onEdit={handleEditTask}
         onDelete={handleDeleteTaskWrapper}
+        onAddSubtask={handleAddSubtask}
         formatDate={formatDate}
       />
 
