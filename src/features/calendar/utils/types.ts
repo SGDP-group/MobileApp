@@ -4,6 +4,7 @@
 
 import { CalendarEventResponse } from "@services/googleCalendarService";
 import { TaskItem } from "@services/googleTasksService";
+import { RecurrenceData } from "@shared/components/RepeatModal";
 
 export type CombinedItem =
   | CalendarEventResponse
@@ -15,6 +16,7 @@ export interface FormData {
   startDateTime: string;
   endDateTime: string;
   location: string;
+  recurrence?: RecurrenceData;
 }
 
 export const emptyFormData: FormData = {

@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import RepeatModal, { RecurrenceData } from "./RepeatModal";
 
 interface FormData {
   summary: string;
@@ -22,6 +23,7 @@ interface FormData {
   startDateTime: string;
   endDateTime: string;
   location: string;
+  recurrence?: RecurrenceData;
 }
 
 interface EventFormModalProps {
@@ -84,9 +86,67 @@ export default function EventFormModal({
   onSave,
 }: EventFormModalProps) {
   const [activePicker, setActivePicker] = useState<ActivePicker>(null);
+  const [showRepeatModal, setShowRepeatModal] = useState(false);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     onFormDataChange({ ...formData, [field]: value });
+  };
+
+  const handleRecurrenceChange = (recurrence: RecurrenceData) => {
+    // Update recurrence data
+    const updatedFormData: FormData = { ...formData, recurrence };
+    
+    // Sync start date and time from recurrence to main event
+    if (recurrence.startDate || recurrence.setTime) {
+      const currentStart = new Date(formData.startDateTime || new Date());
+      
+      // Update date if recurrence has startDate
+      if (recurrence.startDate) {
+        const [year, month, day] = recurrence.startDate.split('-').map(Number);
+        currentStart.setFullYear(year, month - 1, day);
+      }
+      
+      // Update time if recurrence has setTime
+      if (recurrence.setTime) {
+        const [hours, minutes] = recurrence.setTime.split(':').map(Number);
+        currentStart.setHours(hours, minutes, 0, 0);
+      }
+      
+      updatedFormData.startDateTime = currentStart.toISOString();
+      
+      // Also update end time to maintain duration
+      const currentEnd = new Date(formData.endDateTime || formData.startDateTime || new Date());
+      const originalStart = new Date(formData.startDateTime || new Date());
+      const duration = currentEnd.getTime() - originalStart.getTime();
+      const newEnd = new Date(currentStart.getTime() + duration);
+      updatedFormData.endDateTime = newEnd.toISOString();
+    }
+    
+    onFormDataChange(updatedFormData);
+  };
+
+  const getRecurrenceText = () => {
+    if (!formData.recurrence) {
+      return "Does not repeat";
+    }
+    const { frequency, interval, byWeekDay, setTime } = formData.recurrence;
+    
+    let text = "";
+    if (frequency === "weekly" && byWeekDay && byWeekDay.length > 0) {
+      const days = byWeekDay.map(d => d.slice(0, 2)).join(", ");
+      text = `Every ${interval > 1 ? interval + " " : ""}week${interval > 1 ? "s" : ""} on ${days}`;
+    } else {
+      const freq = frequency === "daily" ? "day" : 
+                   frequency === "weekly" ? "week" : 
+                   frequency === "monthly" ? "month" : "year";
+      text = `Every ${interval > 1 ? interval + " " : ""}${freq}${interval > 1 ? "s" : ""}`;
+    }
+    
+    if (setTime) {
+      text += ` at ${setTime}`;
+    }
+    
+    return text;
   };
 
   const startValue = toSafeDate(formData.startDateTime);
@@ -231,6 +291,17 @@ export default function EventFormModal({
               placeholderTextColor="#999"
             />
           </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Repeat</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.pickerInput]}
+              onPress={() => setShowRepeatModal(true)}
+            >
+              <Text style={styles.pickerText}>{getRecurrenceText()}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.text} />
+            </TouchableOpacity>
+          </View>
         </ScrollView>
 
         {activePicker ? (
@@ -243,6 +314,14 @@ export default function EventFormModal({
             onChange={handlePickerChange}
           />
         ) : null}
+
+        <RepeatModal
+          visible={showRepeatModal}
+          recurrence={formData.recurrence || null}
+          onClose={() => setShowRepeatModal(false)}
+          onSave={handleRecurrenceChange}
+          initialDateTime={formData.startDateTime}
+        />
       </SafeAreaView>
     </Modal>
   );

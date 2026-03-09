@@ -1,17 +1,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
-    DateTimePickerEvent,
+  DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { styles } from "@shared/styles/RepeatModal.styles";
 import { colors } from "@shared/theme/colors";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -31,6 +31,7 @@ interface RepeatModalProps {
   recurrence: RecurrenceData | null;
   onClose: () => void;
   onSave: (recurrence: RecurrenceData) => void;
+  initialDateTime?: string; // ISO string from parent event/task
 }
 
 const WEEKDAYS = [
@@ -66,7 +67,26 @@ export default function RepeatModal({
   recurrence,
   onClose,
   onSave,
+  initialDateTime,
 }: RepeatModalProps) {
+  // Parse initialDateTime for defaults
+  const getInitialStartDate = () => {
+    if (recurrence?.startDate) return recurrence.startDate;
+    if (initialDateTime) return formatDateForStorage(new Date(initialDateTime));
+    return formatDateForStorage(new Date());
+  };
+
+  const getInitialTime = () => {
+    if (recurrence?.setTime) return recurrence.setTime;
+    if (initialDateTime) {
+      const date = new Date(initialDateTime);
+      const hours = date.getHours().toString().padStart(2, "0");
+      const minutes = date.getMinutes().toString().padStart(2, "0");
+      return `${hours}:${minutes}`;
+    }
+    return null;
+  };
+
   const [frequency, setFrequency] = useState<RecurrenceData["frequency"]>(
     recurrence?.frequency || "weekly"
   );
@@ -74,9 +94,7 @@ export default function RepeatModal({
   const [byWeekDay, setByWeekDay] = useState<string[]>(
     recurrence?.byWeekDay || []
   );
-  const [startDate, setStartDate] = useState(
-    recurrence?.startDate || formatDateForStorage(new Date())
-  );
+  const [startDate, setStartDate] = useState(getInitialStartDate());
   const [endType, setEndType] = useState<RecurrenceData["endType"]>(
     recurrence?.endType || "never"
   );
@@ -84,9 +102,34 @@ export default function RepeatModal({
     recurrence?.endDate || formatDateForStorage(new Date())
   );
   const [count, setCount] = useState(recurrence?.count || 13);
+  const [setTime, setSetTime] = useState<string | null>(getInitialTime());
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [showFrequencyPicker, setShowFrequencyPicker] = useState(false);
+
+  // Sync state when modal opens with new initialDateTime
+  useEffect(() => {
+    if (visible) {
+      if (recurrence) {
+        setFrequency(recurrence.frequency);
+        setInterval(recurrence.interval);
+        setByWeekDay(recurrence.byWeekDay || []);
+        setStartDate(recurrence.startDate);
+        setEndType(recurrence.endType);
+        setEndDate(recurrence.endDate || formatDateForStorage(new Date()));
+        setCount(recurrence.count || 13);
+        setSetTime(recurrence.setTime || null);
+      } else if (initialDateTime) {
+        // If no existing recurrence, use initialDateTime
+        const date = new Date(initialDateTime);
+        setStartDate(formatDateForStorage(date));
+        const hours = date.getHours().toString().padStart(2, "0");
+        const minutes = date.getMinutes().toString().padStart(2, "0");
+        setSetTime(`${hours}:${minutes}`);
+      }
+    }
+  }, [visible, initialDateTime, recurrence]);
 
   const toggleWeekDay = (day: string) => {
     if (byWeekDay.includes(day)) {
@@ -105,6 +148,7 @@ export default function RepeatModal({
       endType,
       endDate: endType === "on" ? endDate : undefined,
       count: endType === "after" ? count : undefined,
+      setTime: setTime || undefined,
     };
     onSave(recurrenceData);
     onClose();
@@ -127,6 +171,18 @@ export default function RepeatModal({
     setShowEndPicker(false);
     if (event.type === "set" && selectedDate) {
       setEndDate(formatDateForStorage(selectedDate));
+    }
+  };
+
+  const handleTimeChange = (
+    event: DateTimePickerEvent,
+    selectedTime?: Date
+  ) => {
+    setShowTimePicker(false);
+    if (event.type === "set" && selectedTime) {
+      const hours = selectedTime.getHours().toString().padStart(2, "0");
+      const minutes = selectedTime.getMinutes().toString().padStart(2, "0");
+      setSetTime(`${hours}:${minutes}`);
     }
   };
 
@@ -230,8 +286,24 @@ export default function RepeatModal({
           )}
 
           {/* Set Time Button */}
-          <TouchableOpacity style={styles.setTimeButton}>
-            <Text style={styles.setTimeText}>Set time</Text>
+          <TouchableOpacity 
+            style={styles.setTimeButton}
+            onPress={() => setShowTimePicker(true)}
+          >
+            <Text style={styles.setTimeText}>
+              {setTime ? setTime : "Set time"}
+            </Text>
+            {setTime && (
+              <TouchableOpacity
+                style={styles.clearTimeButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setSetTime(null);
+                }}
+              >
+                <Ionicons name="close-circle" size={20} color={colors.secondary} />
+              </TouchableOpacity>
+            )}
           </TouchableOpacity>
 
           {/* Starts Section */}
@@ -348,6 +420,16 @@ export default function RepeatModal({
             display="default"
             onChange={handleEndDateChange}
             minimumDate={new Date(startDate)}
+          />
+        )}
+
+        {showTimePicker && (
+          <DateTimePicker
+            value={setTime ? new Date(`2000-01-01T${setTime}:00`) : new Date()}
+            mode="time"
+            display="default"
+            is24Hour={true}
+            onChange={handleTimeChange}
           />
         )}
       </SafeAreaView>

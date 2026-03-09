@@ -1,26 +1,23 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
-  DateTimePickerEvent,
+    DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import { googleTasksService } from "@services/googleTasksService";
 import { useNavigation } from "@react-navigation/native";
+import { googleTasksService } from "@services/googleTasksService";
+import RepeatModal, { RecurrenceData } from "@shared/components/RepeatModal";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
 import {
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/addTaskDetails.styles";
-
-type RepeatFrequency = "daily" | "weekly" | "monthly";
-
-const REPEAT_FREQUENCIES: RepeatFrequency[] = ["daily", "weekly", "monthly"];
 
 const getDefaultDeadlineTime = (): Date => new Date();
 
@@ -37,9 +34,6 @@ const formatTime = (value: Date): string => {
   return `${hours}:${minutes}`;
 };
 
-const formatRepeatLabel = (frequency: RepeatFrequency): string =>
-  frequency.charAt(0).toUpperCase() + frequency.slice(1);
-
 export default function AddTaskDetailsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
 
@@ -48,9 +42,8 @@ export default function AddTaskDetailsScreen() {
   const [deadlineDate, setDeadlineDate] = useState(new Date());
   const [setTime, setSetTime] = useState(false);
   const [deadlineTime, setDeadlineTime] = useState(getDefaultDeadlineTime);
-  const [repeatEnabled, setRepeatEnabled] = useState(false);
-  const [repeatFrequency, setRepeatFrequency] =
-    useState<RepeatFrequency>("weekly");
+  const [recurrence, setRecurrence] = useState<RecurrenceData | null>(null);
+  const [showRepeatModal, setShowRepeatModal] = useState(false);
   const [subtasks, setSubtasks] = useState<string[]>([""]);
   const [isSaving, setIsSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -125,6 +118,30 @@ export default function AddTaskDetailsScreen() {
     }
   };
 
+  const getRecurrenceText = () => {
+    if (!recurrence) {
+      return "Does not repeat";
+    }
+    const { frequency, interval, byWeekDay, setTime } = recurrence;
+    
+    let text = "";
+    if (frequency === "weekly" && byWeekDay && byWeekDay.length > 0) {
+      const days = byWeekDay.map(d => d.slice(0, 2)).join(", ");
+      text = `Every ${interval > 1 ? interval + " " : ""}week${interval > 1 ? "s" : ""} on ${days}`;
+    } else {
+      const freq = frequency === "daily" ? "day" : 
+                   frequency === "weekly" ? "week" : 
+                   frequency === "monthly" ? "month" : "year";
+      text = `Every ${interval > 1 ? interval + " " : ""}${freq}${interval > 1 ? "s" : ""}`;
+    }
+    
+    if (setTime) {
+      text += ` at ${setTime}`;
+    }
+    
+    return text;
+  };
+
   const handleSaveTask = async () => {
     const title = subject.trim();
     if (!title) {
@@ -146,8 +163,26 @@ export default function AddTaskDetailsScreen() {
       setIsSaving(true);
 
       const notesParts = [details.trim()];
-      if (repeatEnabled) {
-        notesParts.push(`Repeat: ${repeatFrequency}`);
+      if (recurrence) {
+        const { frequency, interval, byWeekDay, endType, setTime } = recurrence;
+        let repeatText = `Repeat: Every ${interval > 1 ? interval + " " : ""}${frequency}${interval > 1 ? "s" : ""}`;
+        
+        if (frequency === "weekly" && byWeekDay && byWeekDay.length > 0) {
+          const days = byWeekDay.map(d => d.slice(0, 2)).join(", ");
+          repeatText += ` on ${days}`;
+        }
+        
+        if (setTime) {
+          repeatText += ` at ${setTime}`;
+        }
+        
+        if (endType === "on" && recurrence.endDate) {
+          repeatText += ` until ${recurrence.endDate}`;
+        } else if (endType === "after" && recurrence.count) {
+          repeatText += ` for ${recurrence.count} occurrences`;
+        }
+        
+        notesParts.push(repeatText);
       }
       const notes = notesParts.filter(Boolean).join("\n\n");
 
@@ -304,41 +339,12 @@ export default function AddTaskDetailsScreen() {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Repeat</Text>
           <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              repeatEnabled ? styles.toggleButtonActive : undefined,
-            ]}
-            onPress={() => setRepeatEnabled((prev) => !prev)}
+            style={[styles.input, styles.pickerInput]}
+            onPress={() => setShowRepeatModal(true)}
           >
-            <Text style={styles.toggleText}>
-              {repeatEnabled ? "Yes" : "No"}
-            </Text>
+            <Text style={styles.pickerInputText}>{getRecurrenceText()}</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.text} />
           </TouchableOpacity>
-
-          {repeatEnabled ? (
-            <View style={styles.repeatOptionsRow}>
-              {REPEAT_FREQUENCIES.map((frequency) => (
-                <TouchableOpacity
-                  key={frequency}
-                  style={[
-                    styles.segmentButton,
-                    repeatFrequency === frequency
-                      ? styles.segmentButtonActive
-                      : undefined,
-                  ]}
-                  onPress={() => setRepeatFrequency(frequency)}
-                >
-                  <Text style={styles.segmentText}>
-                    {formatRepeatLabel(frequency)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : null}
-
-          <Text style={styles.helperText}>
-            Repeat frequency is saved in task notes for now.
-          </Text>
         </View>
 
         <View style={styles.formGroup}>
@@ -386,6 +392,33 @@ export default function AddTaskDetailsScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      <RepeatModal
+        visible={showRepeatModal}
+        recurrence={recurrence}
+        onClose={() => setShowRepeatModal(false)}
+        onSave={(data) => {
+          setRecurrence(data);
+          
+          // Sync start date and time from recurrence to main task
+          if (data.startDate) {
+            const [year, month, day] = data.startDate.split('-').map(Number);
+            const newDate = new Date(year, month - 1, day);
+            setDeadlineDate(newDate);
+          }
+          
+          if (data.setTime) {
+            const [hours, minutes] = data.setTime.split(':').map(Number);
+            const newTime = new Date();
+            newTime.setHours(hours, minutes, 0, 0);
+            setDeadlineTime(newTime);
+            setSetTime(true);
+          }
+          
+          setShowRepeatModal(false);
+        }}
+        initialDateTime={buildDueDateIso()}
+      />
     </SafeAreaView>
   );
 }

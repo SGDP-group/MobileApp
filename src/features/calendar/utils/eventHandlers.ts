@@ -3,8 +3,8 @@
  */
 
 import {
-  CalendarEventResponse,
-  googleCalendarService,
+    CalendarEventResponse,
+    googleCalendarService,
 } from "@services/googleCalendarService";
 import { TaskItem, googleTasksService } from "@services/googleTasksService";
 import { Alert } from "react-native";
@@ -93,7 +93,7 @@ export const saveEvent = async (
     throw new Error("VALIDATION_ERROR");
   }
 
-  const eventData = {
+  const eventData: any = {
     summary: formData.summary,
     description: formData.description,
     location: formData.location,
@@ -106,6 +106,31 @@ export const saveEvent = async (
       timeZone: "UTC",
     },
   };
+
+  // Add recurrence if specified
+  if (formData.recurrence) {
+    const { frequency, interval, byWeekDay, endType, endDate: recEndDate, count } = formData.recurrence;
+    
+    let rrule = `RRULE:FREQ=${frequency.toUpperCase()}`;
+    
+    if (interval > 1) {
+      rrule += `;INTERVAL=${interval}`;
+    }
+    
+    if (frequency === "weekly" && byWeekDay && byWeekDay.length > 0) {
+      rrule += `;BYDAY=${byWeekDay.join(",")}`;
+    }
+    
+    if (endType === "on" && recEndDate) {
+      // Format: YYYYMMDD
+      const formattedDate = recEndDate.replace(/-/g, "");
+      rrule += `;UNTIL=${formattedDate}T235959Z`;
+    } else if (endType === "after" && count) {
+      rrule += `;COUNT=${count}`;
+    }
+    
+    eventData.recurrence = [rrule];
+  }
 
   if (editingEvent) {
     await googleCalendarService.updateEvent(editingEvent.id, eventData);

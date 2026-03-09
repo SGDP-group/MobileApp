@@ -133,10 +133,16 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 32,
     backgroundColor: "#1A2429",
+    flexDirection: "row",
+    alignItems: "center",
   },
   setTimeText: {
     fontSize: 16,
     color: colors.text,
+    flex: 1,
+  },
+  clearTimeButton: {
+    padding: 4,
   },
   dateInput: {
     height: 50,
