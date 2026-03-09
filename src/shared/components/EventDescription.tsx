@@ -1,8 +1,8 @@
+import { colors } from "@/src/shared/theme/colors";
+import { styles } from "@shared/styles/EventDescription.styles";
 import React from "react";
 import { View, useWindowDimensions } from "react-native";
 import RenderHtml from "react-native-render-html";
-import { styles } from "../styles/calendar.styles";
-import { colors } from "@/src/shared/theme/colors";
 
 interface EventDescriptionProps {
   html: string;

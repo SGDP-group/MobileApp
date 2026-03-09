@@ -1,6 +1,7 @@
 import { colors } from "@/src/shared/theme/colors";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CalendarEventResponse } from "@services/googleCalendarService";
+import { styles } from "@shared/styles/EventDetailModal.styles";
 import React from "react";
 import {
   Linking,
@@ -10,7 +11,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { styles } from "../styles/calendar.styles";
 import EventDescription from "./EventDescription";
 
 interface EventDetailModalProps {
