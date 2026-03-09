@@ -1,11 +1,10 @@
-import { tokenManager } from "@utils/tokenManager";
 import {
-  sanitizeString,
-  validateEventId,
-  validateDateRange,
-  getSafeErrorMessage,
-  isDevelopment,
+    isDevelopment,
+    sanitizeString,
+    validateDateRange,
+    validateEventId
 } from "@utils/securityUtils";
+import { tokenManager } from "@utils/tokenManager";
 
 export interface CalendarEvent {
   id?: string;
@@ -35,6 +34,13 @@ export interface CalendarEventResponse extends CalendarEvent {
   updated: string;
   htmlLink: string;
   status: string;
+  hangoutLink?: string;
+  conferenceData?: {
+    entryPoints?: Array<{
+      entryPointType?: string;
+      uri?: string;
+    }>;
+  };
 }
 
 class GoogleCalendarService {
@@ -80,7 +86,8 @@ class GoogleCalendarService {
       if (isDevelopment()) {
         console.error("API Request Error:", error);
       }
-    }}
+    }
+  }
   async listEvents(
     maxResults: number = 10,
     orderBy: string = "startTime",
@@ -183,7 +190,7 @@ class GoogleCalendarService {
   ): Promise<CalendarEventResponse[]> {
     try {
       validateDateRange(startDate, endDate);
-      
+
       const params = new URLSearchParams({
         timeMin: startDate.toISOString(),
         timeMax: endDate.toISOString(),
@@ -210,7 +217,7 @@ class GoogleCalendarService {
     try {
       // Validate and sanitize search query
       const sanitizedQuery = sanitizeString(query, 256);
-      
+
       const params = new URLSearchParams({
         q: sanitizedQuery,
         singleEvents: "true",
@@ -235,7 +242,7 @@ class GoogleCalendarService {
     try {
       // Validate and sanitize text input
       const sanitizedText = sanitizeString(text, 500);
-      
+
       const data = await this.makeRequest(
         "/calendars/primary/events/quickAdd",
         "POST",
@@ -266,19 +273,19 @@ class GoogleCalendarService {
   async getEvents(maxResults: number = 10): Promise<CalendarEventResponse[]> {
     try {
       const accessToken = await this.getAccessToken();
-      
+
       const timeMin = new Date().toISOString();
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
-        `maxResults=${maxResults}&` +
-        `timeMin=${timeMin}&` +
-        `orderBy=startTime&` +
-        `singleEvents=true`,
+          `maxResults=${maxResults}&` +
+          `timeMin=${timeMin}&` +
+          `orderBy=startTime&` +
+          `singleEvents=true`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -288,7 +295,7 @@ class GoogleCalendarService {
       const data = await response.json();
       return data.items || [];
     } catch (error) {
-      console.error('Error fetching calendar events:', error);
+      console.error("Error fetching calendar events:", error);
       throw error;
     }
   }
