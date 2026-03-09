@@ -316,55 +316,6 @@ class GoogleTasksService {
   }
 
   /**
-   * Create a subtask under a parent task
-   */
-  async createSubtask(
-    parentTaskId: string,
-    title: string,
-    notes?: string,
-    due?: string,
-  ): Promise<TaskItem> {
-    try {
-      const lists = await this.getTaskLists();
-      if (lists.length === 0) {
-        throw new Error("No task lists found");
-      }
-
-      const primaryListId = lists[0].id;
-      const params = new URLSearchParams({
-        parent: parentTaskId,
-      });
-
-      const taskData = {
-        title,
-        notes,
-        due,
-      };
-
-      const data = await this.makeRequest(
-        `/lists/${primaryListId}/tasks?${params.toString()}`,
-        "POST",
-        taskData,
-      );
-
-      return {
-        id: data.id,
-        title: data.title,
-        notes: data.notes,
-        due: data.due,
-        startDateTime: data.updated,
-        endDateTime: data.due,
-        completed: data.status === "completed",
-        updated: data.updated,
-        parentId: data.parent,
-      };
-    } catch (error) {
-      console.error("Error creating subtask:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Update a task
    */
   async updateTask(

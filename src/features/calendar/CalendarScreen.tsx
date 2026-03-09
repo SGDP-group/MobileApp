@@ -2,7 +2,6 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { CalendarEventResponse } from "@services/googleCalendarService";
 import { TaskItem } from "@services/googleTasksService";
-import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useEffect, useState } from "react";
@@ -50,6 +49,7 @@ export default function CalendarScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal state
+  const [isCreateMenuVisible, setIsCreateMenuVisible] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [isTaskDetailModalVisible, setIsTaskDetailModalVisible] =
@@ -91,6 +91,7 @@ export default function CalendarScreen() {
 
   // ==================== NAVIGATION HANDLERS ====================
   const handleBackPress = () => {
+    setIsCreateMenuVisible(false);
     if (navigation.canGoBack()) {
       navigation.goBack();
       return;
@@ -100,22 +101,16 @@ export default function CalendarScreen() {
 
   // ==================== CREATE HANDLERS ====================
   const handleAddEvent = () => {
-    const startDate = new Date();
-    const endDate = new Date(startDate);
-    endDate.setHours(endDate.getHours() + 1);
-
+    setIsCreateMenuVisible(false);
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(false);
-    setFormData({
-      ...emptyFormData,
-      startDateTime: startDate.toISOString(),
-      endDateTime: endDate.toISOString(),
-    });
+    setFormData(emptyFormData);
     setIsModalVisible(true);
   };
 
   const handleAddTask = () => {
+    setIsCreateMenuVisible(false);
     setEditingEvent(null);
     setEditingTask(null);
     setIsCreatingTask(true);
@@ -178,9 +173,6 @@ export default function CalendarScreen() {
       setIsCreatingTask(false);
       initializeItems();
     } catch (error) {
-      if (error instanceof Error && error.message === "VALIDATION_ERROR") {
-        return;
-      }
       console.error("Error saving:", error);
       Alert.alert("Error", "Failed to save");
     }
@@ -513,10 +505,26 @@ export default function CalendarScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => navigation.navigate("AddTask")}
+            onPress={() => setIsCreateMenuVisible((prev) => !prev)}
           >
             <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
+          {isCreateMenuVisible && (
+            <View style={styles.createMenu}>
+              <TouchableOpacity
+                style={styles.createMenuItem}
+                onPress={handleAddTask}
+              >
+                <Text style={styles.createMenuItemText}>Task</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.createMenuItem}
+                onPress={handleAddEvent}
+              >
+                <Text style={styles.createMenuItemText}>Event</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
 
@@ -549,8 +557,6 @@ export default function CalendarScreen() {
           onRefresh={initializeItems}
         />
       )}
-
-      <BottomNav activeRoute="Calendar" />
 
       {/* Detail Modal */}
       <EventDetailModal

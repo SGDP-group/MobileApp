@@ -3,8 +3,8 @@
  */
 
 import {
-  CalendarEventResponse,
-  googleCalendarService,
+    CalendarEventResponse,
+    googleCalendarService,
 } from "@services/googleCalendarService";
 import { TaskItem, googleTasksService } from "@services/googleTasksService";
 import { Alert } from "react-native";
@@ -74,25 +74,6 @@ export const saveEvent = async (
   formData: FormData,
   editingEvent: CalendarEventResponse | null,
 ): Promise<void> => {
-  const now = new Date();
-  const startDate = new Date(formData.startDateTime);
-  const endDate = new Date(formData.endDateTime || formData.startDateTime);
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    Alert.alert("Validation", "Please select valid date and time");
-    throw new Error("VALIDATION_ERROR");
-  }
-
-  if (!editingEvent && startDate < now) {
-    Alert.alert("Validation", "You cannot create an event before now");
-    throw new Error("VALIDATION_ERROR");
-  }
-
-  if (endDate < startDate) {
-    Alert.alert("Validation", "End date/time cannot be before start date/time");
-    throw new Error("VALIDATION_ERROR");
-  }
-
   const eventData = {
     summary: formData.summary,
     description: formData.description,
@@ -121,19 +102,6 @@ export const saveTask = async (
   editingTask: TaskItem | null,
   isCreatingTask: boolean,
 ): Promise<void> => {
-  const now = new Date();
-  const dueDate = new Date(formData.startDateTime);
-
-  if (Number.isNaN(dueDate.getTime())) {
-    Alert.alert("Validation", "Please select a valid task date and time");
-    throw new Error("VALIDATION_ERROR");
-  }
-
-  if (!editingTask && isCreatingTask && dueDate < now) {
-    Alert.alert("Validation", "You cannot create a task before now");
-    throw new Error("VALIDATION_ERROR");
-  }
-
   if (editingTask) {
     await googleTasksService.updateTask(editingTask.id, {
       title: formData.summary,
