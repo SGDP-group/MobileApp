@@ -85,6 +85,7 @@ export default function RepeatModal({
     recurrence?.frequency || "weekly"
   );
   const [interval, setInterval] = useState(recurrence?.interval || 1);
+  const [intervalText, setIntervalText] = useState(String(recurrence?.interval || 1));
   const [byWeekDay, setByWeekDay] = useState<string[]>(
     recurrence?.byWeekDay || []
   );
@@ -108,6 +109,7 @@ export default function RepeatModal({
       if (recurrence) {
         setFrequency(recurrence.frequency);
         setInterval(recurrence.interval);
+        setIntervalText(String(recurrence.interval));
         setByWeekDay(recurrence.byWeekDay || []);
         setStartDate(recurrence.startDate);
         setEndType(recurrence.endType);
@@ -132,6 +134,9 @@ export default function RepeatModal({
   };
 
   const handleSave = () => {
+    // Ensure interval is valid
+    const finalInterval = Math.max(1, parseInt(intervalText) || 1);
+    
     // Validate end date is not before start date
     if (endType === "on") {
       const start = new Date(startDate);
@@ -144,7 +149,7 @@ export default function RepeatModal({
     
     const recurrenceData: RecurrenceData = {
       frequency,
-      interval,
+      interval: finalInterval,
       byWeekDay: frequency === "weekly" ? byWeekDay : undefined,
       startDate,
       endType,
@@ -225,10 +230,19 @@ export default function RepeatModal({
             <View style={styles.everyRow}>
               <TextInput
                 style={styles.intervalInput}
-                value={String(interval)}
+                value={intervalText}
                 onChangeText={(text) => {
-                  const num = parseInt(text) || 1;
-                  setInterval(Math.max(1, num));
+                  // Allow empty string or numbers only
+                  if (text === "" || /^\d+$/.test(text)) {
+                    setIntervalText(text);
+                  }
+                }}
+                onBlur={() => {
+                  // When user finishes editing, ensure minimum value of 1
+                  const num = parseInt(intervalText) || 1;
+                  const validNum = Math.max(1, num);
+                  setInterval(validNum);
+                  setIntervalText(String(validNum));
                 }}
                 keyboardType="number-pad"
               />
