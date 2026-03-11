@@ -6,6 +6,7 @@ import HomeScreen from "@features/HomePage/HomeScreen";
 import { GoogleSignin, User } from "@react-native-google-signin/google-signin";
 import { NavigationProp } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { clearStoredUser, findOrCreateUser } from "@services/focusFrameUserService";
 import { LoadingScreen } from "@shared/components/LoadingScreen";
 import { tokenManager } from "@utils/tokenManager";
 import React, { useEffect, useState } from "react";
@@ -29,12 +30,19 @@ export function RootNavigator() {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleLoginSuccess = (currentUser: User) => {
+  const handleLoginSuccess = async (currentUser: User) => {
     try {
+      const email = currentUser.user?.email;
+      if (email) {
+        await findOrCreateUser(email);
+      }
       setUserInfo(currentUser);
       setIsLoggedIn(true);
     } catch (error) {
       console.error("Error during login success handler:", error);
+      // Still allow login even if backend registration fails
+      setUserInfo(currentUser);
+      setIsLoggedIn(true);
     }
   };
 
@@ -98,6 +106,7 @@ export function RootNavigator() {
   const handleLogout = async () => {
     try {
       await tokenManager.clearAllTokens();
+      await clearStoredUser();
       await GoogleSignin.revokeAccess();
       await GoogleSignin.signOut();
       setUserInfo(null);
