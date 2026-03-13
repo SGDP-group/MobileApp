@@ -1,17 +1,17 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-    BarcodeScanningResult,
-    CameraView,
-    useCameraPermissions,
+  BarcodeScanningResult,
+  CameraView,
+  useCameraPermissions,
 } from "expo-camera";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 interface QrScannerModalProps {
@@ -27,15 +27,66 @@ export default function QrScannerModal({
   onClose,
   onScan,
 }: QrScannerModalProps) {
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission, getPermission] = useCameraPermissions();
+  const [effectivePermission, setEffectivePermission] = useState(permission);
+  const [isPermissionChecking, setIsPermissionChecking] = useState(false);
 
   useEffect(() => {
-    if (!visible || permission?.granted || permission?.canAskAgain === false) {
+    setEffectivePermission(permission);
+  }, [permission]);
+
+  useEffect(() => {
+    if (!visible) {
       return;
     }
 
-    void requestPermission();
-  }, [permission?.canAskAgain, permission?.granted, requestPermission, visible]);
+    let isCancelled = false;
+
+    const refreshAndRequestPermission = async () => {
+      setIsPermissionChecking(true);
+
+      try {
+        const currentPermission = await getPermission();
+
+        if (isCancelled) {
+          return;
+        }
+
+        setEffectivePermission(currentPermission);
+
+        if (!currentPermission.granted && currentPermission.canAskAgain) {
+          const requestedPermission = await requestPermission();
+
+          if (isCancelled) {
+            return;
+          }
+
+          setEffectivePermission(requestedPermission);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsPermissionChecking(false);
+        }
+      }
+    };
+
+    void refreshAndRequestPermission();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [getPermission, requestPermission, visible]);
+
+  const handleGrantPermission = useCallback(async () => {
+    setIsPermissionChecking(true);
+
+    try {
+      const requestedPermission = await requestPermission();
+      setEffectivePermission(requestedPermission);
+    } finally {
+      setIsPermissionChecking(false);
+    }
+  }, [requestPermission]);
 
   const handleBarcodeScanned = useCallback(
     (result: BarcodeScanningResult) => {
@@ -48,9 +99,10 @@ export default function QrScannerModal({
     [isProcessingScan, onScan],
   );
 
-  const isPermissionPending = permission === null;
-  const isPermissionDenied = permission?.granted === false;
-  const cannotAskAgain = permission?.canAskAgain === false;
+  const isPermissionPending = isPermissionChecking || effectivePermission === null;
+  const isPermissionDenied =
+    !isPermissionPending && effectivePermission?.granted === false;
+  const cannotAskAgain = effectivePermission?.canAskAgain === false;
 
   return (
     <Modal
@@ -85,7 +137,7 @@ export default function QrScannerModal({
                 <TouchableOpacity
                   style={styles.permissionButton}
                   onPress={() => {
-                    void requestPermission();
+                    void handleGrantPermission();
                   }}
                 >
                   <Text style={styles.permissionButtonText}>Grant Permission</Text>
