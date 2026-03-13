@@ -5,6 +5,10 @@ export async function getSubtasksByTask(taskId: number): Promise<Subtask[]> {
   return apiClient.get<Subtask[]>(`/subtasks/task/${taskId}`);
 }
 
+export async function getTodayCompletedSubtasks(): Promise<Subtask[]> {
+  return apiClient.get<Subtask[]>(`/subtasks/today`);
+}
+
 export async function getSubtaskById(id: number): Promise<Subtask> {
   return apiClient.get<Subtask>(`/subtasks/${id}`);
 }
