@@ -207,7 +207,7 @@ export const styles = StyleSheet.create({
     gap: 14,
   },
   actionCard: {
-    width: "47%",
+    width: "48%",
     backgroundColor: "#1B2429",
     borderRadius: 16,
     padding: 16,
