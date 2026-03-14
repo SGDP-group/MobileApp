@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { parseQrPayload, QrPayload } from "../utils/qrPayloadParser";
 
@@ -11,6 +11,8 @@ interface UseQrCodeScannerResult {
   closeScanner: () => void;
   handleScan: (rawPayload: string) => Promise<void>;
 }
+
+const INVALID_SCAN_COOLDOWN_MS = 1000;
 
 const getScanErrorMessage = (error: unknown): string => {
   if (error instanceof Error && error.message.trim().length > 0) {
@@ -35,18 +37,69 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
     null,
   );
   const scanLockRef = useRef(false);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearCooldownTimer = useCallback(() => {
+    if (!cooldownTimerRef.current) {
+      return;
+    }
+
+    clearTimeout(cooldownTimerRef.current);
+    cooldownTimerRef.current = null;
+  }, []);
+
+  const unlockScanAfterCooldown = useCallback(() => {
+    clearCooldownTimer();
+
+    cooldownTimerRef.current = setTimeout(() => {
+      scanLockRef.current = false;
+      setIsProcessingScan(false);
+      cooldownTimerRef.current = null;
+    }, INVALID_SCAN_COOLDOWN_MS);
+  }, [clearCooldownTimer]);
 
   const openScanner = useCallback(() => {
+    clearCooldownTimer();
     scanLockRef.current = false;
     setIsProcessingScan(false);
     setIsScannerVisible(true);
-  }, []);
+  }, [clearCooldownTimer]);
 
   const closeScanner = useCallback(() => {
+    clearCooldownTimer();
     scanLockRef.current = false;
     setIsProcessingScan(false);
     setIsScannerVisible(false);
-  }, []);
+  }, [clearCooldownTimer]);
+
+  const showInvalidQrAlert = useCallback(
+    (error: unknown) => {
+      let handled = false;
+
+      const handleDismiss = () => {
+        if (handled) {
+          return;
+        }
+
+        handled = true;
+        unlockScanAfterCooldown();
+      };
+
+      Alert.alert(
+        "Invalid QR Code",
+        getScanErrorMessage(error),
+        [{ text: "OK", onPress: handleDismiss }],
+        { cancelable: false, onDismiss: handleDismiss },
+      );
+    },
+    [unlockScanAfterCooldown],
+  );
+
+  useEffect(() => {
+    return () => {
+      clearCooldownTimer();
+    };
+  }, [clearCooldownTimer]);
 
   const handleScan = useCallback(async (rawPayload: string) => {
     if (scanLockRef.current) {
@@ -60,15 +113,13 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
       const parsedPayload = parseQrPayload(rawPayload);
       setScannedQrPayload(parsedPayload);
       await triggerSuccessHaptic();
+      clearCooldownTimer();
       setIsScannerVisible(false);
       setIsProcessingScan(false);
-      console.log("Scanned QR Payload:", parsedPayload);
     } catch (error) {
-      scanLockRef.current = false;
-      setIsProcessingScan(false);
-      Alert.alert("Invalid QR Code", getScanErrorMessage(error));
+      showInvalidQrAlert(error);
     }
-  }, []);
+  }, [clearCooldownTimer, showInvalidQrAlert]);
 
   return {
     isScannerVisible,
