@@ -4,13 +4,13 @@ import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    Image,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QrScannerModal from "./components/QrScannerModal";
@@ -78,7 +78,7 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         Alert.alert("Focus Session", "Focus sessions are coming soon.");
         return;
       case "analytics":
-        Alert.alert("Analytics", "Analytics are coming soon.");
+        navigation.navigate("Analytics");
         return;
       case "settings":
         Alert.alert("Settings", "Settings are coming soon.");
