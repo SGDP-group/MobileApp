@@ -75,7 +75,7 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         navigation.navigate("Calendar");
         return;
       case "start":
-        Alert.alert("Focus Session", "Focus sessions are coming soon.");
+        navigation.navigate("Focus");
         return;
       case "analytics":
         navigation.navigate("Analytics");
