@@ -1,6 +1,6 @@
 import type { Subtask, Task } from "@/src/types/api";
 import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
-import { getAllActiveTaskUpToToday } from "@services/focusFrameTaskService";
+import { getAllActiveTasksUpToToday } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import { useEffect, useMemo, useState } from "react";
@@ -37,12 +37,20 @@ export function useHomeTasks(): UseHomeTasksResult {
           return;
         }
 
-        const fetchedTasks = await getAllActiveTaskUpToToday(userId);
+        const fetchedTasks = await getAllActiveTasksUpToToday(userId);
 
-        console.log("Fetched tasks for Home screen:", fetchedTasks);
+         // Prepare tasks array and limit to the top 6 by updatedAt before fetching subtasks
+         const tasksArray = Array.isArray(fetchedTasks) ? fetchedTasks : [];
+         const sortedTopTasks = [...tasksArray]
+           .sort((a, b) => {
+             const aUpdatedAt = new Date(a.updatedAt).getTime();
+             const bUpdatedAt = new Date(b.updatedAt).getTime();
+             return bUpdatedAt - aUpdatedAt;
+           })
+           .slice(0, 6);
+
         const enrichedTasks = await Promise.all(
-          (Array.isArray(fetchedTasks) ? fetchedTasks : []).map(async (task) => {
-            
+           sortedTopTasks.map(async (task) => {            
             try {
               const subtasks = await getSubtasksByTask(task.id);
               return {

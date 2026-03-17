@@ -1,10 +1,6 @@
-import type { Task } from "@/src/types/api";
-
+ import type { Task, Subtask } from "@/src/types/api";
 type TaskWithSubtasks = Task & {
-  subtasks?: Array<{
-    taskOrder?: number;
-    startTime?: string;
-  }>;
+     subtasks?: Subtask[];
 };
 
 const DAYS = [
@@ -94,14 +90,21 @@ export const getFormattedDate = (value: Date): string => {
 export const formatTaskLead = (task: TaskWithSubtasks): string => {
   const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
 
-  const firstSubtaskWithStart = [...subtasks]
-    .sort((a, b) => {
-      const orderA = a.taskOrder ?? Number.MAX_SAFE_INTEGER;
-      const orderB = b.taskOrder ?? Number.MAX_SAFE_INTEGER;
-      return orderA - orderB;
-    })
-    .find((subtask) => Boolean(subtask.startTime));
+   const firstSubtaskWithStart = subtasks.reduce<
+     (typeof subtasks)[number] | undefined
+   >((best, current) => {
+     if (!current.startTime) {
+       return best;
+     }
+     const currentOrder = current.taskOrder ?? Number.MAX_SAFE_INTEGER;
+     if (!best) {
+       return current;
+     }
+     const bestOrder = best.taskOrder ?? Number.MAX_SAFE_INTEGER;
+     return currentOrder < bestOrder ? current : best;
+   }, undefined);
 
+   
   if (!firstSubtaskWithStart?.startTime) {
     return "NO START TIME";
   }
