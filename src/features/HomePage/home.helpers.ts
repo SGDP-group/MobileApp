@@ -1,6 +1,7 @@
- import type { Task, Subtask } from "@/src/types/api";
+import type { Subtask, Task } from "@/src/types/api";
+
 type TaskWithSubtasks = Task & {
-     subtasks?: Subtask[];
+  subtasks?: Subtask[];
 };
 
 const DAYS = [
@@ -104,7 +105,7 @@ export const formatTaskLead = (task: TaskWithSubtasks): string => {
      return currentOrder < bestOrder ? current : best;
    }, undefined);
 
-   
+
   if (!firstSubtaskWithStart?.startTime) {
     return "NO START TIME";
   }
