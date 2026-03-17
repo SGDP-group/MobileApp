@@ -1,10 +1,7 @@
-import type { Task } from "@/src/types/api";
+import type { Task, Subtask } from "@/src/types/api";
 
 type TaskWithSubtasks = Task & {
-  subtasks?: Array<{
-    taskOrder?: number;
-    startTime?: string;
-  }>;
+  subtasks?: Subtask[];
 };
 
 const DAYS = [
