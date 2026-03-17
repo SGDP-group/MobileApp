@@ -1,20 +1,25 @@
-import type { Task } from "@/src/types/api";
-import { getTasksByUser } from "@services/focusFrameTaskService";
+import type { Subtask, Task } from "@/src/types/api";
+import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
+import { getAllActiveTaskUpToToday } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import { useEffect, useMemo, useState } from "react";
 
+export type HomeTask = Task & {
+  subtasks?: Subtask[];
+};
+
 export type HomeUpNextItem =
   | { id: string; type: "loading" }
   | { id: string; type: "empty" }
-  | { id: string; type: "task"; task: Task };
+  | { id: string; type: "task"; task: HomeTask };
 
 interface UseHomeTasksResult {
   upNextData: HomeUpNextItem[];
 }
 
 export function useHomeTasks(): UseHomeTasksResult {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<HomeTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -32,10 +37,29 @@ export function useHomeTasks(): UseHomeTasksResult {
           return;
         }
 
-        const fetchedTasks = await getTasksByUser(userId);
+        const fetchedTasks = await getAllActiveTaskUpToToday(userId);
+
+        console.log("Fetched tasks for Home screen:", fetchedTasks);
+        const enrichedTasks = await Promise.all(
+          (Array.isArray(fetchedTasks) ? fetchedTasks : []).map(async (task) => {
+            
+            try {
+              const subtasks = await getSubtasksByTask(task.id);
+              return {
+                ...task,
+                subtasks: Array.isArray(subtasks) ? subtasks : [],
+              };
+            } catch {
+              return {
+                ...task,
+                subtasks: [],
+              };
+            }
+          }),
+        );
 
         if (isMounted) {
-          setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []);
+          setTasks(enrichedTasks);
         }
       } catch (error) {
         console.warn("Failed to load Home tasks:", getSafeErrorMessage(error));
