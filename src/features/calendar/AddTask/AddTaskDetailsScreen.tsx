@@ -2,8 +2,10 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import { googleTasksService } from "@services/googleTasksService";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useNavigation } from "@react-navigation/native";
+import { createTask as createFocusFrameTask } from "@services/focusFrameTaskService";
+import { getStoredUserId } from "@services/focusFrameUserService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
@@ -18,11 +20,19 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/addTaskDetails.styles";
 
-type RepeatFrequency = "daily" | "weekly" | "monthly";
-
-const REPEAT_FREQUENCIES: RepeatFrequency[] = ["daily", "weekly", "monthly"];
+type SubtaskDraft = {
+  name: string;
+  description: string;
+  estimatedTime: string;
+};
 
 const getDefaultDeadlineTime = (): Date => new Date();
+
+const getEmptySubtask = (): SubtaskDraft => ({
+  name: "",
+  description: "",
+  estimatedTime: "",
+});
 
 const formatDate = (value: Date): string => {
   const year = value.getFullYear();
@@ -37,22 +47,24 @@ const formatTime = (value: Date): string => {
   return `${hours}:${minutes}`;
 };
 
-const formatRepeatLabel = (frequency: RepeatFrequency): string =>
-  frequency.charAt(0).toUpperCase() + frequency.slice(1);
+const sanitizeNumberInput = (value: string): string =>
+  value.replace(/[^0-9]/g, "");
 
 export default function AddTaskDetailsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
 
-  const [subject, setSubject] = useState("");
-  const [details, setDetails] = useState("");
+  const [taskName, setTaskName] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [startDate, setStartDate] = useState(new Date());
+  const [setStartTime, setSetStartTime] = useState(false);
+  const [startTime, setStartTime_state] = useState(getDefaultDeadlineTime);
   const [deadlineDate, setDeadlineDate] = useState(new Date());
   const [setTime, setSetTime] = useState(false);
   const [deadlineTime, setDeadlineTime] = useState(getDefaultDeadlineTime);
-  const [repeatEnabled, setRepeatEnabled] = useState(false);
-  const [repeatFrequency, setRepeatFrequency] =
-    useState<RepeatFrequency>("weekly");
-  const [subtasks, setSubtasks] = useState<string[]>([""]);
+  const [subtasks, setSubtasks] = useState<SubtaskDraft[]>([getEmptySubtask()]);
   const [isSaving, setIsSaving] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
@@ -63,24 +75,40 @@ export default function AddTaskDetailsScreen() {
   }, []);
 
   const validSubtasks = useMemo(
-    () => subtasks.map((item) => item.trim()).filter(Boolean),
+    () =>
+      subtasks
+        .map((subtask) => ({
+          name: subtask.name.trim(),
+          description: subtask.description.trim(),
+          estimatedTime: subtask.estimatedTime.trim(),
+        }))
+        .filter((subtask) => subtask.name.length > 0),
     [subtasks],
   );
 
-  const updateSubtask = (index: number, value: string) => {
+  const updateSubtaskField = (
+    index: number,
+    field: keyof SubtaskDraft,
+    value: string,
+  ) => {
+    const normalizedValue =
+      field === "estimatedTime" ? sanitizeNumberInput(value) : value;
+
     setSubtasks((prev) =>
-      prev.map((item, idx) => (idx === index ? value : item)),
+      prev.map((item, idx) =>
+        idx === index ? { ...item, [field]: normalizedValue } : item,
+      ),
     );
   };
 
   const addSubtask = () => {
-    setSubtasks((prev) => [...prev, ""]);
+    setSubtasks((prev) => [...prev, getEmptySubtask()]);
   };
 
   const removeSubtask = (index: number) => {
     setSubtasks((prev) => {
       const next = prev.filter((_, idx) => idx !== index);
-      return next.length ? next : [""];
+      return next.length ? next : [getEmptySubtask()];
     });
   };
 
@@ -95,14 +123,19 @@ export default function AddTaskDetailsScreen() {
       );
     } else {
       const now = new Date();
-      dueDate.setHours(
-        now.getHours(),
-        now.getMinutes(),
-        0,
-        0,
-      );
+      dueDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
     }
     return dueDate.toISOString();
+  };
+
+  const buildStartDateTime = (): Date => {
+    const start = new Date(startDate);
+    if (setStartTime) {
+      start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+    } else {
+      start.setHours(0, 0, 0, 0);
+    }
+    return start;
   };
 
   const handleDateChange = (
@@ -125,10 +158,30 @@ export default function AddTaskDetailsScreen() {
     }
   };
 
+  const handleStartDateChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+  ) => {
+    setShowStartDatePicker(false);
+    if (event.type === "set" && selectedDate) {
+      setStartDate(selectedDate);
+    }
+  };
+
+  const handleStartTimeChange = (
+    event: DateTimePickerEvent,
+    selectedTime?: Date,
+  ) => {
+    setShowStartTimePicker(false);
+    if (event.type === "set" && selectedTime) {
+      setStartTime_state(selectedTime);
+    }
+  };
+
   const handleSaveTask = async () => {
-    const title = subject.trim();
+    const title = taskName.trim();
     if (!title) {
-      Alert.alert("Missing Subject", "Please enter Task Subject.");
+      Alert.alert("Missing Task Name", "Please enter a task name.");
       return;
     }
 
@@ -142,42 +195,59 @@ export default function AddTaskDetailsScreen() {
       return;
     }
 
+    const startDateTime = buildStartDateTime();
+    if (startDateTime >= dueDate) {
+      Alert.alert(
+        "Invalid Start Date",
+        "Start date/time must be before deadline date/time.",
+      );
+      return;
+    }
+
+    const durationInMinutes = Math.max(
+      0,
+      Math.round((dueDate.getTime() - startDateTime.getTime()) / 60000),
+    );
+
     try {
       setIsSaving(true);
 
-      const notesParts = [details.trim()];
-      if (repeatEnabled) {
-        notesParts.push(`Repeat: ${repeatFrequency}`);
-      }
-      const notes = notesParts.filter(Boolean).join("\n\n");
-
-      const createdTask = await googleTasksService.createTask(
-        title,
-        notes || undefined,
-        dueDateIso,
-      );
-
-      for (const subtaskTitle of validSubtasks) {
-        await googleTasksService.createSubtask(
-          createdTask.id,
-          subtaskTitle,
-          undefined,
-          dueDateIso,
+      const userId = await getStoredUserId();
+      if (!userId) {
+        Alert.alert(
+          "User Not Linked",
+          "Please sign in again before creating a task.",
         );
+        return;
       }
 
-      Alert.alert(
-        "Task Created",
-        validSubtasks.length > 0
-          ? "Task and subtasks were added successfully."
-          : "Task was added successfully.",
-        [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ],
-      );
+      const notesParts: string[] = [];
+      const trimmedDescription = taskDescription.trim();
+      if (trimmedDescription) {
+        notesParts.push(trimmedDescription);
+      }
+
+      const description = notesParts.join("\n\n");
+      const signedInUser = await GoogleSignin.getCurrentUser();
+      const userEmail = signedInUser?.user?.email || "";
+
+      await createFocusFrameTask({
+        name: title,
+        description: description || "",
+        deadline: dueDateIso,
+        duration: durationInMinutes,
+        user: {
+          id: userId,
+          email: userEmail,
+        },
+      });
+
+      Alert.alert("Task Created", "Task was added successfully.", [
+        {
+          text: "OK",
+          onPress: () => navigation.goBack(),
+        },
+      ]);
     } catch (error) {
       console.error("Error creating task:", error);
       Alert.alert("Error", "Failed to create task. Please try again.");
@@ -205,34 +275,103 @@ export default function AddTaskDetailsScreen() {
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={styles.contentContainer}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Task Subject *</Text>
+          <Text style={styles.label}>Main Task Name *</Text>
           <TextInput
             style={styles.input}
-            value={subject}
-            onChangeText={setSubject}
-            placeholder="Enter task subject"
+            value={taskName}
+            onChangeText={setTaskName}
+            placeholder="Enter task name"
             placeholderTextColor={colors.secondaryText}
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Task Details</Text>
+          <Text style={styles.label}>Main Task Description</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            value={details}
-            onChangeText={setDetails}
-            placeholder="Enter task details"
+            value={taskDescription}
+            onChangeText={setTaskDescription}
+            placeholder="Enter task description"
             placeholderTextColor={colors.secondaryText}
             multiline
           />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Set Date *</Text>
+          <Text style={styles.label}>Start Date</Text>
+          <TouchableOpacity
+            style={[styles.input, styles.pickerInput]}
+            onPress={() => setShowStartDatePicker(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Select start date"
+          >
+            <Text style={styles.pickerInputText}>{formatDate(startDate)}</Text>
+            <Ionicons name="calendar-outline" size={18} color={colors.text} />
+          </TouchableOpacity>
+
+          {showStartDatePicker ? (
+            <DateTimePicker
+              value={startDate}
+              mode="date"
+              display="default"
+              minimumDate={todayMinDate}
+              onChange={handleStartDateChange}
+            />
+          ) : null}
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Start Time</Text>
+          <View style={styles.row}>
+            <TouchableOpacity
+              style={[styles.input, styles.pickerInput, styles.timeInput]}
+              onPress={() => {
+                setSetStartTime(true);
+                setShowStartTimePicker(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Set start time"
+            >
+              <Text style={styles.pickerInputText}>
+                {setStartTime ? formatTime(startTime) : "Set Time"}
+              </Text>
+              <Ionicons name="time-outline" size={18} color={colors.text} />
+            </TouchableOpacity>
+
+            {setStartTime && (
+              <TouchableOpacity
+                style={styles.removeSubtaskButton}
+                onPress={() => setSetStartTime(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Remove start time"
+              >
+                <Text style={styles.removeSubtaskText}>-</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {setStartTime && showStartTimePicker ? (
+            <DateTimePicker
+              value={startTime}
+              mode="time"
+              is24Hour
+              display="default"
+              onChange={handleStartTimeChange}
+            />
+          ) : null}
+
+          <Text style={styles.helperText}>
+            If time is not set, duration is calculated from 00:00 on the
+            selected start date.
+          </Text>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Deadline Date *</Text>
           <TouchableOpacity
             style={[styles.input, styles.pickerInput]}
             onPress={() => setShowDatePicker(true)}
@@ -257,7 +396,7 @@ export default function AddTaskDetailsScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Set Time</Text>
+          <Text style={styles.label}>Deadline Time</Text>
           <View style={styles.row}>
             <TouchableOpacity
               style={[styles.input, styles.pickerInput, styles.timeInput]}
@@ -279,9 +418,9 @@ export default function AddTaskDetailsScreen() {
                 style={styles.removeSubtaskButton}
                 onPress={() => setSetTime(false)}
                 accessibilityRole="button"
-                accessibilityLabel="Remove time"
+                accessibilityLabel="Remove deadline time"
               >
-                <Text style={styles.removeSubtaskText}>−</Text>
+                <Text style={styles.removeSubtaskText}>-</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -302,64 +441,57 @@ export default function AddTaskDetailsScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Repeat</Text>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              repeatEnabled ? styles.toggleButtonActive : undefined,
-            ]}
-            onPress={() => setRepeatEnabled((prev) => !prev)}
-          >
-            <Text style={styles.toggleText}>
-              {repeatEnabled ? "Yes" : "No"}
-            </Text>
-          </TouchableOpacity>
-
-          {repeatEnabled ? (
-            <View style={styles.repeatOptionsRow}>
-              {REPEAT_FREQUENCIES.map((frequency) => (
-                <TouchableOpacity
-                  key={frequency}
-                  style={[
-                    styles.segmentButton,
-                    repeatFrequency === frequency
-                      ? styles.segmentButtonActive
-                      : undefined,
-                  ]}
-                  onPress={() => setRepeatFrequency(frequency)}
-                >
-                  <Text style={styles.segmentText}>
-                    {formatRepeatLabel(frequency)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : null}
-
-          <Text style={styles.helperText}>
-            Repeat frequency is saved in task notes for now.
-          </Text>
-        </View>
-
-        <View style={styles.formGroup}>
           <Text style={styles.label}>Sub Tasks</Text>
           {subtasks.map((subtask, index) => (
-            <View key={`subtask-${index}`} style={styles.subtaskRow}>
+            <View key={`subtask-${index}`} style={styles.subtaskCard}>
+              <View style={styles.subtaskHeader}>
+                <Text style={styles.subtaskTitle}>Sub Task {index + 1}</Text>
+                <TouchableOpacity
+                  style={styles.removeSubtaskButton}
+                  onPress={() => removeSubtask(index)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove sub task ${index + 1}`}
+                >
+                  <Text style={styles.removeSubtaskText}>-</Text>
+                </TouchableOpacity>
+              </View>
+
               <TextInput
-                style={[styles.input, styles.subtaskInput]}
-                value={subtask}
-                onChangeText={(value) => updateSubtask(index, value)}
-                placeholder={`Sub task ${index + 1}`}
+                style={styles.input}
+                value={subtask.name}
+                onChangeText={(value) =>
+                  updateSubtaskField(index, "name", value)
+                }
+                placeholder="Sub task name"
                 placeholderTextColor={colors.secondaryText}
               />
-              <TouchableOpacity
-                style={styles.removeSubtaskButton}
-                onPress={() => removeSubtask(index)}
-                accessibilityRole="button"
-                accessibilityLabel={`Remove sub task ${index + 1}`}
-              >
-                <Text style={styles.removeSubtaskText}>−</Text>
-              </TouchableOpacity>
+
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  styles.subtaskDescriptionInput,
+                ]}
+                value={subtask.description}
+                onChangeText={(value) =>
+                  updateSubtaskField(index, "description", value)
+                }
+                placeholder="Sub task description (optional)"
+                placeholderTextColor={colors.secondaryText}
+                multiline
+              />
+
+              <TextInput
+                style={[styles.input, styles.subtaskEstimatedTimeInput]}
+                value={subtask.estimatedTime}
+                onChangeText={(value) =>
+                  updateSubtaskField(index, "estimatedTime", value)
+                }
+                placeholder="Estimated time (min)"
+                placeholderTextColor={colors.secondaryText}
+                keyboardType="number-pad"
+                inputMode="numeric"
+              />
             </View>
           ))}
 
