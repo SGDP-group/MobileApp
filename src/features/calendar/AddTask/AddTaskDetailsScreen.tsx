@@ -4,6 +4,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { useNavigation } from "@react-navigation/native";
+import { createSubtask as createFocusFrameSubtask } from "@services/focusFrameSubtaskService";
 import { createTask as createFocusFrameTask } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
@@ -23,7 +24,8 @@ import { styles } from "./styles/addTaskDetails.styles";
 type SubtaskDraft = {
   name: string;
   description: string;
-  estimatedTime: string;
+  startTime: Date | null;
+  endTime: Date | null;
 };
 
 const getDefaultDeadlineTime = (): Date => new Date();
@@ -31,7 +33,8 @@ const getDefaultDeadlineTime = (): Date => new Date();
 const getEmptySubtask = (): SubtaskDraft => ({
   name: "",
   description: "",
-  estimatedTime: "",
+  startTime: null,
+  endTime: null,
 });
 
 const formatDate = (value: Date): string => {
@@ -47,8 +50,8 @@ const formatTime = (value: Date): string => {
   return `${hours}:${minutes}`;
 };
 
-const sanitizeNumberInput = (value: string): string =>
-  value.replace(/[^0-9]/g, "");
+const formatDateTime = (value: Date): string =>
+  `${formatDate(value)} ${formatTime(value)}`;
 
 export default function AddTaskDetailsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
@@ -67,6 +70,17 @@ export default function AddTaskDetailsScreen() {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [collapsedSubtasks, setCollapsedSubtasks] = useState<
+    Record<number, boolean>
+  >({});
+  const [activeSubtaskDateTimePicker, setActiveSubtaskDateTimePicker] =
+    useState<{
+      index: number;
+      field: "startTime" | "endTime";
+      mode: "date" | "time";
+    } | null>(null);
+  const [pendingSubtaskDateTime, setPendingSubtaskDateTime] =
+    useState<Date | null>(null);
 
   const todayMinDate = useMemo(() => {
     const date = new Date();
@@ -80,35 +94,95 @@ export default function AddTaskDetailsScreen() {
         .map((subtask) => ({
           name: subtask.name.trim(),
           description: subtask.description.trim(),
-          estimatedTime: subtask.estimatedTime.trim(),
+          startTime: subtask.startTime,
+          endTime: subtask.endTime,
         }))
         .filter((subtask) => subtask.name.length > 0),
     [subtasks],
   );
 
-  const updateSubtaskField = (
+  const updateSubtaskTextField = (
     index: number,
-    field: keyof SubtaskDraft,
+    field: "name" | "description",
     value: string,
   ) => {
-    const normalizedValue =
-      field === "estimatedTime" ? sanitizeNumberInput(value) : value;
-
     setSubtasks((prev) =>
       prev.map((item, idx) =>
-        idx === index ? { ...item, [field]: normalizedValue } : item,
+        idx === index ? { ...item, [field]: value } : item,
       ),
     );
   };
 
+  const updateSubtaskTimeField = (
+    index: number,
+    field: "startTime" | "endTime",
+    value: Date,
+  ) => {
+    setSubtasks((prev) =>
+      prev.map((item, idx) =>
+        idx === index ? { ...item, [field]: value } : item,
+      ),
+    );
+  };
+
+  const getSubtaskDurationInMinutes = (
+    subtask: SubtaskDraft,
+  ): number | null => {
+    if (!subtask.startTime || !subtask.endTime) {
+      return null;
+    }
+
+    const diff = subtask.endTime.getTime() - subtask.startTime.getTime();
+    if (diff <= 0) {
+      return null;
+    }
+
+    return Math.round(diff / 60000);
+  };
+
   const addSubtask = () => {
+    const newIndex = subtasks.length;
     setSubtasks((prev) => [...prev, getEmptySubtask()]);
+    setCollapsedSubtasks((prev) => ({ ...prev, [newIndex]: false }));
+  };
+
+  const toggleSubtaskCollapse = (index: number) => {
+    setCollapsedSubtasks((prev) => ({
+      ...prev,
+      [index]: !(prev[index] ?? false),
+    }));
   };
 
   const removeSubtask = (index: number) => {
     setSubtasks((prev) => {
       const next = prev.filter((_, idx) => idx !== index);
       return next.length ? next : [getEmptySubtask()];
+    });
+
+    setCollapsedSubtasks((prev) => {
+      const next: Record<number, boolean> = {};
+      Object.entries(prev).forEach(([key, value]) => {
+        const idx = Number(key);
+        if (idx < index) {
+          next[idx] = value;
+        } else if (idx > index) {
+          next[idx - 1] = value;
+        }
+      });
+      return next;
+    });
+
+    setActiveSubtaskDateTimePicker((prev) => {
+      if (!prev) {
+        return null;
+      }
+      if (prev.index === index) {
+        return null;
+      }
+      if (prev.index > index) {
+        return { ...prev, index: prev.index - 1 };
+      }
+      return prev;
     });
   };
 
@@ -178,6 +252,43 @@ export default function AddTaskDetailsScreen() {
     }
   };
 
+  const handleSubtaskDateTimeChange = (
+    event: DateTimePickerEvent,
+    selectedValue?: Date,
+  ) => {
+    const pickerContext = activeSubtaskDateTimePicker;
+
+    if (!pickerContext || event.type !== "set" || !selectedValue) {
+      setActiveSubtaskDateTimePicker(null);
+      setPendingSubtaskDateTime(null);
+      return;
+    }
+
+    if (pickerContext.mode === "date") {
+      const currentValue =
+        pendingSubtaskDateTime ??
+        subtasks[pickerContext.index]?.[pickerContext.field] ??
+        new Date();
+      const next = new Date(selectedValue);
+      next.setHours(currentValue.getHours(), currentValue.getMinutes(), 0, 0);
+
+      setPendingSubtaskDateTime(next);
+      setActiveSubtaskDateTimePicker({ ...pickerContext, mode: "time" });
+      return;
+    }
+
+    const dateValue =
+      pendingSubtaskDateTime ??
+      subtasks[pickerContext.index]?.[pickerContext.field] ??
+      new Date();
+    const next = new Date(dateValue);
+    next.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
+
+    updateSubtaskTimeField(pickerContext.index, pickerContext.field, next);
+    setActiveSubtaskDateTimePicker(null);
+    setPendingSubtaskDateTime(null);
+  };
+
   const handleSaveTask = async () => {
     const title = taskName.trim();
     if (!title) {
@@ -209,6 +320,27 @@ export default function AddTaskDetailsScreen() {
       Math.round((dueDate.getTime() - startDateTime.getTime()) / 60000),
     );
 
+    const subTasksPayload = validSubtasks.map((subtask, index) => {
+      const subtaskStart = subtask.startTime ?? startDateTime;
+      const subtaskEndCandidate = subtask.endTime ?? dueDate;
+      const subtaskEnd =
+        subtaskEndCandidate.getTime() >= subtaskStart.getTime()
+          ? subtaskEndCandidate
+          : subtaskStart;
+
+      return {
+        name: subtask.name,
+        description: subtask.description || "",
+        taskOrder: index + 1,
+        startTime: subtaskStart.toISOString(),
+        endTime: subtaskEnd.toISOString(),
+        duration: Math.max(
+          0,
+          Math.round((subtaskEnd.getTime() - subtaskStart.getTime()) / 60000),
+        ),
+      };
+    });
+
     try {
       setIsSaving(true);
 
@@ -231,16 +363,50 @@ export default function AddTaskDetailsScreen() {
       const signedInUser = await GoogleSignin.getCurrentUser();
       const userEmail = signedInUser?.user?.email || "";
 
-      await createFocusFrameTask({
+      const createdTask = await createFocusFrameTask({
         name: title,
         description: description || "",
         deadline: dueDateIso,
-        duration: durationInMinutes,
         user: {
           id: userId,
           email: userEmail,
         },
       });
+
+      if (!createdTask?.id) {
+        throw new Error("Task created without task id.");
+      }
+
+      if (subTasksPayload.length > 0) {
+        try {
+          await Promise.all(
+            subTasksPayload.map((subtask) =>
+              createFocusFrameSubtask({
+                taskId: createdTask.id,
+                name: subtask.name,
+                description: subtask.description,
+                taskOrder: subtask.taskOrder,
+                startTime: subtask.startTime,
+                endTime: subtask.endTime,
+                duration: subtask.duration,
+              }),
+            ),
+          );
+        } catch (subtaskError) {
+          console.error("Error creating subtasks:", subtaskError);
+          Alert.alert(
+            "Task Created with Warnings",
+            "Main task was created, but one or more subtasks failed to save.",
+            [
+              {
+                text: "OK",
+                onPress: () => navigation.goBack(),
+              },
+            ],
+          );
+          return;
+        }
+      }
 
       Alert.alert("Task Created", "Task was added successfully.", [
         {
@@ -444,56 +610,161 @@ export default function AddTaskDetailsScreen() {
           <Text style={styles.label}>Sub Tasks</Text>
           {subtasks.map((subtask, index) => (
             <View key={`subtask-${index}`} style={styles.subtaskCard}>
-              <View style={styles.subtaskHeader}>
-                <Text style={styles.subtaskTitle}>Sub Task {index + 1}</Text>
-                <TouchableOpacity
-                  style={styles.removeSubtaskButton}
-                  onPress={() => removeSubtask(index)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove sub task ${index + 1}`}
-                >
-                  <Text style={styles.removeSubtaskText}>-</Text>
-                </TouchableOpacity>
-              </View>
+              {(() => {
+                const isCollapsed = collapsedSubtasks[index] ?? false;
+                return (
+                  <>
+                    <View style={styles.subtaskHeader}>
+                      <Text style={styles.subtaskTitle}>
+                        Sub Task {index + 1}
+                      </Text>
+                      <View
+                        style={{ flexDirection: "row", alignItems: "center" }}
+                      >
+                        <TouchableOpacity
+                          style={{ marginRight: 10, padding: 2 }}
+                          onPress={() => toggleSubtaskCollapse(index)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${
+                            isCollapsed ? "Expand" : "Collapse"
+                          } sub task ${index + 1}`}
+                        >
+                          <Ionicons
+                            name={isCollapsed ? "chevron-down" : "chevron-up"}
+                            size={18}
+                            color={colors.text}
+                          />
+                        </TouchableOpacity>
 
-              <TextInput
-                style={styles.input}
-                value={subtask.name}
-                onChangeText={(value) =>
-                  updateSubtaskField(index, "name", value)
-                }
-                placeholder="Sub task name"
-                placeholderTextColor={colors.secondaryText}
-              />
+                        <TouchableOpacity
+                          style={styles.removeSubtaskButton}
+                          onPress={() => removeSubtask(index)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove sub task ${index + 1}`}
+                        >
+                          <Text style={styles.removeSubtaskText}>-</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
 
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.textArea,
-                  styles.subtaskDescriptionInput,
-                ]}
-                value={subtask.description}
-                onChangeText={(value) =>
-                  updateSubtaskField(index, "description", value)
-                }
-                placeholder="Sub task description (optional)"
-                placeholderTextColor={colors.secondaryText}
-                multiline
-              />
+                    {!isCollapsed ? (
+                      <>
+                        <TextInput
+                          style={styles.input}
+                          value={subtask.name}
+                          onChangeText={(value) =>
+                            updateSubtaskTextField(index, "name", value)
+                          }
+                          placeholder="Sub task name"
+                          placeholderTextColor={colors.secondaryText}
+                        />
 
-              <TextInput
-                style={[styles.input, styles.subtaskEstimatedTimeInput]}
-                value={subtask.estimatedTime}
-                onChangeText={(value) =>
-                  updateSubtaskField(index, "estimatedTime", value)
-                }
-                placeholder="Estimated time (min)"
-                placeholderTextColor={colors.secondaryText}
-                keyboardType="number-pad"
-                inputMode="numeric"
-              />
+                        <TextInput
+                          style={[
+                            styles.input,
+                            styles.textArea,
+                            styles.subtaskDescriptionInput,
+                          ]}
+                          value={subtask.description}
+                          onChangeText={(value) =>
+                            updateSubtaskTextField(index, "description", value)
+                          }
+                          placeholder="Sub task description (optional)"
+                          placeholderTextColor={colors.secondaryText}
+                          multiline
+                        />
+
+                        <View style={styles.row}>
+                          <TouchableOpacity
+                            style={[
+                              styles.input,
+                              styles.pickerInput,
+                              styles.timeInput,
+                            ]}
+                            onPress={() => {
+                              setPendingSubtaskDateTime(
+                                subtask.startTime ?? new Date(),
+                              );
+                              setActiveSubtaskDateTimePicker({
+                                index,
+                                field: "startTime",
+                                mode: "date",
+                              });
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Set start date and time for sub task ${index + 1}`}
+                          >
+                            <Text style={styles.pickerInputText}>
+                              {subtask.startTime
+                                ? formatDateTime(subtask.startTime)
+                                : "Start Date & Time"}
+                            </Text>
+                            <Ionicons
+                              name="time-outline"
+                              size={18}
+                              color={colors.text}
+                            />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[
+                              styles.input,
+                              styles.pickerInput,
+                              styles.timeInput,
+                            ]}
+                            onPress={() => {
+                              setPendingSubtaskDateTime(
+                                subtask.endTime ?? new Date(),
+                              );
+                              setActiveSubtaskDateTimePicker({
+                                index,
+                                field: "endTime",
+                                mode: "date",
+                              });
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Set end date and time for sub task ${index + 1}`}
+                          >
+                            <Text style={styles.pickerInputText}>
+                              {subtask.endTime
+                                ? formatDateTime(subtask.endTime)
+                                : "End Date & Time"}
+                            </Text>
+                            <Ionicons
+                              name="time-outline"
+                              size={18}
+                              color={colors.text}
+                            />
+                          </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.helperText}>
+                          Duration:{" "}
+                          {getSubtaskDurationInMinutes(subtask) ?? "--"} min
+                        </Text>
+                      </>
+                    ) : null}
+                  </>
+                );
+              })()}
             </View>
           ))}
+
+          {activeSubtaskDateTimePicker ? (
+            <DateTimePicker
+              value={
+                pendingSubtaskDateTime ??
+                subtasks[activeSubtaskDateTimePicker.index]?.[
+                  activeSubtaskDateTimePicker.field
+                ] ??
+                new Date()
+              }
+              mode={activeSubtaskDateTimePicker.mode}
+              is24Hour
+              display="default"
+              onChange={handleSubtaskDateTimeChange}
+            />
+          ) : null}
 
           <TouchableOpacity
             style={styles.addSubtaskButton}

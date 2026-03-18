@@ -3,6 +3,11 @@ export interface User {
   email: string;
 }
 
+export interface SubtaskStatus {
+  id: number;
+  name: string;
+}
+
 export interface Task {
   id: number;
   name: string;
@@ -34,14 +39,8 @@ export interface Subtask {
   isTracked: boolean;
   isAiBreakdown: boolean;
   status?: SubtaskStatus;
-  statusId?: number;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface SubtaskStatus {
-  id: number;
-  name: string;
 }
 
 export type CreateTaskPayload = Pick<Task, "name"> &
