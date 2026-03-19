@@ -36,6 +36,7 @@ export function useHomeTasks(): UseHomeTasksResult {
           }
           return;
         }
+
         const fetchedTasks = await getIncompleteTasksUpToToday(userId);
 
          // Prepare tasks array and limit to the top 6 by updatedAt before fetching subtasks
