@@ -1,5 +1,4 @@
 import type { Subtask, Task } from "@/src/types/api";
-import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
 import { getIncompleteTasksUpToToday } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
@@ -14,7 +13,7 @@ export type HomeUpNextItem =
   | { id: string; type: "empty" }
   | { id: string; type: "task"; task: HomeTask };
 
-const MAX_HOME_TASKS = 6;
+const MAX_HOME_TASKS = 3;
 
 const sortByUpdatedAtDesc = (a: { updatedAt: string }, b: { updatedAt: string }) => {
   const aUpdatedAt = new Date(a.updatedAt).getTime();
@@ -53,29 +52,8 @@ export function useHomeTasks(): UseHomeTasksResult {
         .sort(sortByUpdatedAtDesc)
         .slice(0, MAX_HOME_TASKS);
 
-      const enrichedTasks = await Promise.all(
-        sortedTopTasks.map(async (task) => {
-          try {
-            const subtasks = await getSubtasksByTask(task.id);
-            return {
-              ...task,
-              subtasks: Array.isArray(subtasks) ? subtasks : [],
-            };
-          } catch (error) {
-            console.warn(
-              `Failed to load subtasks for task ${task.id}:`,
-              getSafeErrorMessage(error),
-            );
-            return {
-              ...task,
-              subtasks: [],
-            };
-          }
-        }),
-      );
-
       if (isMountedRef.current) {
-        setTasks(enrichedTasks);
+        setTasks(sortedTopTasks);
       }
     } catch (error) {
       console.warn("Failed to load Home tasks:", getSafeErrorMessage(error));

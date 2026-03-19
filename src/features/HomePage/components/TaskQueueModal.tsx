@@ -1,4 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
+import { getSafeErrorMessage } from "@utils/securityUtils";
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import type { HomeTask } from "../home.tasks";
@@ -20,26 +22,72 @@ interface TaskQueueModalProps {
 
 export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) {
   const [expandedSubtaskIds, setExpandedSubtaskIds] = useState<number[]>([]);
+  const [subtasks, setSubtasks] = useState<NonNullable<HomeTask["subtasks"]>>([]);
+  const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
 
   useEffect(() => {
-    if (!visible || !task?.subtasks?.length) {
+    let isActive = true;
+
+    if (!visible || !task?.id) {
+      setSubtasks([]);
+      setIsLoadingSubtasks(false);
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setIsLoadingSubtasks(true);
+    setSubtasks([]);
+
+    void (async () => {
+      try {
+        const fetchedSubtasks = await getSubtasksByTask(task.id);
+        if (!isActive) {
+          return;
+        }
+
+        setSubtasks(Array.isArray(fetchedSubtasks) ? fetchedSubtasks : []);
+      } catch (error) {
+        console.warn(
+          `Failed to load subtasks for task ${task.id}:`,
+          getSafeErrorMessage(error),
+        );
+
+        if (isActive) {
+          setSubtasks([]);
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingSubtasks(false);
+        }
+      }
+    })();
+
+    return () => {
+      isActive = false;
+    };
+  }, [task?.id, visible]);
+
+  useEffect(() => {
+    if (!visible || subtasks.length === 0) {
+      setExpandedSubtaskIds([]);
       return;
     }
 
-    setExpandedSubtaskIds(task.subtasks.map((subtask) => subtask.id));
-  }, [task, visible]);
+    setExpandedSubtaskIds(subtasks.map((subtask) => subtask.id));
+  }, [subtasks, visible]);
 
   const sortedSubtasks = useMemo(() => {
-    if (!task?.subtasks) {
+    if (subtasks.length === 0) {
       return [];
     }
 
-    return [...task.subtasks].sort((a, b) => {
+    return [...subtasks].sort((a, b) => {
       const aOrder = typeof a.taskOrder === "number" ? a.taskOrder : Number.MAX_SAFE_INTEGER;
       const bOrder = typeof b.taskOrder === "number" ? b.taskOrder : Number.MAX_SAFE_INTEGER;
       return aOrder - bOrder;
     });
-  }, [task]);
+  }, [subtasks]);
 
   const derivedMainDescription = useMemo(() => {
     const firstDescription = sortedSubtasks.find(
@@ -50,8 +98,12 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
       return firstDescription.description;
     }
 
+    if (typeof task?.description === "string" && task.description.trim().length > 0) {
+      return task.description;
+    }
+
     return "No description available";
-  }, [sortedSubtasks]);
+  }, [sortedSubtasks, task?.description]);
 
   const derivedMainDuration = useMemo(() => {
     const totalDuration = sortedSubtasks.reduce((total, subtask) => {
@@ -186,7 +238,9 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
               <View style={styles.taskQueueSubtasksSection}>
                 <Text style={styles.taskQueueSectionTitle}>Subtasks</Text>
 
-                {sortedSubtasks.length === 0 ? (
+                {isLoadingSubtasks ? (
+                  <Text style={styles.taskQueueNoSubtasksText}>Loading subtasks...</Text>
+                ) : sortedSubtasks.length === 0 ? (
                   <Text style={styles.taskQueueNoSubtasksText}>No subtasks available.</Text>
                 ) : (
                   sortedSubtasks.map((subtask) => {

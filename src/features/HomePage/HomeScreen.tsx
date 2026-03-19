@@ -28,7 +28,7 @@ const QUICK_ACTIONS = [
   { id: "settings", label: "Settings", icon: "settings" as const },
 ] as const;
 
-export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
+export default function HomeScreen({ userInfo }: HomeScreenProps) {
   const navigation = useNavigation<RootNavigationProp>();
   const userName = userInfo?.user?.name ?? "User";
   const [currentDate, setCurrentDate] = useState(new Date());

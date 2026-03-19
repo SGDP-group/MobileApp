@@ -112,7 +112,7 @@ export function RootNavigator() {
       await tokenManager.clearAllTokens();
       await clearStoredUser();
       await GoogleSignin.revokeAccess();
-      await GoogleSignin.signOut();
+      // await GoogleSignin.signOut();
       setUserInfo(null);
       setIsLoggedIn(false);
     } catch (error) {
