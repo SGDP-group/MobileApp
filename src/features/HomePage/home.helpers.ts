@@ -1,8 +1,5 @@
 import type { Subtask, Task } from "@/src/types/api";
-
-type TaskWithSubtasks = Task & {
-  subtasks?: Subtask[];
-};
+import type { HomeTask as TaskWithSubtasks } from "@/src/features/HomePage/home.tasks";
 
 const DAYS = [
   "Sunday",
@@ -115,7 +112,11 @@ export const formatTaskLead = (task: TaskWithSubtasks): string => {
     return "NO START TIME";
   }
 
-  const diffMinutes = Math.floor((startDate.getTime() - Date.now()) / (60 * 1000));
+  const diffMs = startDate.getTime() - Date.now();
+  const diffMinutes =
+    diffMs > 0
+      ? Math.ceil(diffMs / (60 * 1000))
+      : Math.floor(diffMs / (60 * 1000));
   const absMinutes = Math.abs(diffMinutes);
   const hours = Math.floor(absMinutes / 60);
   const minutes = absMinutes % 60;
