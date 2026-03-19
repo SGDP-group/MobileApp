@@ -1,11 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-    Modal,
-    ScrollView,
-    Text,
-    TouchableOpacity,
-    View,
+  Modal,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import type { HomeTask } from "../home.tasks";
 import { styles } from "../styles/taskQueueModal.styles";
@@ -99,16 +99,23 @@ const getSubtaskDuration = (duration?: number, estimatedTime?: number): number =
   return 0;
 };
 
-const getStatusLabel = (statusId?: number, completed?: boolean): string => {
+const getStatusLabel = (
+  status?: { id?: number; name?: string },
+  completed?: boolean,
+): string => {
   if (completed) {
     return "Completed";
   }
 
-  if (statusId === 2) {
+  if (status?.name?.trim()) {
+    return status.name;
+  }
+
+  if (status?.id === 2) {
     return "In Progress";
   }
 
-  if (statusId === 3) {
+  if (status?.id === 3) {
     return "Completed";
   }
 
@@ -329,7 +336,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
                             <View style={styles.taskQueueFieldRow}>
                               <Text style={styles.taskQueueFieldLabel}>Status</Text>
                               <Text style={styles.taskQueueFieldValue}>
-                                {getStatusLabel(subtask.statusId, subtask.completed)}
+                                {getStatusLabel(subtask.status, subtask.completed)}
                               </Text>
                             </View>
 
