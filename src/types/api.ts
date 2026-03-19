@@ -33,7 +33,6 @@ export interface Subtask {
   duration?: number;
   estimatedTime?: number;
   completed: boolean;
-  productive?: number;
   isTracked: boolean;
   isAiBreakdown: boolean;
   status?: SubtaskStatus;
