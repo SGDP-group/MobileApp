@@ -1,20 +1,25 @@
-import type { Task } from "@/src/types/api";
-import { getTasksByUser } from "@services/focusFrameTaskService";
+import type { Subtask, Task } from "@/src/types/api";
+import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
+import { getAllActiveTasksUpToToday } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import { useEffect, useMemo, useState } from "react";
 
+export type HomeTask = Task & {
+  subtasks?: Subtask[];
+};
+
 export type HomeUpNextItem =
   | { id: string; type: "loading" }
   | { id: string; type: "empty" }
-  | { id: string; type: "task"; task: Task };
+  | { id: string; type: "task"; task: HomeTask };
 
 interface UseHomeTasksResult {
   upNextData: HomeUpNextItem[];
 }
 
 export function useHomeTasks(): UseHomeTasksResult {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<HomeTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -32,10 +37,41 @@ export function useHomeTasks(): UseHomeTasksResult {
           return;
         }
 
-        const fetchedTasks = await getTasksByUser(userId);
+        const fetchedTasks = await getAllActiveTasksUpToToday(userId);
+
+         // Prepare tasks array and limit to the top 6 by updatedAt before fetching subtasks
+         const tasksArray = Array.isArray(fetchedTasks) ? fetchedTasks : [];
+         const sortedTopTasks = [...tasksArray]
+           .sort((a, b) => {
+             const aUpdatedAt = new Date(a.updatedAt).getTime();
+             const bUpdatedAt = new Date(b.updatedAt).getTime();
+             return bUpdatedAt - aUpdatedAt;
+           })
+           .slice(0, 6);
+
+        const enrichedTasks = await Promise.all(
+           sortedTopTasks.map(async (task) => {            
+            try {
+              const subtasks = await getSubtasksByTask(task.id);
+              return {
+                ...task,
+                subtasks: Array.isArray(subtasks) ? subtasks : [],
+              };
+            } catch (error) {
+              console.warn(
+                `Failed to load subtasks for task ${task.id}:`,
+                getSafeErrorMessage(error),
+              );
+              return {
+                ...task,
+                subtasks: [],
+              };
+            }
+          }),
+        );
 
         if (isMounted) {
-          setTasks(Array.isArray(fetchedTasks) ? fetchedTasks : []);
+          setTasks(enrichedTasks);
         }
       } catch (error) {
         console.warn("Failed to load Home tasks:", getSafeErrorMessage(error));

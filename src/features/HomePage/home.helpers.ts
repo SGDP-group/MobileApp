@@ -1,4 +1,5 @@
-import type { Task } from "@/src/types/api";
+import type { Subtask, Task } from "@/src/types/api";
+import type { HomeTask as TaskWithSubtasks } from "@/src/features/HomePage/home.tasks";
 
 const DAYS = [
   "Sunday",
@@ -33,6 +34,41 @@ const toSafeDate = (value: string): Date | null => {
   return parsed;
 };
 
+const toSubtaskStartDate = (value: string): Date | null => {
+  const asDate = toSafeDate(value.trim());
+  if (asDate) {
+    return asDate;
+  }
+
+  // Supports time-only strings like "14:30", "14:30:00", or "14:30:00.123456".
+  const timeMatch = value
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?$/);
+
+  if (!timeMatch) {
+    return null;
+  }
+
+  const hours = Number(timeMatch[1]);
+  const minutes = Number(timeMatch[2]);
+  const seconds = Number(timeMatch[3] ?? "0");
+
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    Number.isNaN(seconds) ||
+    hours > 23 ||
+    minutes > 59 ||
+    seconds > 59
+  ) {
+    return null;
+  }
+
+  const date = new Date();
+  date.setHours(hours, minutes, seconds, 0);
+  return date;
+};
+
 export const getGreeting = (value: Date): string => {
   const hour = value.getHours();
   if (hour < 5) return "Good Evening";
@@ -49,16 +85,49 @@ export const getFormattedDate = (value: Date): string => {
   return `${dayName}, ${monthName} ${day}`;
 };
 
-export const formatTaskLead = (task: Task): string => {
-  const createdAt = toSafeDate(task.createdAt);
-  if (!createdAt) return "TASK";
+export const formatTaskLead = (task: TaskWithSubtasks): string => {
+  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
 
-  const diffMs = Date.now() - createdAt.getTime();
-  const diffHours = Math.floor(diffMs / (60 * 60 * 1000));
+   const firstSubtaskWithStart = subtasks.reduce<
+     (typeof subtasks)[number] | undefined
+   >((best, current) => {
+     if (!current.startTime) {
+       return best;
+     }
+     const currentOrder = current.taskOrder ?? Number.MAX_SAFE_INTEGER;
+     if (!best) {
+       return current;
+     }
+     const bestOrder = best.taskOrder ?? Number.MAX_SAFE_INTEGER;
+     return currentOrder < bestOrder ? current : best;
+   }, undefined);
 
-  if (diffHours < 1) return "JUST ADDED";
-  if (diffHours < 24) return `ADDED ${diffHours}H AGO`;
-  return "RECENT TASK";
+
+  if (!firstSubtaskWithStart?.startTime) {
+    return "NO START TIME";
+  }
+
+  const startDate = toSubtaskStartDate(firstSubtaskWithStart.startTime);
+  if (!startDate) {
+    return "NO START TIME";
+  }
+
+  const diffMs = startDate.getTime() - Date.now();
+  const diffMinutes =
+    diffMs > 0
+      ? Math.ceil(diffMs / (60 * 1000))
+      : Math.floor(diffMs / (60 * 1000));
+  const absMinutes = Math.abs(diffMinutes);
+  const hours = Math.floor(absMinutes / 60);
+  const minutes = absMinutes % 60;
+
+  const durationLabel = `${hours}H ${minutes}M`;
+
+  if (diffMinutes >= 0) {
+    return `STARTS IN ${durationLabel}`;
+  }
+
+  return `STARTED ${durationLabel} AGO`;
 };
 
 export const formatTaskTimestamp = (value: string): string => {
