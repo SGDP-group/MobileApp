@@ -4,8 +4,8 @@ import { apiClient } from './apiClient';
 export async function getTasksByUser(userId: number): Promise<Task[]> {
   return apiClient.get<Task[]>(`/tasks/user/${userId}`);
 }
-export async function getAllActiveTasksUpToToday(userId: number): Promise<Task[]> {
-  return apiClient.get<Task[]>(`/tasks/user/${userId}/incomplete-today-or-before`);
+export async function getIncompleteTasksBeforeToday(userId: number): Promise<Task[]> {
+  return apiClient.get<Task[]>(`/tasks/user/${userId}/incomplete-before-today`);
 }
 
 export async function getTaskById(id: number): Promise<Task> {
