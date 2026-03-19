@@ -57,7 +57,11 @@ export function useHomeTasks(): UseHomeTasksResult {
                 ...task,
                 subtasks: Array.isArray(subtasks) ? subtasks : [],
               };
-            } catch {
+            } catch (error) {
+              console.warn(
+                `Failed to load subtasks for task ${task.id}:`,
+                getSafeErrorMessage(error),
+              );
               return {
                 ...task,
                 subtasks: [],

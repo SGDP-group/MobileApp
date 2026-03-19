@@ -45,6 +45,12 @@
       ],
       "expo-web-browser",
       "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow FocusFrame to access your camera to scan QR codes."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

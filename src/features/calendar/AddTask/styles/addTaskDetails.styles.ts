@@ -35,6 +35,9 @@ export const styles = StyleSheet.create({
     flex: 1,
     marginTop: 16,
   },
+  contentContainer: {
+    paddingBottom: 24,
+  },
   formGroup: {
     marginBottom: 14,
   },
@@ -73,64 +76,34 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  dateInput: {
-    flex: 1,
-  },
   timeInput: {
     flex: 1,
   },
-  toggleButton: {
+  subtaskCard: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    padding: 10,
+    marginBottom: 10,
     backgroundColor: colors.cardBackground,
   },
-  toggleButtonActive: {
-    borderColor: colors.dot,
-    backgroundColor: colors.dot,
+  subtaskHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
-  toggleText: {
+  subtaskTitle: {
     color: colors.text,
     fontSize: 14,
     fontWeight: "600",
   },
-  segmentRow: {
-    flexDirection: "row",
-    gap: 8,
+  subtaskDescriptionInput: {
+    minHeight: 74,
+    marginTop: 8,
   },
-  repeatOptionsRow: {
-    marginTop: 10,
-    flexDirection: "row",
-    gap: 8,
-  },
-  segmentButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: "center",
-    backgroundColor: colors.cardBackground,
-  },
-  segmentButtonActive: {
-    borderColor: colors.dot,
-    backgroundColor: colors.dot,
-  },
-  segmentText: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  subtaskRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  subtaskInput: {
-    flex: 1,
+  subtaskEstimatedTimeInput: {
+    marginTop: 8,
   },
   removeSubtaskButton: {
     width: 34,
