@@ -101,6 +101,39 @@ export default function AddTaskDetailsScreen() {
     [subtasks],
   );
 
+  const taskDurationInMinutes = useMemo(() => {
+    const dueDateIso = (() => {
+      const dueDate = new Date(deadlineDate);
+      if (setTime) {
+        dueDate.setHours(
+          deadlineTime.getHours(),
+          deadlineTime.getMinutes(),
+          0,
+          0,
+        );
+      } else {
+        const now = new Date();
+        dueDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
+      }
+      return dueDate;
+    })();
+
+    const startDateTime = (() => {
+      const start = new Date(startDate);
+      if (setStartTime) {
+        start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+      } else {
+        start.setHours(0, 0, 0, 0);
+      }
+      return start;
+    })();
+
+    return Math.max(
+      0,
+      Math.round((dueDateIso.getTime() - startDateTime.getTime()) / 60000),
+    );
+  }, [deadlineDate, setTime, deadlineTime, startDate, setStartTime, startTime]);
+
   const updateSubtaskTextField = (
     index: number,
     field: "name" | "description",
@@ -315,32 +348,6 @@ export default function AddTaskDetailsScreen() {
       return;
     }
 
-    const durationInMinutes = Math.max(
-      0,
-      Math.round((dueDate.getTime() - startDateTime.getTime()) / 60000),
-    );
-
-    const subTasksPayload = validSubtasks.map((subtask, index) => {
-      const subtaskStart = subtask.startTime ?? startDateTime;
-      const subtaskEndCandidate = subtask.endTime ?? dueDate;
-      const subtaskEnd =
-        subtaskEndCandidate.getTime() >= subtaskStart.getTime()
-          ? subtaskEndCandidate
-          : subtaskStart;
-
-      return {
-        name: subtask.name,
-        description: subtask.description || "",
-        taskOrder: index + 1,
-        startTime: subtaskStart.toISOString(),
-        endTime: subtaskEnd.toISOString(),
-        duration: Math.max(
-          0,
-          Math.round((subtaskEnd.getTime() - subtaskStart.getTime()) / 60000),
-        ),
-      };
-    });
-
     try {
       setIsSaving(true);
 
@@ -367,6 +374,7 @@ export default function AddTaskDetailsScreen() {
         name: title,
         description: description || "",
         deadline: dueDateIso,
+        duration: taskDurationInMinutes,
         user: {
           id: userId,
           email: userEmail,
@@ -377,19 +385,41 @@ export default function AddTaskDetailsScreen() {
         throw new Error("Task created without task id.");
       }
 
+      const subTasksPayload = validSubtasks.map((subtask, index) => {
+        const subtaskStart = subtask.startTime ?? startDateTime;
+        const subtaskEndCandidate = subtask.endTime ?? dueDate;
+        const subtaskEnd =
+          subtaskEndCandidate.getTime() >= subtaskStart.getTime()
+            ? subtaskEndCandidate
+            : subtaskStart;
+
+        return {
+          name: subtask.name,
+          description: subtask.description || "",
+          task: {
+            id: createdTask.id,
+          },
+          status: {
+            id: 1,
+          },
+          taskOrder: index + 1,
+          startTime: subtaskStart.toISOString(),
+          endTime: subtaskEnd.toISOString(),
+          duration: Math.max(
+            0,
+            Math.round((subtaskEnd.getTime() - subtaskStart.getTime()) / 60000),
+          ),
+          completed: false,
+          isTracked: false,
+          isAiBreakdown: false,
+        };
+      });
+
       if (subTasksPayload.length > 0) {
         try {
           await Promise.all(
             subTasksPayload.map((subtask) =>
-              createFocusFrameSubtask({
-                taskId: createdTask.id,
-                name: subtask.name,
-                description: subtask.description,
-                taskOrder: subtask.taskOrder,
-                startTime: subtask.startTime,
-                endTime: subtask.endTime,
-                duration: subtask.duration,
-              }),
+              createFocusFrameSubtask(subtask as any),
             ),
           );
         } catch (subtaskError) {
@@ -603,6 +633,15 @@ export default function AddTaskDetailsScreen() {
 
           <Text style={styles.helperText}>
             If time is not set, task is created for the selected day.
+          </Text>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Task Duration</Text>
+          <Text style={styles.pickerInputText}>
+            {taskDurationInMinutes > 0
+              ? `${taskDurationInMinutes} minutes`
+              : "--"}
           </Text>
         </View>
 

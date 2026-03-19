@@ -72,7 +72,7 @@ export type UpdateTaskPayload = Partial<
 >;
 
 export type CreateSubtaskPayload = Pick<Subtask, "name"> & {
-  taskId: number;
+  task: { id: number };
 } & Partial<
     Omit<Subtask, "id" | "name" | "taskId" | "createdAt" | "updatedAt">
   >;
