@@ -348,6 +348,19 @@ export default function AddTaskDetailsScreen() {
       return;
     }
 
+    for (let i = 0; i < validSubtasks.length; i++) {
+      const subtask = validSubtasks[i];
+      if (subtask.startTime && subtask.endTime) {
+        if (subtask.startTime >= subtask.endTime) {
+          Alert.alert(
+            "Invalid Subtask Dates",
+            `Sub Task ${i + 1}: Start date/time must be before end date/time.`,
+          );
+          return;
+        }
+      }
+    }
+
     try {
       setIsSaving(true);
 
@@ -801,6 +814,11 @@ export default function AddTaskDetailsScreen() {
               mode={activeSubtaskDateTimePicker.mode}
               is24Hour
               display="default"
+              minimumDate={
+                activeSubtaskDateTimePicker.mode === "date"
+                  ? todayMinDate
+                  : undefined
+              }
               onChange={handleSubtaskDateTimeChange}
             />
           ) : null}
