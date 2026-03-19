@@ -253,12 +253,6 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
 
       <BottomNav activeRoute="Home" />
       
-      {onLogout && (
-        <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
-      )}
-
       <TaskQueueModal
         visible={taskQueueModalVisible}
         task={selectedTask}
