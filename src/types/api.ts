@@ -27,8 +27,6 @@ export interface Subtask {
   id: number;
   name: string;
   description?: string;
-  task?: string;
-  taskId?: number;
   taskOrder: number;
   startTime?: string;
   endTime?: string;
