@@ -59,10 +59,10 @@ export default function AddTaskDetailsScreen() {
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [startDate, setStartDate] = useState(new Date());
-  const [setStartTime, setSetStartTime] = useState(false);
-  const [startTime, setStartTime_state] = useState(getDefaultDeadlineTime);
+  const [isStartTimeSet, setIsStartTimeSet] = useState(false);
+  const [startTime, setStartTime] = useState(getDefaultDeadlineTime);
   const [deadlineDate, setDeadlineDate] = useState(new Date());
-  const [setTime, setSetTime] = useState(false);
+  const [isDeadlineTimeSet, setIsDeadlineTimeSet] = useState(false);
   const [deadlineTime, setDeadlineTime] = useState(getDefaultDeadlineTime);
   const [subtasks, setSubtasks] = useState<SubtaskDraft[]>([getEmptySubtask()]);
   const [isSaving, setIsSaving] = useState(false);
@@ -104,7 +104,7 @@ export default function AddTaskDetailsScreen() {
   const taskDurationInMinutes = useMemo(() => {
     const dueDateIso = (() => {
       const dueDate = new Date(deadlineDate);
-      if (setTime) {
+      if (isDeadlineTimeSet) {
         dueDate.setHours(
           deadlineTime.getHours(),
           deadlineTime.getMinutes(),
@@ -120,7 +120,7 @@ export default function AddTaskDetailsScreen() {
 
     const startDateTime = (() => {
       const start = new Date(startDate);
-      if (setStartTime) {
+      if (isStartTimeSet) {
         start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
       } else {
         start.setHours(0, 0, 0, 0);
@@ -132,7 +132,14 @@ export default function AddTaskDetailsScreen() {
       0,
       Math.round((dueDateIso.getTime() - startDateTime.getTime()) / 60000),
     );
-  }, [deadlineDate, setTime, deadlineTime, startDate, setStartTime, startTime]);
+  }, [
+    deadlineDate,
+    isDeadlineTimeSet,
+    deadlineTime,
+    startDate,
+    isStartTimeSet,
+    startTime,
+  ]);
 
   const updateSubtaskTextField = (
     index: number,
@@ -221,7 +228,7 @@ export default function AddTaskDetailsScreen() {
 
   const buildDueDateIso = (): string => {
     const dueDate = new Date(deadlineDate);
-    if (setTime) {
+    if (isDeadlineTimeSet) {
       dueDate.setHours(
         deadlineTime.getHours(),
         deadlineTime.getMinutes(),
@@ -237,7 +244,7 @@ export default function AddTaskDetailsScreen() {
 
   const buildStartDateTime = (): Date => {
     const start = new Date(startDate);
-    if (setStartTime) {
+    if (isStartTimeSet) {
       start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
     } else {
       start.setHours(0, 0, 0, 0);
@@ -281,7 +288,7 @@ export default function AddTaskDetailsScreen() {
   ) => {
     setShowStartTimePicker(false);
     if (event.type === "set" && selectedTime) {
-      setStartTime_state(selectedTime);
+      setStartTime(selectedTime);
     }
   };
 
@@ -381,7 +388,32 @@ export default function AddTaskDetailsScreen() {
 
       const description = notesParts.join("\n\n");
       const signedInUser = await GoogleSignin.getCurrentUser();
-      const userEmail = signedInUser?.user?.email || "";
+
+      if (!signedInUser?.user?.email) {
+        Alert.alert(
+          "Authentication Required",
+          "Please sign in again to get your email for task creation.",
+          [
+            {
+              text: "Sign In",
+              onPress: async () => {
+                try {
+                  await GoogleSignin.signIn();
+                } catch (error) {
+                  console.error("Sign-in error:", error);
+                }
+              },
+            },
+            {
+              text: "Cancel",
+              onPress: () => {},
+            },
+          ],
+        );
+        return;
+      }
+
+      const userEmail = signedInUser.user.email;
 
       const createdTask = await createFocusFrameTask({
         name: title,
@@ -539,22 +571,22 @@ export default function AddTaskDetailsScreen() {
             <TouchableOpacity
               style={[styles.input, styles.pickerInput, styles.timeInput]}
               onPress={() => {
-                setSetStartTime(true);
+                setIsStartTimeSet(true);
                 setShowStartTimePicker(true);
               }}
               accessibilityRole="button"
               accessibilityLabel="Set start time"
             >
               <Text style={styles.pickerInputText}>
-                {setStartTime ? formatTime(startTime) : "Set Time"}
+                {isStartTimeSet ? formatTime(startTime) : "Set Time"}
               </Text>
               <Ionicons name="time-outline" size={18} color={colors.text} />
             </TouchableOpacity>
 
-            {setStartTime && (
+            {isStartTimeSet && (
               <TouchableOpacity
                 style={styles.removeSubtaskButton}
-                onPress={() => setSetStartTime(false)}
+                onPress={() => setIsStartTimeSet(false)}
                 accessibilityRole="button"
                 accessibilityLabel="Remove start time"
               >
@@ -563,7 +595,7 @@ export default function AddTaskDetailsScreen() {
             )}
           </View>
 
-          {setStartTime && showStartTimePicker ? (
+          {isStartTimeSet && showStartTimePicker ? (
             <DateTimePicker
               value={startTime}
               mode="time"
@@ -610,22 +642,22 @@ export default function AddTaskDetailsScreen() {
             <TouchableOpacity
               style={[styles.input, styles.pickerInput, styles.timeInput]}
               onPress={() => {
-                setSetTime(true);
+                setIsDeadlineTimeSet(true);
                 setShowTimePicker(true);
               }}
               accessibilityRole="button"
               accessibilityLabel="Set deadline time"
             >
               <Text style={styles.pickerInputText}>
-                {setTime ? formatTime(deadlineTime) : "Set Time"}
+                {isDeadlineTimeSet ? formatTime(deadlineTime) : "Set Time"}
               </Text>
               <Ionicons name="time-outline" size={18} color={colors.text} />
             </TouchableOpacity>
 
-            {setTime && (
+            {isDeadlineTimeSet && (
               <TouchableOpacity
                 style={styles.removeSubtaskButton}
-                onPress={() => setSetTime(false)}
+                onPress={() => setIsDeadlineTimeSet(false)}
                 accessibilityRole="button"
                 accessibilityLabel="Remove deadline time"
               >
@@ -634,7 +666,7 @@ export default function AddTaskDetailsScreen() {
             )}
           </View>
 
-          {setTime && showTimePicker ? (
+          {isDeadlineTimeSet && showTimePicker ? (
             <DateTimePicker
               value={deadlineTime}
               mode="time"
