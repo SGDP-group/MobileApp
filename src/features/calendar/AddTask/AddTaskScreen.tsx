@@ -58,10 +58,6 @@ export default function AddTaskScreen() {
     navigation.navigate("AddTaskDetails");
   };
 
-  const handleAddEventPress = () => {
-    Alert.alert("Add Event", "Add Event flow will be connected next.");
-  };
-
   const handleAIBreakdownPress = () => {
     Alert.alert("AI Breakdown", "AI Breakdown flow will be connected next.");
   };
@@ -89,13 +85,6 @@ export default function AddTaskScreen() {
           title="Add Task"
           subtitle="Set task details manually"
           onPress={handleAddTaskPress}
-        />
-
-        <TaskActionCard
-          type="quick"
-          title="Add Event"
-          subtitle="Create a calendar event manually"
-          onPress={handleAddEventPress}
         />
 
         <TaskActionCard
