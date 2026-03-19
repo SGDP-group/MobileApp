@@ -1,8 +1,5 @@
 import type { Subtask, Task } from "@/src/types/api";
-
-type TaskWithSubtasks = Task & {
-  subtasks?: Subtask[];
-};
+import type { HomeTask as TaskWithSubtasks } from "@/src/features/HomePage/home.tasks";
 
 const DAYS = [
   "Sunday",
