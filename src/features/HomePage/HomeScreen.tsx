@@ -18,6 +18,8 @@ import { TaskQueueModal } from "./components/TaskQueueModal";
 import { UpNextCard } from "./components/UpNextCard";
 import { getFormattedDate, getGreeting } from "./home.helpers";
 import { HomeTask, useHomeTasks } from "./home.tasks";
+import { useQrCodeScanner } from "./hooks/useQrCodeScanner";
+
 import { styles } from "./styles/home.styles";
 
 const UP_NEXT_CARD_SNAP_INTERVAL = 234;
@@ -35,6 +37,14 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<HomeTask | null>(null);
+  const {
+    isScannerVisible,
+    isProcessingScan,
+    openScanner,
+    closeScanner,
+    handleScan,
+  } = useQrCodeScanner();
+
   const { upNextData } = useHomeTasks();
 
   useEffect(() => {
