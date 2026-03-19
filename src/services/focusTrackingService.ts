@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { FocusSession } from '../types/analytics';
 
 const FOCUS_TRACKING_BASE_URL = process.env.EXPO_PUBLIC_FOCUS_TRACKING_BASE_URL;
@@ -103,7 +104,7 @@ export class FocusTrackingService {
     return this.currentUserId;
   }
 
-  static setCurrentSession(sessionId: string) {
+  static setCurrentSession(sessionId: string | null) {
     this.currentSessionId = sessionId;
   }
 
@@ -283,7 +284,7 @@ export class FocusTrackingService {
       case 'DISTRACTED':
         return 'warning';
       case 'AWAY':
-        return 'person-off';
+        return 'person-remove';
       default:
         return 'help-circle';
     }
