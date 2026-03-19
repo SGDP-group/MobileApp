@@ -19,7 +19,6 @@ import { TaskQueueModal } from "./components/TaskQueueModal";
 import { UpNextCard } from "./components/UpNextCard";
 import { getFormattedDate, getGreeting } from "./home.helpers";
 import { HomeTask, useHomeTasks } from "./home.tasks";
-import { useHomeTasks } from "./home.tasks";
 import { useQrCodeScanner } from "./hooks/useQrCodeScanner";
 import { styles } from "./styles/home.styles";
 

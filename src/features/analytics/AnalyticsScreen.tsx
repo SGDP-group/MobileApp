@@ -82,7 +82,7 @@ export default function AnalyticsScreen() {
         title: "Focus Score",
         value: `${sessionData.focus_score.toFixed(1)}%`,
         subtitle: "Current session performance",
-        icon: "target",
+        icon: "star",
         iconColor: "#4DE3B1",
         backgroundColor: "#0E1C22",
       },

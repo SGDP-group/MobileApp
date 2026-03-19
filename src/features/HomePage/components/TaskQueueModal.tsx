@@ -329,7 +329,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
                             <View style={styles.taskQueueFieldRow}>
                               <Text style={styles.taskQueueFieldLabel}>Status</Text>
                               <Text style={styles.taskQueueFieldValue}>
-                                {getStatusLabel(subtask.statusId, subtask.completed)}
+                                {getStatusLabel(subtask.status?.id, subtask.completed)}
                               </Text>
                             </View>
 
