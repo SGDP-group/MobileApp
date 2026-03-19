@@ -1,6 +1,6 @@
 import type { Subtask, Task } from "@/src/types/api";
 import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
-import { getAllActiveTasksUpToToday } from "@services/focusFrameTaskService";
+import { getIncompleteTasksBeforeToday } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import { useEffect, useMemo, useState } from "react";
@@ -37,7 +37,7 @@ export function useHomeTasks(): UseHomeTasksResult {
           return;
         }
 
-        const fetchedTasks = await getAllActiveTasksUpToToday(userId);
+        const fetchedTasks = await getIncompleteTasksBeforeToday(userId);
 
          // Prepare tasks array and limit to the top 6 by updatedAt before fetching subtasks
          const tasksArray = Array.isArray(fetchedTasks) ? fetchedTasks : [];
