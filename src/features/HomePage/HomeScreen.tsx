@@ -14,9 +14,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { QuickActionCard } from "./components/QuickActionCard";
+import { TaskQueueModal } from "./components/TaskQueueModal";
 import { UpNextCard } from "./components/UpNextCard";
 import { getFormattedDate, getGreeting } from "./home.helpers";
-import { useHomeTasks } from "./home.tasks";
+import { HomeTask, useHomeTasks } from "./home.tasks";
 import { styles } from "./styles/home.styles";
 
 const UP_NEXT_CARD_SNAP_INTERVAL = 234;
@@ -32,6 +33,8 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
   const userName = userInfo?.user?.name ?? "User";
   const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<HomeTask | null>(null);
   const { upNextData } = useHomeTasks();
 
   useEffect(() => {
@@ -77,6 +80,22 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
       default:
         Alert.alert("Action", "This action is coming soon.");
     }
+  };
+
+  const handleOpenTaskQueue = (task?: HomeTask) => {
+    if (task) {
+      setSelectedTask(task);
+      setTaskQueueModalVisible(true);
+      return;
+    }
+
+    const firstTaskItem = upNextData.find((item) => item.type === "task");
+    setSelectedTask(firstTaskItem && firstTaskItem.type === "task" ? firstTaskItem.task : null);
+    setTaskQueueModalVisible(true);
+  };
+
+  const handleCloseTaskQueue = () => {
+    setTaskQueueModalVisible(false);
   };
 
   return (
@@ -156,7 +175,9 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
 
         <FlatList
           data={upNextData}
-          renderItem={({ item }) => <UpNextCard item={item} />}
+          renderItem={({ item }) => (
+            <UpNextCard item={item} onOpenTaskQueue={handleOpenTaskQueue} />
+          )}
           keyExtractor={(item) => item.id}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -208,6 +229,12 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
           <Text style={styles.logoutText}>Sign Out</Text>
         </TouchableOpacity>
       )}
+
+      <TaskQueueModal
+        visible={taskQueueModalVisible}
+        task={selectedTask}
+        onClose={handleCloseTaskQueue}
+      />
     </SafeAreaView>
   );
 }

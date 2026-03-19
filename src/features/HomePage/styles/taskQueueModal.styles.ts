@@ -1,0 +1,140 @@
+import { colors } from "@shared/theme/colors";
+import { StyleSheet } from "react-native";
+
+export const styles = StyleSheet.create({
+  taskQueueModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(4, 10, 13, 0.65)",
+    justifyContent: "flex-end",
+  },
+  taskQueueModalContent: {
+    height: "88%",
+    backgroundColor: "#0F1A1F",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: "#1E3640",
+    borderBottomWidth: 0,
+  },
+  taskQueueModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1E3640",
+  },
+  taskQueueModalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.text,
+  },
+  taskQueueBody: {
+    flex: 1,
+  },
+  taskQueueBodyContent: {
+    flexGrow: 1,
+    padding: 18,
+    paddingBottom: 36,
+    gap: 18,
+  },
+  taskQueueMainSection: {
+    borderColor: "#24424E",
+    padding: 14,
+    gap: 10,
+  },
+  taskQueueSubtasksSection: {
+    gap: 10,
+  },
+  taskQueueSectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#8AE8FF",
+    marginBottom: 4,
+  },
+  taskQueueFieldRow: {
+    gap: 4,
+  },
+  taskQueueFieldLabel: {
+    color: "#80A1AF",
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  taskQueueFieldValue: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  taskQueueNoSubtasksText: {
+    fontSize: 14,
+    color: "#96B0BD",
+  },
+  taskQueueEmptyState: {
+    paddingHorizontal: 20,
+    paddingVertical: 34,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  taskQueueEmptyTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  taskQueueEmptyText: {
+    color: "#9AB3BF",
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 21,
+  },
+  subtaskAccordionCard: {
+    backgroundColor: "#16242B",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#223D47",
+    marginBottom: 10,
+    overflow: "hidden",
+  },
+  subtaskAccordionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  subtaskAccordionTitleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+    paddingRight: 8,
+  },
+  subtaskOrderBadge: {
+    minWidth: 34,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: "#1D3B47",
+    color: "#78E5FF",
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  subtaskAccordionTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "600",
+    flex: 1,
+  },
+  subtaskAccordionBody: {
+    borderTopWidth: 1,
+    borderTopColor: "#233A45",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+  },
+});

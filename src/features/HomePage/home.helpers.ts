@@ -43,7 +43,6 @@ const toSubtaskStartDate = (value: string): Date | null => {
     return asDate;
   }
 
-  // Supports time-only strings like "14:30", "14:30:00", or "14:30:00.123456".
   const timeMatch = value
     .trim()
     .match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?$/);
@@ -126,7 +125,7 @@ export const formatTaskLead = (task: TaskWithSubtasks): string => {
     return `STARTS IN ${durationLabel}`;
   }
 
-  return `STARTED ${durationLabel} AGO`;
+  return `DUE ${durationLabel}`;
 };
 
 export const formatTaskTimestamp = (value: string): string => {
