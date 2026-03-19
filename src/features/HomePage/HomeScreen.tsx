@@ -4,19 +4,21 @@ import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    FlatList,
+    Image,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import QrScannerModal from "./components/QrScannerModal";
 import { QuickActionCard } from "./components/QuickActionCard";
 import { UpNextCard } from "./components/UpNextCard";
 import { getFormattedDate, getGreeting } from "./home.helpers";
 import { useHomeTasks } from "./home.tasks";
+import { useQrCodeScanner } from "./hooks/useQrCodeScanner";
 import { styles } from "./styles/home.styles";
 
 const UP_NEXT_CARD_SNAP_INTERVAL = 234;
@@ -32,6 +34,13 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
   const userName = userInfo?.user?.name ?? "User";
   const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const {
+    isScannerVisible,
+    isProcessingScan,
+    openScanner,
+    closeScanner,
+    handleScan,
+  } = useQrCodeScanner();
   const { upNextData } = useHomeTasks();
 
   useEffect(() => {
@@ -66,10 +75,10 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         navigation.navigate("Calendar");
         return;
       case "start":
-        Alert.alert("Focus Session", "Focus sessions are coming soon.");
+        navigation.navigate("Focus");
         return;
       case "analytics":
-        Alert.alert("Analytics", "Analytics are coming soon.");
+        navigation.navigate("Analytics");
         return;
       case "settings":
         Alert.alert("Settings", "Settings are coming soon.");
@@ -103,6 +112,16 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
             </Text>
           </View>
           <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={openScanner}
+            >
+              <Ionicons
+                name="scan-outline"
+                size={20}
+                color="#E5F7FF"
+              />
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.iconButton}
               onPress={() => Alert.alert("Notifications", "Coming soon.")}
@@ -200,6 +219,13 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
           ))}
         </View>
       </ScrollView>
+
+      <QrScannerModal
+        visible={isScannerVisible}
+        isProcessingScan={isProcessingScan}
+        onClose={closeScanner}
+        onScan={handleScan}
+      />
 
       <BottomNav activeRoute="Home" />
       
