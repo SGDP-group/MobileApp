@@ -149,11 +149,7 @@ export default function HomeScreen({ userInfo, onLogout }: HomeScreenProps) {
         onClose={handleCloseTaskQueue}
       />
 
-      {onLogout && (
-        <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
-      )}
+      
     </SafeAreaView>
   );
 }
