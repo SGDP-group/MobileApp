@@ -1,126 +1,22 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import type { HomeTask } from "../home.tasks";
 import { styles } from "../styles/taskQueueModal.styles";
+import {
+  formatDateObject,
+  formatDateTime,
+  formatDuration,
+  getSubtaskDuration,
+  toSafeDate,
+} from "../utils/taskQueueModal.utils";
+import { SubtaskAccordionItem } from "./SubtaskAccordionItem";
 
 interface TaskQueueModalProps {
   visible: boolean;
   task: HomeTask | null;
   onClose: () => void;
 }
-
-const toSafeDate = (value?: string): Date | null => {
-  if (!value) {
-    return null;
-  }
-
-  const asDate = new Date(value.trim());
-  if (!Number.isNaN(asDate.getTime())) {
-    return asDate;
-  }
-
-  const timeMatch = value
-    .trim()
-    .match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?$/);
-
-  if (!timeMatch) {
-    return null;
-  }
-
-  const hours = Number(timeMatch[1]);
-  const minutes = Number(timeMatch[2]);
-  const seconds = Number(timeMatch[3] ?? "0");
-
-  if (
-    Number.isNaN(hours) ||
-    Number.isNaN(minutes) ||
-    Number.isNaN(seconds) ||
-    hours > 23 ||
-    minutes > 59 ||
-    seconds > 59
-  ) {
-    return null;
-  }
-
-  const date = new Date();
-  date.setHours(hours, minutes, seconds, 0);
-  return date;
-};
-
-const formatDateTime = (value?: string): string => {
-  const date = toSafeDate(value);
-  if (!date) {
-    return "Not set";
-  }
-
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-};
-
-const formatDuration = (durationMinutes?: number): string => {
-  if (!durationMinutes || durationMinutes <= 0) {
-    return "Not set";
-  }
-
-  const hours = Math.floor(durationMinutes / 60);
-  const minutes = durationMinutes % 60;
-
-  if (hours === 0) {
-    return `${minutes}m`;
-  }
-
-  if (minutes === 0) {
-    return `${hours}h`;
-  }
-
-  return `${hours}h ${minutes}m`;
-};
-
-const getSubtaskDuration = (duration?: number, estimatedTime?: number): number => {
-  if (typeof duration === "number" && duration > 0) {
-    return duration;
-  }
-
-  if (typeof estimatedTime === "number" && estimatedTime > 0) {
-    return estimatedTime;
-  }
-
-  return 0;
-};
-
-const getStatusLabel = (
-  status?: { id?: number; name?: string },
-  completed?: boolean,
-): string => {
-  if (completed) {
-    return "Completed";
-  }
-
-  if (status?.name?.trim()) {
-    return status.name;
-  }
-
-  if (status?.id === 2) {
-    return "In Progress";
-  }
-
-  if (status?.id === 3) {
-    return "Completed";
-  }
-
-  return "Pending";
-};
 
 export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) {
   const [expandedSubtaskIds, setExpandedSubtaskIds] = useState<number[]>([]);
@@ -165,11 +61,36 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
     return totalDuration;
   }, [sortedSubtasks]);
 
+  const derivedStartTime = useMemo(() => {
+    if (sortedSubtasks.length === 0) {
+      return formatDateTime(task?.updatedAt);
+    }
+
+    let earliestStartTimestamp: number | null = null;
+
+    sortedSubtasks.forEach((subtask) => {
+      const startDate = toSafeDate(subtask.startTime);
+      if (!startDate) {
+        return;
+      }
+
+      const startTimestamp = startDate.getTime();
+      if (earliestStartTimestamp === null || startTimestamp < earliestStartTimestamp) {
+        earliestStartTimestamp = startTimestamp;
+      }
+    });
+
+    if (!earliestStartTimestamp) {
+      return formatDateTime(task?.updatedAt);
+    }
+
+    return formatDateObject(new Date(earliestStartTimestamp));
+  }, [sortedSubtasks, task?.updatedAt]);
+
   const derivedDeadline = useMemo(() => {
     if (sortedSubtasks.length === 0) {
       return formatDateTime(task?.updatedAt);
     }
-    
 
     let latestEndTimestamp: number | null = null;
 
@@ -191,12 +112,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
       return formatDateTime(task?.updatedAt);
     }
 
-    return new Date(latestEndTimestamp).toLocaleString([], {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
+    return formatDateObject(new Date(latestEndTimestamp));
   }, [sortedSubtasks, task?.updatedAt]);
 
   const toggleSubtask = (subtaskId: number) => {
@@ -253,7 +169,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
 
                 <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Start time</Text>
-                  <Text style={styles.taskQueueFieldValue}>{derivedDeadline}</Text>
+                  <Text style={styles.taskQueueFieldValue}>{derivedStartTime}</Text>
                 </View>
 
                 <View style={styles.taskQueueFieldRow}>
@@ -275,80 +191,14 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
                 ) : (
                   sortedSubtasks.map((subtask) => {
                     const isExpanded = expandedSubtaskIds.includes(subtask.id);
-                    const duration = getSubtaskDuration(subtask.duration, subtask.estimatedTime);
-                    const startDate = toSafeDate(subtask.startTime);
-                    const endDate = startDate
-                      ? new Date(startDate.getTime() + duration * 60 * 1000)
-                      : null;
 
                     return (
-                      <View key={subtask.id} style={styles.subtaskAccordionCard}>
-                        <TouchableOpacity
-                          style={styles.subtaskAccordionHeader}
-                          onPress={() => toggleSubtask(subtask.id)}
-                        >
-                          <View style={styles.subtaskAccordionTitleWrap}>
-                            <Text style={styles.subtaskOrderBadge}>#{subtask.taskOrder ?? "-"}</Text>
-                            <Text style={styles.subtaskAccordionTitle}>{subtask.name}</Text>
-                          </View>
-                          <Ionicons
-                            name={isExpanded ? "chevron-up" : "chevron-down"}
-                            size={18}
-                            color="#70E1FF"
-                          />
-                        </TouchableOpacity>
-
-                        {isExpanded && (
-                          <View style={styles.subtaskAccordionBody}>
-                            <View style={styles.taskQueueFieldRow}>
-                              <Text style={styles.taskQueueFieldLabel}>Description</Text>
-                              <Text style={styles.taskQueueFieldValue}>
-                                {subtask.description?.trim() || "No description"}
-                              </Text>
-                            </View>
-
-                            <View style={styles.taskQueueFieldRow}>
-                              <Text style={styles.taskQueueFieldLabel}>Start Time</Text>
-                              <Text style={styles.taskQueueFieldValue}>
-                                {formatDateTime(subtask.startTime)}
-                              </Text>
-                            </View>
-
-                            <View style={styles.taskQueueFieldRow}>
-                              <Text style={styles.taskQueueFieldLabel}>End Time</Text>
-                              <Text style={styles.taskQueueFieldValue}>
-                                {endDate
-                                  ? endDate.toLocaleString([], {
-                                      month: "short",
-                                      day: "numeric",
-                                      hour: "numeric",
-                                      minute: "2-digit",
-                                    })
-                                  : "Not set"}
-                              </Text>
-                            </View>
-
-                            <View style={styles.taskQueueFieldRow}>
-                              <Text style={styles.taskQueueFieldLabel}>Duration</Text>
-                              <Text style={styles.taskQueueFieldValue}>{formatDuration(duration)}</Text>
-                            </View>
-
-                            <View style={styles.taskQueueFieldRow}>
-                              <Text style={styles.taskQueueFieldLabel}>Status</Text>
-                              <Text style={styles.taskQueueFieldValue}>
-                                {getStatusLabel(subtask.status, subtask.completed)}
-                              </Text>
-                            </View>
-
-                            <View style={styles.taskQueueFieldRow}>
-                              <Text style={styles.taskQueueFieldLabel}>Complete</Text>
-                              <Text style={styles.taskQueueFieldValue}>
-                                {subtask.completed ? "Yes" : "No"}
-                              </Text>
-                            </View>
-                          </View>
-                        )}
-                      </View>
+                      <SubtaskAccordionItem
+                        key={subtask.id}
+                        subtask={subtask}
+                        isExpanded={isExpanded}
+                        onToggle={toggleSubtask}
+                      />
                     );
                   })
                 )}

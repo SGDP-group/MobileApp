@@ -3,7 +3,7 @@ import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
 import { getIncompleteTasksUpToToday } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type HomeTask = Task & {
   subtasks?: Subtask[];
@@ -14,92 +14,97 @@ export type HomeUpNextItem =
   | { id: string; type: "empty" }
   | { id: string; type: "task"; task: HomeTask };
 
+const MAX_HOME_TASKS = 6;
+
+const sortByUpdatedAtDesc = (a: { updatedAt: string }, b: { updatedAt: string }) => {
+  const aUpdatedAt = new Date(a.updatedAt).getTime();
+  const bUpdatedAt = new Date(b.updatedAt).getTime();
+  return bUpdatedAt - aUpdatedAt;
+};
+
 interface UseHomeTasksResult {
   upNextData: HomeUpNextItem[];
+  refreshTasks: () => Promise<void>;
 }
 
 export function useHomeTasks(): UseHomeTasksResult {
   const [tasks, setTasks] = useState<HomeTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadTasks = useCallback(async () => {
+    try {
+      if (isMountedRef.current) {
+        setIsLoading(true);
+      }
+      const userId = await getStoredUserId();
 
-    const loadTasks = async () => {
-      try {
-        const userId = await getStoredUserId();
-
-        if (!userId) {
-          if (isMounted) {
-            setTasks([]);
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        const fetchedTasks = await getIncompleteTasksUpToToday(userId);
-
-         // Prepare tasks array and limit to the top 6 by updatedAt before fetching subtasks
-         const tasksArray = Array.isArray(fetchedTasks) ? fetchedTasks : [];
-         const sortedTopTasks = [...tasksArray]
-           .sort((a, b) => {
-             const aUpdatedAt = new Date(a.updatedAt).getTime();
-             const bUpdatedAt = new Date(b.updatedAt).getTime();
-             return bUpdatedAt - aUpdatedAt;
-           })
-           .slice(0, 6);
-
-        const enrichedTasks = await Promise.all(
-           sortedTopTasks.map(async (task) => {            
-            try {
-              const subtasks = await getSubtasksByTask(task.id);
-              return {
-                ...task,
-                subtasks: Array.isArray(subtasks) ? subtasks : [],
-              };
-            } catch (error) {
-              console.warn(
-                `Failed to load subtasks for task ${task.id}:`,
-                getSafeErrorMessage(error),
-              );
-              return {
-                ...task,
-                subtasks: [],
-              };
-            }
-          }),
-        );
-
-        if (isMounted) {
-          setTasks(enrichedTasks);
-        }
-      } catch (error) {
-        console.warn("Failed to load Home tasks:", getSafeErrorMessage(error));
-        if (isMounted) {
+      if (!userId) {
+        if (isMountedRef.current) {
           setTasks([]);
         }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        return;
       }
-    };
 
-    loadTasks();
+      const fetchedTasks = await getIncompleteTasksUpToToday(userId);
+
+      const tasksArray = Array.isArray(fetchedTasks) ? fetchedTasks : [];
+      const sortedTopTasks = [...tasksArray]
+        .sort(sortByUpdatedAtDesc)
+        .slice(0, MAX_HOME_TASKS);
+
+      const enrichedTasks = await Promise.all(
+        sortedTopTasks.map(async (task) => {
+          try {
+            const subtasks = await getSubtasksByTask(task.id);
+            return {
+              ...task,
+              subtasks: Array.isArray(subtasks) ? subtasks : [],
+            };
+          } catch (error) {
+            console.warn(
+              `Failed to load subtasks for task ${task.id}:`,
+              getSafeErrorMessage(error),
+            );
+            return {
+              ...task,
+              subtasks: [],
+            };
+          }
+        }),
+      );
+
+      if (isMountedRef.current) {
+        setTasks(enrichedTasks);
+      }
+    } catch (error) {
+      console.warn("Failed to load Home tasks:", getSafeErrorMessage(error));
+      if (isMountedRef.current) {
+        setTasks([]);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    void (async () => {
+      await loadTasks();
+    })();
 
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, []);
+  }, [loadTasks]);
 
   const filteredTasks = useMemo(() => {
     return [...tasks]
-      .sort((a, b) => {
-        const aUpdatedAt = new Date(a.updatedAt).getTime();
-        const bUpdatedAt = new Date(b.updatedAt).getTime();
-        return bUpdatedAt - aUpdatedAt;
-      })
-      .slice(0, 6);
+      .sort(sortByUpdatedAtDesc)
+      .slice(0, MAX_HOME_TASKS);
   }, [tasks]);
 
   const upNextData = useMemo<HomeUpNextItem[]>(() => {
@@ -118,5 +123,5 @@ export function useHomeTasks(): UseHomeTasksResult {
     }));
   }, [filteredTasks, isLoading]);
 
-  return { upNextData };
+  return { upNextData, refreshTasks: loadTasks };
 }

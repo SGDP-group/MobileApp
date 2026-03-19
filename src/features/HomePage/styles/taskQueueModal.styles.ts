@@ -130,6 +130,29 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
+  subtaskHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  subtaskStatusBadge: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  subtaskStatusBadgeCompleted: {
+    color: "#67F0B7",
+    backgroundColor: "#1D3A32",
+  },
+  subtaskStatusBadgePending: {
+    color: "#9ED9E8",
+    backgroundColor: "#234652",
+  },
   subtaskAccordionBody: {
     borderTopWidth: 1,
     borderTopColor: "#233A45",
