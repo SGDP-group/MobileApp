@@ -89,6 +89,8 @@ export interface HealthResponse {
   timestamp: string;
 }
 
+type FocusStateIconName = 'checkmark-circle' | 'warning' | 'person-off' | 'help-circle';
+
 export class FocusTrackingService {
   private static BASE_URL = FOCUS_TRACKING_BASE_URL || "http://10.238.215.83:8002";
   private static currentUserId: string | null = null;
@@ -103,7 +105,7 @@ export class FocusTrackingService {
     return this.currentUserId;
   }
 
-  static setCurrentSession(sessionId: string) {
+  static setCurrentSession(sessionId: string | null) {
     this.currentSessionId = sessionId;
   }
 
@@ -276,7 +278,7 @@ export class FocusTrackingService {
   }
 
   // Get focus state icon
-  static getFocusStateIcon(state: string): keyof typeof Ionicons.glyphMap {
+  static getFocusStateIcon(state: string): FocusStateIconName {
     switch (state) {
       case 'FOCUSED':
         return 'checkmark-circle';
