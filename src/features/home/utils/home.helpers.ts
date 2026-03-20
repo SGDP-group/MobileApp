@@ -84,48 +84,46 @@ export const getFormattedDate = (value: Date): string => {
 };
 
 export const formatTaskLead = (task: TaskWithSubtasks): string => {
-  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const subtasks = Array.isArray(task.subTasks)
+    ? task.subTasks
+    : Array.isArray(task.subtasks)
+      ? task.subtasks
+      : [];
 
-   const firstSubtaskWithStart = subtasks.reduce<
-     (typeof subtasks)[number] | undefined
-   >((best, current) => {
-     if (!current.startTime) {
-       return best;
-     }
-     const currentOrder = current.taskOrder ?? Number.MAX_SAFE_INTEGER;
-     if (!best) {
-       return current;
-     }
-     const bestOrder = best.taskOrder ?? Number.MAX_SAFE_INTEGER;
-     return currentOrder < bestOrder ? current : best;
-   }, undefined);
+  const leadIncomplete = subtasks.reduce<(typeof subtasks)[number] | undefined>(
+    (best, current) => {
+      // Ignore completed tasks or those without a start time
+      if (current.completed || !current.startTime) return best;
+      if (!best) return current;
 
+      const currentOrder = current.taskOrder ?? Number.MAX_SAFE_INTEGER;
+      const bestOrder = (best.taskOrder) ?? Number.MAX_SAFE_INTEGER;
 
-  if (!firstSubtaskWithStart?.startTime) {
-    return "NO START TIME";
-  }
+      return currentOrder < bestOrder ? current : best;
+    },
+    undefined
+  );
 
-  const startDate = toSubtaskStartDate(firstSubtaskWithStart.startTime);
-  if (!startDate) {
-    return "NO START TIME";
-  }
+  const rawStartTime = leadIncomplete?.startTime;
+  if (!rawStartTime) return "NO START TIME";
+
+  // Ensure this returns a Date object, not a string
+  const startDate = toSubtaskStartDate(rawStartTime);
+  if (!startDate || !(startDate instanceof Date)) return "NO START TIME";
 
   const diffMs = startDate.getTime() - Date.now();
-  const diffMinutes =
-    diffMs > 0
-      ? Math.ceil(diffMs / (60 * 1000))
-      : Math.floor(diffMs / (60 * 1000));
-  const absMinutes = Math.abs(diffMinutes);
-  const hours = Math.floor(absMinutes / 60);
-  const minutes = absMinutes % 60;
-
+  const absMs = Math.abs(diffMs);
+  
+  // Calculate hours and minutes accurately
+  const hours = Math.floor(absMs / (1000 * 60 * 60));
+  const minutes = Math.floor((absMs % (1000 * 60 * 60)) / (1000 * 60));
+  
   const durationLabel = `${hours}H ${minutes}M`;
 
-  if (diffMinutes >= 0) {
-    return `STARTS IN ${durationLabel}`;
-  }
-
-  return `DUE ${durationLabel}`;
+  // diffMs > 0 means the start time is in the future
+  return diffMs >= 0 
+    ? `STARTS IN ${durationLabel}` 
+    : `LATE BY ${durationLabel}`; 
 };
 
 export const formatTaskTimestamp = (value: string): string => {
