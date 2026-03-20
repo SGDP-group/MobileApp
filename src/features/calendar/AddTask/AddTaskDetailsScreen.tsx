@@ -28,14 +28,57 @@ type SubtaskDraft = {
   endTime: Date | null;
 };
 
-const getDefaultDeadlineTime = (): Date => new Date();
+type SubtaskPickerState = {
+  index: number;
+  field: "startTime" | "endTime";
+  mode: "date" | "time";
+};
 
-const getEmptySubtask = (): SubtaskDraft => ({
-  name: "",
-  description: "",
-  startTime: null,
-  endTime: null,
-});
+const VALIDATION_ERRORS = {
+  MISSING_TASK_NAME: {
+    title: "Missing Task Name",
+    message: "Please enter a task name.",
+  },
+  MISSING_SUBTASKS: {
+    title: "Missing Subtasks",
+    message: "Please add at least one subtask with a name.",
+  },
+  MISSING_START_TIME: (index: number) => ({
+    title: "Missing Start Date/Time",
+    message: `Sub Task ${index}: Please set a start date and time.`,
+  }),
+  MISSING_END_TIME: (index: number) => ({
+    title: "Missing End Date/Time",
+    message: `Sub Task ${index}: Please set an end date and time.`,
+  }),
+  INVALID_SUBTASK_DATES: (index: number) => ({
+    title: "Invalid Subtask Dates",
+    message: `Sub Task ${index}: Start date/time must be before end date/time.`,
+  }),
+  USER_NOT_LINKED: {
+    title: "User Not Linked",
+    message: "Please sign in again before creating a task.",
+  },
+  AUTH_REQUIRED: {
+    title: "Authentication Required",
+    message: "Please sign in again to get your email for task creation.",
+  },
+  SUBTASK_CREATION_FAILED: {
+    title: "Task Created with Warnings",
+    message: "Main task was created, but one or more subtasks failed to save.",
+  },
+  TASK_CREATION_FAILED: {
+    title: "Error",
+    message: "Failed to create task. Please try again.",
+  },
+};
+
+const SUCCESS_MESSAGES = {
+  TASK_CREATED: {
+    title: "Task Created",
+    message: "Task was added successfully.",
+  },
+};
 
 const formatDate = (value: Date): string => {
   const year = value.getFullYear();
@@ -53,45 +96,41 @@ const formatTime = (value: Date): string => {
 const formatDateTime = (value: Date): string =>
   `${formatDate(value)} ${formatTime(value)}`;
 
+const getEmptySubtask = (): SubtaskDraft => ({
+  name: "",
+  description: "",
+  startTime: null,
+  endTime: null,
+});
+
+const getTodayMinDate = (): Date => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
 export default function AddTaskDetailsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
 
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [startDate, setStartDate] = useState(new Date());
-  const [isStartTimeSet, setIsStartTimeSet] = useState(false);
-  const [startTime, setStartTime] = useState(getDefaultDeadlineTime);
-  const [deadlineDate, setDeadlineDate] = useState(new Date());
-  const [isDeadlineTimeSet, setIsDeadlineTimeSet] = useState(false);
-  const [deadlineTime, setDeadlineTime] = useState(getDefaultDeadlineTime);
   const [subtasks, setSubtasks] = useState<SubtaskDraft[]>([getEmptySubtask()]);
   const [isSaving, setIsSaving] = useState(false);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [collapsedSubtasks, setCollapsedSubtasks] = useState<
     Record<number, boolean>
   >({});
   const [activeSubtaskDateTimePicker, setActiveSubtaskDateTimePicker] =
-    useState<{
-      index: number;
-      field: "startTime" | "endTime";
-      mode: "date" | "time";
-    } | null>(null);
+    useState<SubtaskPickerState | null>(null);
   const [pendingSubtaskDateTime, setPendingSubtaskDateTime] =
     useState<Date | null>(null);
 
-  const todayMinDate = useMemo(() => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date;
-  }, []);
+  const todayMinDate = useMemo(() => getTodayMinDate(), []);
 
   const validSubtasks = useMemo(
     () =>
       subtasks
-        .map((subtask) => ({
+        .map((subtask, originalIndex) => ({
+          originalIndex,
           name: subtask.name.trim(),
           description: subtask.description.trim(),
           startTime: subtask.startTime,
@@ -100,46 +139,6 @@ export default function AddTaskDetailsScreen() {
         .filter((subtask) => subtask.name.length > 0),
     [subtasks],
   );
-
-  const taskDurationInMinutes = useMemo(() => {
-    const dueDateIso = (() => {
-      const dueDate = new Date(deadlineDate);
-      if (isDeadlineTimeSet) {
-        dueDate.setHours(
-          deadlineTime.getHours(),
-          deadlineTime.getMinutes(),
-          0,
-          0,
-        );
-      } else {
-        const now = new Date();
-        dueDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
-      }
-      return dueDate;
-    })();
-
-    const startDateTime = (() => {
-      const start = new Date(startDate);
-      if (isStartTimeSet) {
-        start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
-      } else {
-        start.setHours(0, 0, 0, 0);
-      }
-      return start;
-    })();
-
-    return Math.max(
-      0,
-      Math.round((dueDateIso.getTime() - startDateTime.getTime()) / 60000),
-    );
-  }, [
-    deadlineDate,
-    isDeadlineTimeSet,
-    deadlineTime,
-    startDate,
-    isStartTimeSet,
-    startTime,
-  ]);
 
   const updateSubtaskTextField = (
     index: number,
@@ -165,32 +164,10 @@ export default function AddTaskDetailsScreen() {
     );
   };
 
-  const getSubtaskDurationInMinutes = (
-    subtask: SubtaskDraft,
-  ): number | null => {
-    if (!subtask.startTime || !subtask.endTime) {
-      return null;
-    }
-
-    const diff = subtask.endTime.getTime() - subtask.startTime.getTime();
-    if (diff <= 0) {
-      return null;
-    }
-
-    return Math.round(diff / 60000);
-  };
-
   const addSubtask = () => {
     const newIndex = subtasks.length;
     setSubtasks((prev) => [...prev, getEmptySubtask()]);
     setCollapsedSubtasks((prev) => ({ ...prev, [newIndex]: false }));
-  };
-
-  const toggleSubtaskCollapse = (index: number) => {
-    setCollapsedSubtasks((prev) => ({
-      ...prev,
-      [index]: !(prev[index] ?? false),
-    }));
   };
 
   const removeSubtask = (index: number) => {
@@ -213,12 +190,8 @@ export default function AddTaskDetailsScreen() {
     });
 
     setActiveSubtaskDateTimePicker((prev) => {
-      if (!prev) {
-        return null;
-      }
-      if (prev.index === index) {
-        return null;
-      }
+      if (!prev) return null;
+      if (prev.index === index) return null;
       if (prev.index > index) {
         return { ...prev, index: prev.index - 1 };
       }
@@ -226,69 +199,182 @@ export default function AddTaskDetailsScreen() {
     });
   };
 
-  const buildDueDateIso = (): string => {
-    const dueDate = new Date(deadlineDate);
-    if (isDeadlineTimeSet) {
-      dueDate.setHours(
-        deadlineTime.getHours(),
-        deadlineTime.getMinutes(),
-        0,
-        0,
+  const toggleSubtaskCollapse = (index: number) => {
+    setCollapsedSubtasks((prev) => ({
+      ...prev,
+      [index]: !(prev[index] ?? false),
+    }));
+  };
+
+  const validateTaskName = (title: string): boolean => {
+    if (!title.trim()) {
+      Alert.alert(
+        VALIDATION_ERRORS.MISSING_TASK_NAME.title,
+        VALIDATION_ERRORS.MISSING_TASK_NAME.message,
       );
-    } else {
-      const now = new Date();
-      dueDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
+      return false;
     }
-    return dueDate.toISOString();
+    return true;
   };
 
-  const buildStartDateTime = (): Date => {
-    const start = new Date(startDate);
-    if (isStartTimeSet) {
-      start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
-    } else {
-      start.setHours(0, 0, 0, 0);
+  const validateSubtasksExist = (): boolean => {
+    if (validSubtasks.length === 0) {
+      Alert.alert(
+        VALIDATION_ERRORS.MISSING_SUBTASKS.title,
+        VALIDATION_ERRORS.MISSING_SUBTASKS.message,
+      );
+      return false;
     }
-    return start;
+    return true;
   };
 
-  const handleDateChange = (
-    event: DateTimePickerEvent,
-    selectedDate?: Date,
-  ) => {
-    setShowDatePicker(false);
-    if (event.type === "set" && selectedDate) {
-      setDeadlineDate(selectedDate);
+  const validateSubtaskDateTime = (): boolean => {
+    for (let i = 0; i < validSubtasks.length; i++) {
+      const subtask = validSubtasks[i];
+      const subtaskNumber = subtask.originalIndex + 1;
+
+      if (!subtask.startTime) {
+        const error = VALIDATION_ERRORS.MISSING_START_TIME(subtaskNumber);
+        Alert.alert(error.title, error.message);
+        return false;
+      }
+
+      if (!subtask.endTime) {
+        const error = VALIDATION_ERRORS.MISSING_END_TIME(subtaskNumber);
+        Alert.alert(error.title, error.message);
+        return false;
+      }
+
+      if (subtask.startTime >= subtask.endTime) {
+        const error = VALIDATION_ERRORS.INVALID_SUBTASK_DATES(subtaskNumber);
+        Alert.alert(error.title, error.message);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const validateAllInputs = (): boolean => {
+    return (
+      validateTaskName(taskName) &&
+      validateSubtasksExist() &&
+      validateSubtaskDateTime()
+    );
+  };
+
+  const createSubtaskPayload = (createdTaskId: number) => {
+    return validSubtasks.map((subtask, index) => {
+      const subtaskStart = subtask.startTime!;
+      const subtaskEnd = subtask.endTime!;
+      const duration = Math.max(
+        0,
+        Math.round((subtaskEnd.getTime() - subtaskStart.getTime()) / 60000),
+      );
+
+      return {
+        name: subtask.name,
+        description: subtask.description || "",
+        task: { id: createdTaskId },
+        status: { id: 1 },
+        taskOrder: index + 1,
+        startTime: subtaskStart.toISOString(),
+        endTime: subtaskEnd.toISOString(),
+        duration,
+      };
+    });
+  };
+
+  const handleAuthError = async (): Promise<string | null> => {
+    const signedInUser = await GoogleSignin.getCurrentUser();
+    if (!signedInUser?.user?.email) {
+      Alert.alert(
+        VALIDATION_ERRORS.AUTH_REQUIRED.title,
+        VALIDATION_ERRORS.AUTH_REQUIRED.message,
+        [
+          {
+            text: "Sign In",
+            onPress: async () => {
+              try {
+                await GoogleSignin.signIn();
+              } catch (error) {
+                console.error("Sign-in error:", error);
+              }
+            },
+          },
+          { text: "Cancel", onPress: () => {} },
+        ],
+      );
+      return null;
+    }
+    return signedInUser.user.email;
+  };
+
+  const createSubtasks = async (createdTaskId: number): Promise<boolean> => {
+    const payload = createSubtaskPayload(createdTaskId);
+
+    if (payload.length === 0) return true;
+
+    try {
+      await Promise.all(
+        payload.map((subtask) => createFocusFrameSubtask(subtask as any)),
+      );
+      return true;
+    } catch (error) {
+      console.error("Error creating subtasks:", error);
+      Alert.alert(
+        VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.title,
+        VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
+        [{ text: "OK", onPress: () => navigation.goBack() }],
+      );
+      return false;
     }
   };
 
-  const handleTimeChange = (
-    event: DateTimePickerEvent,
-    selectedTime?: Date,
-  ) => {
-    setShowTimePicker(false);
-    if (event.type === "set" && selectedTime) {
-      setDeadlineTime(selectedTime);
-    }
-  };
+  const handleSaveTask = async () => {
+    if (!validateAllInputs()) return;
 
-  const handleStartDateChange = (
-    event: DateTimePickerEvent,
-    selectedDate?: Date,
-  ) => {
-    setShowStartDatePicker(false);
-    if (event.type === "set" && selectedDate) {
-      setStartDate(selectedDate);
-    }
-  };
+    try {
+      setIsSaving(true);
 
-  const handleStartTimeChange = (
-    event: DateTimePickerEvent,
-    selectedTime?: Date,
-  ) => {
-    setShowStartTimePicker(false);
-    if (event.type === "set" && selectedTime) {
-      setStartTime(selectedTime);
+      const userId = await getStoredUserId();
+      if (!userId) {
+        Alert.alert(
+          VALIDATION_ERRORS.USER_NOT_LINKED.title,
+          VALIDATION_ERRORS.USER_NOT_LINKED.message,
+        );
+        return;
+      }
+
+      const description = taskDescription.trim();
+      const userEmail = await handleAuthError();
+      if (!userEmail) return;
+
+      const createdTask = await createFocusFrameTask({
+        name: taskName.trim(),
+        description,
+        user: { id: userId, email: userEmail },
+      });
+
+      if (!createdTask?.id) {
+        throw new Error("Task created without task id.");
+      }
+
+      const subtasksCreated = await createSubtasks(createdTask.id);
+      if (!subtasksCreated) return;
+
+      Alert.alert(
+        SUCCESS_MESSAGES.TASK_CREATED.title,
+        SUCCESS_MESSAGES.TASK_CREATED.message,
+        [{ text: "OK", onPress: () => navigation.goBack() }],
+      );
+    } catch (error) {
+      console.error("Error creating task:", error);
+      Alert.alert(
+        VALIDATION_ERRORS.TASK_CREATION_FAILED.title,
+        VALIDATION_ERRORS.TASK_CREATION_FAILED.message,
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -329,174 +415,131 @@ export default function AddTaskDetailsScreen() {
     setPendingSubtaskDateTime(null);
   };
 
-  const handleSaveTask = async () => {
-    const title = taskName.trim();
-    if (!title) {
-      Alert.alert("Missing Task Name", "Please enter a task name.");
-      return;
-    }
-
-    const dueDateIso = buildDueDateIso();
-    const dueDate = new Date(dueDateIso);
-    if (dueDate < new Date()) {
-      Alert.alert(
-        "Invalid Deadline",
-        "You cannot create a task before now. Please select a future date/time.",
-      );
-      return;
-    }
-
-    const startDateTime = buildStartDateTime();
-    if (startDateTime >= dueDate) {
-      Alert.alert(
-        "Invalid Start Date",
-        "Start date/time must be before deadline date/time.",
-      );
-      return;
-    }
-
-    for (let i = 0; i < validSubtasks.length; i++) {
-      const subtask = validSubtasks[i];
-      if (subtask.startTime && subtask.endTime) {
-        if (subtask.startTime >= subtask.endTime) {
-          Alert.alert(
-            "Invalid Subtask Dates",
-            `Sub Task ${i + 1}: Start date/time must be before end date/time.`,
-          );
-          return;
-        }
-      }
-    }
-
-    try {
-      setIsSaving(true);
-
-      const userId = await getStoredUserId();
-      if (!userId) {
-        Alert.alert(
-          "User Not Linked",
-          "Please sign in again before creating a task.",
-        );
-        return;
-      }
-
-      const notesParts: string[] = [];
-      const trimmedDescription = taskDescription.trim();
-      if (trimmedDescription) {
-        notesParts.push(trimmedDescription);
-      }
-
-      const description = notesParts.join("\n\n");
-      const signedInUser = await GoogleSignin.getCurrentUser();
-
-      if (!signedInUser?.user?.email) {
-        Alert.alert(
-          "Authentication Required",
-          "Please sign in again to get your email for task creation.",
-          [
-            {
-              text: "Sign In",
-              onPress: async () => {
-                try {
-                  await GoogleSignin.signIn();
-                } catch (error) {
-                  console.error("Sign-in error:", error);
-                }
-              },
-            },
-            {
-              text: "Cancel",
-              onPress: () => {},
-            },
-          ],
-        );
-        return;
-      }
-
-      const userEmail = signedInUser.user.email;
-
-      const createdTask = await createFocusFrameTask({
-        name: title,
-        description: description || "",
-        deadline: dueDateIso,
-        duration: taskDurationInMinutes,
-        user: {
-          id: userId,
-          email: userEmail,
-        },
-      });
-
-      if (!createdTask?.id) {
-        throw new Error("Task created without task id.");
-      }
-
-      const subTasksPayload = validSubtasks.map((subtask, index) => {
-        const subtaskStart = subtask.startTime ?? startDateTime;
-        const subtaskEndCandidate = subtask.endTime ?? dueDate;
-        const subtaskEnd =
-          subtaskEndCandidate.getTime() >= subtaskStart.getTime()
-            ? subtaskEndCandidate
-            : subtaskStart;
-
-        return {
-          name: subtask.name,
-          description: subtask.description || "",
-          task: {
-            id: createdTask.id,
-          },
-          status: {
-            id: 1,
-          },
-          taskOrder: index + 1,
-          startTime: subtaskStart.toISOString(),
-          endTime: subtaskEnd.toISOString(),
-          duration: Math.max(
-            0,
-            Math.round((subtaskEnd.getTime() - subtaskStart.getTime()) / 60000),
-          ),
-          completed: false,
-          isTracked: false,
-          isAiBreakdown: false,
-        };
-      });
-
-      if (subTasksPayload.length > 0) {
-        try {
-          await Promise.all(
-            subTasksPayload.map((subtask) =>
-              createFocusFrameSubtask(subtask as any),
-            ),
-          );
-        } catch (subtaskError) {
-          console.error("Error creating subtasks:", subtaskError);
-          Alert.alert(
-            "Task Created with Warnings",
-            "Main task was created, but one or more subtasks failed to save.",
-            [
-              {
-                text: "OK",
-                onPress: () => navigation.goBack(),
-              },
-            ],
-          );
-          return;
-        }
-      }
-
-      Alert.alert("Task Created", "Task was added successfully.", [
-        {
-          text: "OK",
-          onPress: () => navigation.goBack(),
-        },
-      ]);
-    } catch (error) {
-      console.error("Error creating task:", error);
-      Alert.alert("Error", "Failed to create task. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
+  const getSubtaskDurationInMinutes = (
+    subtask: SubtaskDraft,
+  ): number | null => {
+    if (!subtask.startTime || !subtask.endTime) return null;
+    const diff = subtask.endTime.getTime() - subtask.startTime.getTime();
+    if (diff <= 0) return null;
+    return Math.round(diff / 60000);
   };
 
+  const renderSubtaskContent = (subtask: SubtaskDraft, index: number) => (
+    <View style={styles.subtaskContent}>
+      <TextInput
+        style={styles.input}
+        value={subtask.name}
+        onChangeText={(value) => updateSubtaskTextField(index, "name", value)}
+        placeholder="Sub task name"
+        placeholderTextColor={colors.secondaryText}
+      />
+
+      <TextInput
+        style={[styles.input, styles.textArea, styles.subtaskDescriptionInput]}
+        value={subtask.description}
+        onChangeText={(value) =>
+          updateSubtaskTextField(index, "description", value)
+        }
+        placeholder="Sub task description (optional)"
+        placeholderTextColor={colors.secondaryText}
+        multiline
+      />
+
+      <View style={styles.row}>
+        <TouchableOpacity
+          style={[styles.input, styles.pickerInput, styles.timeInput]}
+          onPress={() => {
+            setPendingSubtaskDateTime(subtask.startTime ?? new Date());
+            setActiveSubtaskDateTimePicker({
+              index,
+              field: "startTime",
+              mode: "date",
+            });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Set start date and time for sub task ${index + 1}`}
+        >
+          <Text style={styles.pickerInputText}>
+            {subtask.startTime
+              ? formatDateTime(subtask.startTime)
+              : "Start Date & Time"}
+          </Text>
+          <Ionicons name="time-outline" size={18} color={colors.text} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.input, styles.pickerInput, styles.timeInput]}
+          onPress={() => {
+            setPendingSubtaskDateTime(subtask.endTime ?? new Date());
+            setActiveSubtaskDateTimePicker({
+              index,
+              field: "endTime",
+              mode: "date",
+            });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Set end date and time for sub task ${index + 1}`}
+        >
+          <Text style={styles.pickerInputText}>
+            {subtask.endTime
+              ? formatDateTime(subtask.endTime)
+              : "End Date & Time"}
+          </Text>
+          <Ionicons name="time-outline" size={18} color={colors.text} />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.helperText}>
+        Duration: {getSubtaskDurationInMinutes(subtask) ?? "--"} min
+      </Text>
+    </View>
+  );
+
+  const renderSubtaskCard = (subtask: SubtaskDraft, index: number) => {
+    const isCollapsed = collapsedSubtasks[index] ?? false;
+
+    return (
+      <View key={`subtask-${index}`} style={styles.subtaskCard}>
+        <View style={styles.subtaskHeader}>
+          <View style={styles.subtaskTitleWrap}>
+            <Text style={styles.subtaskOrderBadge}>{index + 1}</Text>
+            <Text style={styles.subtaskTitle}>Sub Task</Text>
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity
+              style={{ marginRight: 10, padding: 2 }}
+              onPress={() => toggleSubtaskCollapse(index)}
+              accessibilityRole="button"
+              accessibilityLabel={`${
+                isCollapsed ? "Expand" : "Collapse"
+              } sub task ${index + 1}`}
+            >
+              <Ionicons
+                name={isCollapsed ? "chevron-down" : "chevron-up"}
+                size={18}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.removeSubtaskButton}
+              onPress={() => removeSubtask(index)}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove sub task ${index + 1}`}
+            >
+              <Text style={styles.removeSubtaskText}>-</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {!isCollapsed && renderSubtaskContent(subtask, index)}
+      </View>
+    );
+  };
+
+  // =========================================================================
+  // MAIN RENDER
+  // =========================================================================
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
@@ -543,296 +586,8 @@ export default function AddTaskDetailsScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Start Date</Text>
-          <TouchableOpacity
-            style={[styles.input, styles.pickerInput]}
-            onPress={() => setShowStartDatePicker(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Select start date"
-          >
-            <Text style={styles.pickerInputText}>{formatDate(startDate)}</Text>
-            <Ionicons name="calendar-outline" size={18} color={colors.text} />
-          </TouchableOpacity>
-
-          {showStartDatePicker ? (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              display="default"
-              minimumDate={todayMinDate}
-              onChange={handleStartDateChange}
-            />
-          ) : null}
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Start Time</Text>
-          <View style={styles.row}>
-            <TouchableOpacity
-              style={[styles.input, styles.pickerInput, styles.timeInput]}
-              onPress={() => {
-                setIsStartTimeSet(true);
-                setShowStartTimePicker(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Set start time"
-            >
-              <Text style={styles.pickerInputText}>
-                {isStartTimeSet ? formatTime(startTime) : "Set Time"}
-              </Text>
-              <Ionicons name="time-outline" size={18} color={colors.text} />
-            </TouchableOpacity>
-
-            {isStartTimeSet && (
-              <TouchableOpacity
-                style={styles.removeSubtaskButton}
-                onPress={() => setIsStartTimeSet(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Remove start time"
-              >
-                <Text style={styles.removeSubtaskText}>-</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {isStartTimeSet && showStartTimePicker ? (
-            <DateTimePicker
-              value={startTime}
-              mode="time"
-              is24Hour
-              display="default"
-              onChange={handleStartTimeChange}
-            />
-          ) : null}
-
-          <Text style={styles.helperText}>
-            If time is not set, duration is calculated from 00:00 on the
-            selected start date.
-          </Text>
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Deadline Date *</Text>
-          <TouchableOpacity
-            style={[styles.input, styles.pickerInput]}
-            onPress={() => setShowDatePicker(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Select deadline date"
-          >
-            <Text style={styles.pickerInputText}>
-              {formatDate(deadlineDate)}
-            </Text>
-            <Ionicons name="calendar-outline" size={18} color={colors.text} />
-          </TouchableOpacity>
-
-          {showDatePicker ? (
-            <DateTimePicker
-              value={deadlineDate}
-              mode="date"
-              display="default"
-              minimumDate={todayMinDate}
-              onChange={handleDateChange}
-            />
-          ) : null}
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Deadline Time</Text>
-          <View style={styles.row}>
-            <TouchableOpacity
-              style={[styles.input, styles.pickerInput, styles.timeInput]}
-              onPress={() => {
-                setIsDeadlineTimeSet(true);
-                setShowTimePicker(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Set deadline time"
-            >
-              <Text style={styles.pickerInputText}>
-                {isDeadlineTimeSet ? formatTime(deadlineTime) : "Set Time"}
-              </Text>
-              <Ionicons name="time-outline" size={18} color={colors.text} />
-            </TouchableOpacity>
-
-            {isDeadlineTimeSet && (
-              <TouchableOpacity
-                style={styles.removeSubtaskButton}
-                onPress={() => setIsDeadlineTimeSet(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Remove deadline time"
-              >
-                <Text style={styles.removeSubtaskText}>-</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {isDeadlineTimeSet && showTimePicker ? (
-            <DateTimePicker
-              value={deadlineTime}
-              mode="time"
-              is24Hour
-              display="default"
-              onChange={handleTimeChange}
-            />
-          ) : null}
-
-          <Text style={styles.helperText}>
-            If time is not set, task is created for the selected day.
-          </Text>
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Task Duration</Text>
-          <Text style={styles.pickerInputText}>
-            {taskDurationInMinutes > 0
-              ? `${taskDurationInMinutes} minutes`
-              : "--"}
-          </Text>
-        </View>
-
-        <View style={styles.formGroup}>
           <Text style={styles.label}>Sub Tasks</Text>
-          {subtasks.map((subtask, index) => (
-            <View key={`subtask-${index}`} style={styles.subtaskCard}>
-              {(() => {
-                const isCollapsed = collapsedSubtasks[index] ?? false;
-                return (
-                  <>
-                    <View style={styles.subtaskHeader}>
-                      <Text style={styles.subtaskTitle}>
-                        Sub Task {index + 1}
-                      </Text>
-                      <View
-                        style={{ flexDirection: "row", alignItems: "center" }}
-                      >
-                        <TouchableOpacity
-                          style={{ marginRight: 10, padding: 2 }}
-                          onPress={() => toggleSubtaskCollapse(index)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${
-                            isCollapsed ? "Expand" : "Collapse"
-                          } sub task ${index + 1}`}
-                        >
-                          <Ionicons
-                            name={isCollapsed ? "chevron-down" : "chevron-up"}
-                            size={18}
-                            color={colors.text}
-                          />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={styles.removeSubtaskButton}
-                          onPress={() => removeSubtask(index)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Remove sub task ${index + 1}`}
-                        >
-                          <Text style={styles.removeSubtaskText}>-</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-
-                    {!isCollapsed ? (
-                      <>
-                        <TextInput
-                          style={styles.input}
-                          value={subtask.name}
-                          onChangeText={(value) =>
-                            updateSubtaskTextField(index, "name", value)
-                          }
-                          placeholder="Sub task name"
-                          placeholderTextColor={colors.secondaryText}
-                        />
-
-                        <TextInput
-                          style={[
-                            styles.input,
-                            styles.textArea,
-                            styles.subtaskDescriptionInput,
-                          ]}
-                          value={subtask.description}
-                          onChangeText={(value) =>
-                            updateSubtaskTextField(index, "description", value)
-                          }
-                          placeholder="Sub task description (optional)"
-                          placeholderTextColor={colors.secondaryText}
-                          multiline
-                        />
-
-                        <View style={styles.row}>
-                          <TouchableOpacity
-                            style={[
-                              styles.input,
-                              styles.pickerInput,
-                              styles.timeInput,
-                            ]}
-                            onPress={() => {
-                              setPendingSubtaskDateTime(
-                                subtask.startTime ?? new Date(),
-                              );
-                              setActiveSubtaskDateTimePicker({
-                                index,
-                                field: "startTime",
-                                mode: "date",
-                              });
-                            }}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Set start date and time for sub task ${index + 1}`}
-                          >
-                            <Text style={styles.pickerInputText}>
-                              {subtask.startTime
-                                ? formatDateTime(subtask.startTime)
-                                : "Start Date & Time"}
-                            </Text>
-                            <Ionicons
-                              name="time-outline"
-                              size={18}
-                              color={colors.text}
-                            />
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[
-                              styles.input,
-                              styles.pickerInput,
-                              styles.timeInput,
-                            ]}
-                            onPress={() => {
-                              setPendingSubtaskDateTime(
-                                subtask.endTime ?? new Date(),
-                              );
-                              setActiveSubtaskDateTimePicker({
-                                index,
-                                field: "endTime",
-                                mode: "date",
-                              });
-                            }}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Set end date and time for sub task ${index + 1}`}
-                          >
-                            <Text style={styles.pickerInputText}>
-                              {subtask.endTime
-                                ? formatDateTime(subtask.endTime)
-                                : "End Date & Time"}
-                            </Text>
-                            <Ionicons
-                              name="time-outline"
-                              size={18}
-                              color={colors.text}
-                            />
-                          </TouchableOpacity>
-                        </View>
-
-                        <Text style={styles.helperText}>
-                          Duration:{" "}
-                          {getSubtaskDurationInMinutes(subtask) ?? "--"} min
-                        </Text>
-                      </>
-                    ) : null}
-                  </>
-                );
-              })()}
-            </View>
-          ))}
+          {subtasks.map((subtask, index) => renderSubtaskCard(subtask, index))}
 
           {activeSubtaskDateTimePicker ? (
             <DateTimePicker
