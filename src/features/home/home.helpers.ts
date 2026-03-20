@@ -1,4 +1,4 @@
-import type { HomeTask as TaskWithSubtasks } from "@/src/features/HomePage/home.tasks";
+import type { HomeTask as TaskWithSubtasks } from "./home.tasks";
 
 const DAYS = [
   "Sunday",
