@@ -28,8 +28,6 @@ type SubtaskDraft = {
   endTime: Date | null;
 };
 
-const getDefaultDeadlineTime = (): Date => new Date();
-
 const getEmptySubtask = (): SubtaskDraft => ({
   name: "",
   description: "",
@@ -220,19 +218,39 @@ export default function AddTaskDetailsScreen() {
       return;
     }
 
-    const now = new Date();
-    const dueDateIso = now.toISOString();
+    if (validSubtasks.length === 0) {
+      Alert.alert(
+        "Missing Subtasks",
+        "Please add at least one subtask with a name.",
+      );
+      return;
+    }
 
     for (let i = 0; i < validSubtasks.length; i++) {
       const subtask = validSubtasks[i];
-      if (subtask.startTime && subtask.endTime) {
-        if (subtask.startTime >= subtask.endTime) {
-          Alert.alert(
-            "Invalid Subtask Dates",
-            `Sub Task ${i + 1}: Start date/time must be before end date/time.`,
-          );
-          return;
-        }
+
+      if (!subtask.startTime) {
+        Alert.alert(
+          "Missing Start Date/Time",
+          `Sub Task ${i + 1}: Please set a start date and time.`,
+        );
+        return;
+      }
+
+      if (!subtask.endTime) {
+        Alert.alert(
+          "Missing End Date/Time",
+          `Sub Task ${i + 1}: Please set an end date and time.`,
+        );
+        return;
+      }
+
+      if (subtask.startTime >= subtask.endTime) {
+        Alert.alert(
+          "Invalid Subtask Dates",
+          `Sub Task ${i + 1}: Start date/time must be before end date/time.`,
+        );
+        return;
       }
     }
 
@@ -297,12 +315,8 @@ export default function AddTaskDetailsScreen() {
       }
 
       const subTasksPayload = validSubtasks.map((subtask, index) => {
-        const subtaskStart = subtask.startTime ?? now;
-        const subtaskEndCandidate = subtask.endTime ?? now;
-        const subtaskEnd =
-          subtaskEndCandidate.getTime() >= subtaskStart.getTime()
-            ? subtaskEndCandidate
-            : subtaskStart;
+        const subtaskStart = subtask.startTime!;
+        const subtaskEnd = subtask.endTime!;
 
         return {
           name: subtask.name,
@@ -320,9 +334,6 @@ export default function AddTaskDetailsScreen() {
             0,
             Math.round((subtaskEnd.getTime() - subtaskStart.getTime()) / 60000),
           ),
-          completed: false,
-          isTracked: false,
-          isAiBreakdown: false,
         };
       });
 
@@ -417,9 +428,12 @@ export default function AddTaskDetailsScreen() {
                 return (
                   <>
                     <View style={styles.subtaskHeader}>
-                      <Text style={styles.subtaskTitle}>
-                        Sub Task {index + 1}
-                      </Text>
+                      <View style={styles.subtaskTitleWrap}>
+                        <Text style={styles.subtaskOrderBadge}>
+                          {index + 1}
+                        </Text>
+                        <Text style={styles.subtaskTitle}>Sub Task</Text>
+                      </View>
                       <View
                         style={{ flexDirection: "row", alignItems: "center" }}
                       >
@@ -450,7 +464,7 @@ export default function AddTaskDetailsScreen() {
                     </View>
 
                     {!isCollapsed ? (
-                      <>
+                      <View style={styles.subtaskContent}>
                         <TextInput
                           style={styles.input}
                           value={subtask.name}
@@ -544,7 +558,7 @@ export default function AddTaskDetailsScreen() {
                           Duration:{" "}
                           {getSubtaskDurationInMinutes(subtask) ?? "--"} min
                         </Text>
-                      </>
+                      </View>
                     ) : null}
                   </>
                 );
