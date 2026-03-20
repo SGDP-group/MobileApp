@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import type { User } from '../types/api';
+import type { User } from '../types/type';
 import { apiClient } from './apiClient';
 
 const USER_ID_KEY = 'focusframe_user_id';

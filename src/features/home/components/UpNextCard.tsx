@@ -1,19 +1,16 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useNavigation } from "@react-navigation/native";
-import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import { formatTaskLead, formatTaskTimestamp } from "../home.helpers";
-import type { HomeUpNextItem } from "../home.tasks";
+import type { HomeTask, HomeUpNextItem } from "../home.tasks";
 import { styles } from "../styles/home.styles";
+import { formatTaskLead, formatTaskTimestamp } from "../utils/home.helpers";
 
 interface UpNextCardProps {
   item: HomeUpNextItem;
+  onOpenTaskQueue: (task?: HomeTask) => void;
 }
 
-export function UpNextCard({ item }: UpNextCardProps) {
-  const navigation = useNavigation<RootNavigationProp>();
-
+export function UpNextCard({ item, onOpenTaskQueue }: UpNextCardProps) {
   if (item.type === "loading") {
     return (
       <View style={styles.eventCard}>
@@ -38,7 +35,7 @@ export function UpNextCard({ item }: UpNextCardProps) {
         </View>
         <TouchableOpacity
           style={styles.eventActionButton}
-          onPress={() => navigation.navigate("Calendar")}
+          onPress={() => onOpenTaskQueue()}
         >
           <Text style={styles.eventActionText}>Open Task Queue</Text>
         </TouchableOpacity>
@@ -58,7 +55,7 @@ export function UpNextCard({ item }: UpNextCardProps) {
       </View>
       <TouchableOpacity
         style={styles.eventActionButton}
-        onPress={() => navigation.navigate("Calendar")}
+        onPress={() => onOpenTaskQueue(item.task)}
       >
         <Text style={styles.eventActionText}>Open Task Queue</Text>
       </TouchableOpacity>

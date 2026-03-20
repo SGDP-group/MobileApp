@@ -27,15 +27,12 @@ export interface Subtask {
   id: number;
   name: string;
   description?: string;
-  task?: string;
-  taskId?: number;
   taskOrder: number;
   startTime?: string;
   endTime?: string;
   duration?: number;
   estimatedTime?: number;
   completed: boolean;
-  productive?: number;
   isTracked: boolean;
   isAiBreakdown: boolean;
   status?: SubtaskStatus;

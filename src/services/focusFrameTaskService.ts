@@ -1,4 +1,4 @@
-import type { CreateTaskPayload, Task, UpdateTaskPayload } from '../types/api';
+import type { CreateTaskPayload, Task, UpdateTaskPayload } from '../types/type';
 import { apiClient } from './apiClient';
 
 export async function getTasksByUser(userId: number): Promise<Task[]> {

@@ -9,7 +9,7 @@ import AddTaskDetailsScreen from "../../features/calendar/AddTask/AddTaskDetails
 import AddTaskScreen from "../../features/calendar/AddTask/AddTaskScreen";
 import CalendarScreen from "../../features/calendar/CalendarScreen";
 import FocusTrackingScreen from "../../features/focus";
-import HomeScreen from "../../features/HomePage/HomeScreen";
+import HomeScreen from "../../features/home/HomeScreen";
 import { clearStoredUser, findOrCreateUser } from "../../services/focusFrameUserService";
 import { tokenManager } from "../../utils/tokenManager";
 import { LoadingScreen } from "../components/LoadingScreen";
@@ -112,7 +112,7 @@ export function RootNavigator() {
       await tokenManager.clearAllTokens();
       await clearStoredUser();
       await GoogleSignin.revokeAccess();
-      await GoogleSignin.signOut();
+      // await GoogleSignin.signOut();
       setUserInfo(null);
       setIsLoggedIn(false);
     } catch (error) {
