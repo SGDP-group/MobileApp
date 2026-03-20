@@ -129,7 +129,8 @@ export default function AddTaskDetailsScreen() {
   const validSubtasks = useMemo(
     () =>
       subtasks
-        .map((subtask) => ({
+        .map((subtask, originalIndex) => ({
+          originalIndex,
           name: subtask.name.trim(),
           description: subtask.description.trim(),
           startTime: subtask.startTime,
@@ -230,21 +231,22 @@ export default function AddTaskDetailsScreen() {
   const validateSubtaskDateTime = (): boolean => {
     for (let i = 0; i < validSubtasks.length; i++) {
       const subtask = validSubtasks[i];
+      const subtaskNumber = subtask.originalIndex + 1;
 
       if (!subtask.startTime) {
-        const error = VALIDATION_ERRORS.MISSING_START_TIME(i + 1);
+        const error = VALIDATION_ERRORS.MISSING_START_TIME(subtaskNumber);
         Alert.alert(error.title, error.message);
         return false;
       }
 
       if (!subtask.endTime) {
-        const error = VALIDATION_ERRORS.MISSING_END_TIME(i + 1);
+        const error = VALIDATION_ERRORS.MISSING_END_TIME(subtaskNumber);
         Alert.alert(error.title, error.message);
         return false;
       }
 
       if (subtask.startTime >= subtask.endTime) {
-        const error = VALIDATION_ERRORS.INVALID_SUBTASK_DATES(i + 1);
+        const error = VALIDATION_ERRORS.INVALID_SUBTASK_DATES(subtaskNumber);
         Alert.alert(error.title, error.message);
         return false;
       }
