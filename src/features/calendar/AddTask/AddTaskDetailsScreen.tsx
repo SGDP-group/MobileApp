@@ -58,18 +58,8 @@ export default function AddTaskDetailsScreen() {
 
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [startDate, setStartDate] = useState(new Date());
-  const [isStartTimeSet, setIsStartTimeSet] = useState(false);
-  const [startTime, setStartTime] = useState(getDefaultDeadlineTime);
-  const [deadlineDate, setDeadlineDate] = useState(new Date());
-  const [isDeadlineTimeSet, setIsDeadlineTimeSet] = useState(false);
-  const [deadlineTime, setDeadlineTime] = useState(getDefaultDeadlineTime);
   const [subtasks, setSubtasks] = useState<SubtaskDraft[]>([getEmptySubtask()]);
   const [isSaving, setIsSaving] = useState(false);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [collapsedSubtasks, setCollapsedSubtasks] = useState<
     Record<number, boolean>
   >({});
@@ -100,46 +90,6 @@ export default function AddTaskDetailsScreen() {
         .filter((subtask) => subtask.name.length > 0),
     [subtasks],
   );
-
-  const taskDurationInMinutes = useMemo(() => {
-    const dueDateIso = (() => {
-      const dueDate = new Date(deadlineDate);
-      if (isDeadlineTimeSet) {
-        dueDate.setHours(
-          deadlineTime.getHours(),
-          deadlineTime.getMinutes(),
-          0,
-          0,
-        );
-      } else {
-        const now = new Date();
-        dueDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
-      }
-      return dueDate;
-    })();
-
-    const startDateTime = (() => {
-      const start = new Date(startDate);
-      if (isStartTimeSet) {
-        start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
-      } else {
-        start.setHours(0, 0, 0, 0);
-      }
-      return start;
-    })();
-
-    return Math.max(
-      0,
-      Math.round((dueDateIso.getTime() - startDateTime.getTime()) / 60000),
-    );
-  }, [
-    deadlineDate,
-    isDeadlineTimeSet,
-    deadlineTime,
-    startDate,
-    isStartTimeSet,
-    startTime,
-  ]);
 
   const updateSubtaskTextField = (
     index: number,
@@ -226,72 +176,6 @@ export default function AddTaskDetailsScreen() {
     });
   };
 
-  const buildDueDateIso = (): string => {
-    const dueDate = new Date(deadlineDate);
-    if (isDeadlineTimeSet) {
-      dueDate.setHours(
-        deadlineTime.getHours(),
-        deadlineTime.getMinutes(),
-        0,
-        0,
-      );
-    } else {
-      const now = new Date();
-      dueDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
-    }
-    return dueDate.toISOString();
-  };
-
-  const buildStartDateTime = (): Date => {
-    const start = new Date(startDate);
-    if (isStartTimeSet) {
-      start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
-    } else {
-      start.setHours(0, 0, 0, 0);
-    }
-    return start;
-  };
-
-  const handleDateChange = (
-    event: DateTimePickerEvent,
-    selectedDate?: Date,
-  ) => {
-    setShowDatePicker(false);
-    if (event.type === "set" && selectedDate) {
-      setDeadlineDate(selectedDate);
-    }
-  };
-
-  const handleTimeChange = (
-    event: DateTimePickerEvent,
-    selectedTime?: Date,
-  ) => {
-    setShowTimePicker(false);
-    if (event.type === "set" && selectedTime) {
-      setDeadlineTime(selectedTime);
-    }
-  };
-
-  const handleStartDateChange = (
-    event: DateTimePickerEvent,
-    selectedDate?: Date,
-  ) => {
-    setShowStartDatePicker(false);
-    if (event.type === "set" && selectedDate) {
-      setStartDate(selectedDate);
-    }
-  };
-
-  const handleStartTimeChange = (
-    event: DateTimePickerEvent,
-    selectedTime?: Date,
-  ) => {
-    setShowStartTimePicker(false);
-    if (event.type === "set" && selectedTime) {
-      setStartTime(selectedTime);
-    }
-  };
-
   const handleSubtaskDateTimeChange = (
     event: DateTimePickerEvent,
     selectedValue?: Date,
@@ -336,24 +220,8 @@ export default function AddTaskDetailsScreen() {
       return;
     }
 
-    const dueDateIso = buildDueDateIso();
-    const dueDate = new Date(dueDateIso);
-    if (dueDate < new Date()) {
-      Alert.alert(
-        "Invalid Deadline",
-        "You cannot create a task before now. Please select a future date/time.",
-      );
-      return;
-    }
-
-    const startDateTime = buildStartDateTime();
-    if (startDateTime >= dueDate) {
-      Alert.alert(
-        "Invalid Start Date",
-        "Start date/time must be before deadline date/time.",
-      );
-      return;
-    }
+    const now = new Date();
+    const dueDateIso = now.toISOString();
 
     for (let i = 0; i < validSubtasks.length; i++) {
       const subtask = validSubtasks[i];
@@ -418,8 +286,6 @@ export default function AddTaskDetailsScreen() {
       const createdTask = await createFocusFrameTask({
         name: title,
         description: description || "",
-        deadline: dueDateIso,
-        duration: taskDurationInMinutes,
         user: {
           id: userId,
           email: userEmail,
@@ -431,8 +297,8 @@ export default function AddTaskDetailsScreen() {
       }
 
       const subTasksPayload = validSubtasks.map((subtask, index) => {
-        const subtaskStart = subtask.startTime ?? startDateTime;
-        const subtaskEndCandidate = subtask.endTime ?? dueDate;
+        const subtaskStart = subtask.startTime ?? now;
+        const subtaskEndCandidate = subtask.endTime ?? now;
         const subtaskEnd =
           subtaskEndCandidate.getTime() >= subtaskStart.getTime()
             ? subtaskEndCandidate
@@ -540,154 +406,6 @@ export default function AddTaskDetailsScreen() {
             placeholderTextColor={colors.secondaryText}
             multiline
           />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Start Date</Text>
-          <TouchableOpacity
-            style={[styles.input, styles.pickerInput]}
-            onPress={() => setShowStartDatePicker(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Select start date"
-          >
-            <Text style={styles.pickerInputText}>{formatDate(startDate)}</Text>
-            <Ionicons name="calendar-outline" size={18} color={colors.text} />
-          </TouchableOpacity>
-
-          {showStartDatePicker ? (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              display="default"
-              minimumDate={todayMinDate}
-              onChange={handleStartDateChange}
-            />
-          ) : null}
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Start Time</Text>
-          <View style={styles.row}>
-            <TouchableOpacity
-              style={[styles.input, styles.pickerInput, styles.timeInput]}
-              onPress={() => {
-                setIsStartTimeSet(true);
-                setShowStartTimePicker(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Set start time"
-            >
-              <Text style={styles.pickerInputText}>
-                {isStartTimeSet ? formatTime(startTime) : "Set Time"}
-              </Text>
-              <Ionicons name="time-outline" size={18} color={colors.text} />
-            </TouchableOpacity>
-
-            {isStartTimeSet && (
-              <TouchableOpacity
-                style={styles.removeSubtaskButton}
-                onPress={() => setIsStartTimeSet(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Remove start time"
-              >
-                <Text style={styles.removeSubtaskText}>-</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {isStartTimeSet && showStartTimePicker ? (
-            <DateTimePicker
-              value={startTime}
-              mode="time"
-              is24Hour
-              display="default"
-              onChange={handleStartTimeChange}
-            />
-          ) : null}
-
-          <Text style={styles.helperText}>
-            If time is not set, duration is calculated from 00:00 on the
-            selected start date.
-          </Text>
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Deadline Date *</Text>
-          <TouchableOpacity
-            style={[styles.input, styles.pickerInput]}
-            onPress={() => setShowDatePicker(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Select deadline date"
-          >
-            <Text style={styles.pickerInputText}>
-              {formatDate(deadlineDate)}
-            </Text>
-            <Ionicons name="calendar-outline" size={18} color={colors.text} />
-          </TouchableOpacity>
-
-          {showDatePicker ? (
-            <DateTimePicker
-              value={deadlineDate}
-              mode="date"
-              display="default"
-              minimumDate={todayMinDate}
-              onChange={handleDateChange}
-            />
-          ) : null}
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Deadline Time</Text>
-          <View style={styles.row}>
-            <TouchableOpacity
-              style={[styles.input, styles.pickerInput, styles.timeInput]}
-              onPress={() => {
-                setIsDeadlineTimeSet(true);
-                setShowTimePicker(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Set deadline time"
-            >
-              <Text style={styles.pickerInputText}>
-                {isDeadlineTimeSet ? formatTime(deadlineTime) : "Set Time"}
-              </Text>
-              <Ionicons name="time-outline" size={18} color={colors.text} />
-            </TouchableOpacity>
-
-            {isDeadlineTimeSet && (
-              <TouchableOpacity
-                style={styles.removeSubtaskButton}
-                onPress={() => setIsDeadlineTimeSet(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Remove deadline time"
-              >
-                <Text style={styles.removeSubtaskText}>-</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {isDeadlineTimeSet && showTimePicker ? (
-            <DateTimePicker
-              value={deadlineTime}
-              mode="time"
-              is24Hour
-              display="default"
-              onChange={handleTimeChange}
-            />
-          ) : null}
-
-          <Text style={styles.helperText}>
-            If time is not set, task is created for the selected day.
-          </Text>
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Task Duration</Text>
-          <Text style={styles.pickerInputText}>
-            {taskDurationInMinutes > 0
-              ? `${taskDurationInMinutes} minutes`
-              : "--"}
-          </Text>
         </View>
 
         <View style={styles.formGroup}>
