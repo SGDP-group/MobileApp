@@ -1,5 +1,6 @@
 import type { HomeTask as TaskWithSubtasks } from "../home.tasks";
 
+
 const DAYS = [
   "Sunday",
   "Monday",
@@ -83,7 +84,21 @@ export const getFormattedDate = (value: Date): string => {
   return `${dayName}, ${monthName} ${day}`;
 };
 
+export type TaskLeadStatus = "upcoming" | "late" | "none";
+
+export interface TaskLeadMeta {
+  status: TaskLeadStatus;
+  label: string;
+  startDateOfIncompleteSubtask: Date | null;
+}
+
+const NO_START_TIME_LABEL = "NO START TIME";
+
 export const formatTaskLead = (task: TaskWithSubtasks): string => {
+  return formatTaskLeadMeta(task).label;
+};
+
+export const formatTaskLeadMeta = (task: TaskWithSubtasks): TaskLeadMeta => {
   const subtasks = Array.isArray(task.subTasks)
     ? task.subTasks
     : Array.isArray(task.subtasks)
@@ -92,7 +107,6 @@ export const formatTaskLead = (task: TaskWithSubtasks): string => {
 
   const leadIncomplete = subtasks.reduce<(typeof subtasks)[number] | undefined>(
     (best, current) => {
-      // Ignore completed tasks or those without a start time
       if (current.completed || !current.startTime) return best;
       if (!best) return current;
 
@@ -105,25 +119,42 @@ export const formatTaskLead = (task: TaskWithSubtasks): string => {
   );
 
   const rawStartTime = leadIncomplete?.startTime;
-  if (!rawStartTime) return "NO START TIME";
+  if (!rawStartTime) {
+    return {
+      status: "none",
+      label: NO_START_TIME_LABEL,
+      startDateOfIncompleteSubtask: null,
+    };
+  }
 
-  // Ensure this returns a Date object, not a string
   const startDate = toSubtaskStartDate(rawStartTime);
-  if (!startDate || !(startDate instanceof Date)) return "NO START TIME";
+  if (!startDate || !(startDate instanceof Date)) {
+    return {
+      status: "none",
+      label: NO_START_TIME_LABEL,
+      startDateOfIncompleteSubtask: null,
+    };
+  }
 
   const diffMs = startDate.getTime() - Date.now();
   const absMs = Math.abs(diffMs);
   
-  // Calculate hours and minutes accurately
   const hours = Math.floor(absMs / (1000 * 60 * 60));
   const minutes = Math.floor((absMs % (1000 * 60 * 60)) / (1000 * 60));
   
   const durationLabel = `${hours}H ${minutes}M`;
 
-  // diffMs > 0 means the start time is in the future
-  return diffMs >= 0 
-    ? `STARTS IN ${durationLabel}` 
-    : `LATE BY ${durationLabel}`; 
+  return diffMs >= 0
+    ? {
+        status: "upcoming",
+        label: `STARTS IN ${durationLabel}`,
+        startDateOfIncompleteSubtask: startDate,
+      }
+    : {
+        status: "late",
+        label: `LATE BY ${durationLabel}`,
+        startDateOfIncompleteSubtask: startDate,
+      };
 };
 
 export const formatTaskTimestamp = (value: string): string => {
