@@ -47,6 +47,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
         }
 
         setSubtasks(Array.isArray(fetchedSubtasks) ? fetchedSubtasks : []);
+
       } catch (error) {
         console.warn(
           `Failed to load subtasks for task ${task.id}:`,
@@ -82,11 +83,22 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
       return [];
     }
 
-    return [...subtasks].sort((a, b) => {
-      const aOrder = typeof a.taskOrder === "number" ? a.taskOrder : Number.MAX_SAFE_INTEGER;
-      const bOrder = typeof b.taskOrder === "number" ? b.taskOrder : Number.MAX_SAFE_INTEGER;
-      return aOrder - bOrder;
-    });
+    return [...subtasks]
+      // .filter((subtask) => !subtask.completed)
+      .sort((a, b) => {
+        const aOrder =
+          typeof a.taskOrder === "number" ? a.taskOrder : Number.MAX_SAFE_INTEGER;
+        const bOrder =
+          typeof b.taskOrder === "number" ? b.taskOrder : Number.MAX_SAFE_INTEGER;
+
+        if (aOrder !== bOrder) {
+          return aOrder - bOrder;
+        }
+
+        const aStart = toSafeDate(a.startTime)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const bStart = toSafeDate(b.startTime)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        return aStart - bStart;
+      });
   }, [subtasks]);
 
   const derivedMainDescription = useMemo(() => {
@@ -250,7 +262,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
                       <SubtaskAccordionItem
                         key={subtask.id}
                         subtask={subtask}
-                        isExpanded={isExpanded}
+                        isExpanded={!isExpanded}
                         onToggle={toggleSubtask}
                       />
                     );

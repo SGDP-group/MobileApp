@@ -104,22 +104,9 @@ export const getSubtaskDuration = (
 };
 
 export const getStatusLabel = (
-  status?: SubtaskStatus,
   completed?: boolean,
 ): string => {
   if (completed) {
-    return "Completed";
-  }
-
-  if (status?.name?.trim()) {
-    return status.name;
-  }
-
-  if (status?.id === 2) {
-    return "In Progress";
-  }
-
-  if (status?.id === 3) {
     return "Completed";
   }
 

@@ -3,13 +3,13 @@ import React, { useMemo } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { styles } from "../styles/taskQueueModal.styles";
 import {
-    formatDateObject,
-    formatDateTime,
-    formatDuration,
-    getStatusLabel,
-    getSubtaskDuration,
-    toSafeDate,
-    type HomeSubtask
+  formatDateObject,
+  formatDateTime,
+  formatDuration,
+  getStatusLabel,
+  getSubtaskDuration,
+  toSafeDate,
+  type HomeSubtask
 } from "../utils/taskQueueModal.utils";
 
 interface SubtaskAccordionItemProps {
@@ -23,7 +23,9 @@ export function SubtaskAccordionItem({
   isExpanded,
   onToggle,
 }: SubtaskAccordionItemProps) {
-  const statusLabel = getStatusLabel(subtask.status, subtask.completed);
+  
+
+  const statusLabel = getStatusLabel(subtask.completed);
 
 
   const duration = getSubtaskDuration(subtask.duration, subtask.estimatedTime);
