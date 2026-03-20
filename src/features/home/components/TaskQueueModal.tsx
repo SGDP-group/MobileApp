@@ -84,7 +84,6 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
     }
 
     return [...subtasks]
-      // .filter((subtask) => !subtask.completed)
       .sort((a, b) => {
         const aOrder =
           typeof a.taskOrder === "number" ? a.taskOrder : Number.MAX_SAFE_INTEGER;
@@ -219,24 +218,19 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.taskQueueMainSection}>
-                {/* <Text style={styles.taskQueueSectionTitle}>Main Task</Text> */}
-{/* 
-                <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Name</Text>
-                  <Text style={styles.taskQueueFieldValue}>{task.name}</Text>
-                </View> */}
+             
 
                 <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Description</Text>
                   <Text style={styles.taskQueueFieldValue}>{derivedMainDescription}</Text>
                 </View>
 
-                <View style={styles.taskQueueFieldRow}>
+                {/* <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Start time</Text>
                   <Text style={styles.taskQueueFieldValue}>{derivedStartTime}</Text>
-                </View>
+                </View> */}
 
-                <View style={styles.taskQueueFieldRow}>
+                {/* <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Deadline</Text>
                   <Text style={styles.taskQueueFieldValue}>{derivedDeadline}</Text>
                 </View>
@@ -244,7 +238,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
                 <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Duration</Text>
                   <Text style={styles.taskQueueFieldValue}>{formatDuration(derivedMainDuration)}</Text>
-                </View>
+                </View> */}
               </View>
 
               <View style={styles.taskQueueSubtasksSection}>
