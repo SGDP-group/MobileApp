@@ -2,7 +2,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity } from "react-native";
+import { Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FocusHeroCard } from "./components/FocusHeroCard";
 import { HomeHeader } from "./components/HomeHeader";
