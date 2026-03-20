@@ -1,4 +1,4 @@
-import type { CreateSubtaskPayload, PatchSubtaskPayload, Subtask } from '../types/api';
+import type { CreateSubtaskPayload, PatchSubtaskPayload, Subtask } from '../types/type';
 import { apiClient } from './apiClient';
 
 export async function getSubtasksByTask(taskId: number): Promise<Subtask[]> {

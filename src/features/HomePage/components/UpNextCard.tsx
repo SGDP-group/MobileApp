@@ -1,9 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import { formatTaskLead, formatTaskTimestamp } from "../home.helpers";
 import type { HomeTask, HomeUpNextItem } from "../home.tasks";
 import { styles } from "../styles/home.styles";
+import { formatTaskLead, formatTaskTimestamp } from "../utils/home.helpers";
 
 interface UpNextCardProps {
   item: HomeUpNextItem;

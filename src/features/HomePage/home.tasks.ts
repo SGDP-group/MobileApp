@@ -1,4 +1,4 @@
-import type { Subtask, Task } from "@/src/types/api";
+import type { Subtask, Task } from "@/src/types/type";
 import { getIncompleteTasksUpToToday } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
