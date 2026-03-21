@@ -1,3 +1,4 @@
+import type { CreateSubtaskPayload } from "@/src/types/type";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -7,6 +8,7 @@ import { useNavigation } from "@react-navigation/native";
 import { createSubtask as createFocusFrameSubtask } from "@services/focusFrameSubtaskService";
 import { createTask as createFocusFrameTask } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
+import { googleCalendarService } from "@services/googleCalendarService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
@@ -33,6 +35,8 @@ type SubtaskPickerState = {
   field: "startTime" | "endTime";
   mode: "date" | "time";
 };
+
+const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Colombo";
 
 const VALIDATION_ERRORS = {
   MISSING_TASK_NAME: {
@@ -77,6 +81,11 @@ const SUCCESS_MESSAGES = {
   TASK_CREATED: {
     title: "Task Created",
     message: "Task was added successfully.",
+  },
+  TASK_CREATED_CALENDAR_FAILED: {
+    title: "Task Created with Issues",
+    message:
+      "Task was created successfully, but some calendar events could not be synced. Your calendar may be out of sync.",
   },
 };
 
@@ -254,15 +263,14 @@ export default function AddTaskDetailsScreen() {
     return true;
   };
 
-  const validateAllInputs = (): boolean => {
-    return (
-      validateTaskName(taskName) &&
-      validateSubtasksExist() &&
-      validateSubtaskDateTime()
-    );
-  };
+  const validateAllInputs = (): boolean =>
+    validateTaskName(taskName) &&
+    validateSubtasksExist() &&
+    validateSubtaskDateTime();
 
-  const createSubtaskPayload = (createdTaskId: number) => {
+  const createSubtaskPayload = (
+    createdTaskId: number,
+  ): CreateSubtaskPayload[] => {
     return validSubtasks.map((subtask, index) => {
       const subtaskStart = subtask.startTime!;
       const subtaskEnd = subtask.endTime!;
@@ -275,7 +283,6 @@ export default function AddTaskDetailsScreen() {
         name: subtask.name,
         description: subtask.description || "",
         task: { id: createdTaskId },
-        status: { id: 1 },
         taskOrder: index + 1,
         startTime: subtaskStart.toISOString(),
         endTime: subtaskEnd.toISOString(),
@@ -309,16 +316,71 @@ export default function AddTaskDetailsScreen() {
     return signedInUser.user.email;
   };
 
-  const createSubtasks = async (createdTaskId: number): Promise<boolean> => {
+  const createSubtaskCalendarEvents = async (): Promise<{
+    success: boolean;
+    failureCount: number;
+  }> => {
+    try {
+      const calendarEventPromises = validSubtasks.map((subtask) => {
+        if (!subtask.startTime || !subtask.endTime) return null;
+
+        return googleCalendarService.createEvent({
+          summary: subtask.name,
+          description: subtask.description || "",
+          start: {
+            dateTime: subtask.startTime.toISOString(),
+            timeZone: TIMEZONE,
+          },
+          end: {
+            dateTime: subtask.endTime.toISOString(),
+            timeZone: TIMEZONE,
+          },
+        });
+      });
+
+      const isPromise = (p: unknown): p is Promise<any> => p !== null;
+      const nonNullPromises = calendarEventPromises.filter(isPromise);
+
+      if (nonNullPromises.length === 0) {
+        return { success: true, failureCount: 0 };
+      }
+
+      const results = await Promise.allSettled(nonNullPromises);
+      const failures = results.filter((r) => r.status === "rejected");
+
+      if (failures.length > 0) {
+        console.warn(
+          `Failed to create ${failures.length} calendar event(s):`,
+          failures.map((f) => (f as PromiseRejectedResult).reason),
+        );
+        return { success: false, failureCount: failures.length };
+      }
+
+      return { success: true, failureCount: 0 };
+    } catch (error) {
+      console.error("Error creating calendar events:", error);
+      return { success: false, failureCount: validSubtasks.length };
+    }
+  };
+
+  const createSubtasks = async (
+    createdTaskId: number,
+  ): Promise<{ success: boolean; calendarFailureCount: number }> => {
     const payload = createSubtaskPayload(createdTaskId);
 
-    if (payload.length === 0) return true;
+    if (payload.length === 0) return { success: true, calendarFailureCount: 0 };
 
     try {
       await Promise.all(
-        payload.map((subtask) => createFocusFrameSubtask(subtask as any)),
+        payload.map((subtask) => createFocusFrameSubtask(subtask)),
       );
-      return true;
+
+      const calendarResult = await createSubtaskCalendarEvents();
+
+      return {
+        success: true,
+        calendarFailureCount: calendarResult.failureCount,
+      };
     } catch (error) {
       console.error("Error creating subtasks:", error);
       Alert.alert(
@@ -326,7 +388,7 @@ export default function AddTaskDetailsScreen() {
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
         [{ text: "OK", onPress: () => navigation.goBack() }],
       );
-      return false;
+      return { success: false, calendarFailureCount: 0 };
     }
   };
 
@@ -359,14 +421,22 @@ export default function AddTaskDetailsScreen() {
         throw new Error("Task created without task id.");
       }
 
-      const subtasksCreated = await createSubtasks(createdTask.id);
-      if (!subtasksCreated) return;
+      const subtasksResult = await createSubtasks(createdTask.id);
+      if (!subtasksResult.success) return;
 
-      Alert.alert(
-        SUCCESS_MESSAGES.TASK_CREATED.title,
-        SUCCESS_MESSAGES.TASK_CREATED.message,
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      if (subtasksResult.calendarFailureCount > 0) {
+        Alert.alert(
+          SUCCESS_MESSAGES.TASK_CREATED_CALENDAR_FAILED.title,
+          SUCCESS_MESSAGES.TASK_CREATED_CALENDAR_FAILED.message,
+          [{ text: "OK", onPress: () => navigation.goBack() }],
+        );
+      } else {
+        Alert.alert(
+          SUCCESS_MESSAGES.TASK_CREATED.title,
+          SUCCESS_MESSAGES.TASK_CREATED.message,
+          [{ text: "OK", onPress: () => navigation.goBack() }],
+        );
+      }
     } catch (error) {
       console.error("Error creating task:", error);
       Alert.alert(
