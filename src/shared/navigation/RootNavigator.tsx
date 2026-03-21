@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import AnalyticsScreen from "../../features/analytics/AnalyticsScreen";
 import WelcomeScreen from "../../features/auth/screens/WelcomeScreen";
 import AddTaskDetailsScreen from "../../features/calendar/AddTask/AddTaskDetailsScreen";
+import AIBreakdownScreen from "../../features/calendar/AddTask/AIBreakdownScreen";
 import AddTaskScreen from "../../features/calendar/AddTask/AddTaskScreen";
 import CalendarScreen from "../../features/calendar/CalendarScreen";
 import FocusTrackingScreen from "../../features/focus";
@@ -22,6 +23,7 @@ export type RootStackParamList = {
   Focus: undefined;
   AddTask: undefined;
   AddTaskDetails: undefined;
+  AIBreakdownDetails: undefined;
   Loading: undefined;
 };
 
@@ -148,6 +150,10 @@ export function RootNavigator() {
           <Stack.Screen
             name="AddTaskDetails"
             component={AddTaskDetailsScreen}
+          />
+          <Stack.Screen
+            name="AIBreakdownDetails"
+            component={AIBreakdownScreen}
           />
         </>
       ) : (

@@ -5,7 +5,7 @@ import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React from "react";
-import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type TaskActionType = "quick" | "ai";
@@ -59,7 +59,7 @@ export default function AddTaskScreen() {
   };
 
   const handleAIBreakdownPress = () => {
-    Alert.alert("AI Breakdown", "AI Breakdown flow will be connected next.");
+    navigation.navigate("AIBreakdownDetails");
   };
 
   return (
