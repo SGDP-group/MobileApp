@@ -4,6 +4,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { aiBreakdownService } from "@services/aiBreakdownService";
+import { getStoredUserId } from "@services/focusFrameUserService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useState } from "react";
@@ -51,6 +52,10 @@ const VALIDATION_ERRORS = {
   AI_BREAKDOWN_FAILED: {
     title: "AI Breakdown Failed",
     message: "Failed to break down the task. Please try again.",
+  },
+  USER_NOT_LINKED: {
+    title: "User Not Linked",
+    message: "Please link your account to the focus frame service.",
   },
 };
 
@@ -168,12 +173,21 @@ export default function AIBreakdownScreen() {
       const durationMs = endTime!.getTime() - startTime!.getTime();
       const duration = Math.round(durationMs / (1000 * 60));
 
+      const userId = await getStoredUserId();
+      if (!userId) {
+        Alert.alert(
+          VALIDATION_ERRORS.USER_NOT_LINKED.title,
+          VALIDATION_ERRORS.USER_NOT_LINKED.message,
+        );
+        return;
+      }
+
       const request = {
         title: taskTitle.trim(),
         description: taskDescription.trim(),
         duration,
         maximum_time_per_task: maximumTimePerTask,
-        user_id: "0",
+        user_id: userId?.toString(),
         session_id: `session_${Date.now()}`,
       };
 
