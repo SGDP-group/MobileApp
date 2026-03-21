@@ -139,8 +139,20 @@ export const formatTaskLeadMeta = (task: TaskWithSubtasks): TaskLeadMeta => {
   const diffMs = startDate.getTime() - Date.now();
   const absMs = Math.abs(diffMs);
   
-  const hours = Math.floor(absMs / (1000 * 60 * 60));
-  const minutes = Math.floor((absMs % (1000 * 60 * 60)) / (1000 * 60));
+ 
+  let hours: number;
+  let minutes: number;
+  if (diffMs >= 0) {
+    // Upcoming: round up to avoid under-reporting time remaining
+    const totalMinutes = Math.ceil(absMs / (1000 * 60));
+    hours = Math.floor(totalMinutes / 60);
+    minutes = totalMinutes % 60;
+  } else {
+    // Late: round down so we don't overstate how late the task is
+    const totalMinutes = Math.floor(absMs / (1000 * 60));
+    hours = Math.floor(totalMinutes / 60);
+    minutes = totalMinutes % 60;
+  }
   
   const durationLabel = `${hours}H ${minutes}M`;
 
