@@ -7,7 +7,7 @@ import { HomeTask, useHomeTasks } from "../home/home.tasks";
 import { formatTaskLeadMeta, formatTaskTimestamp } from "../home/utils/home.helpers";
 import { CalendarTaskListSection } from "./components/CalendarTaskListSection";
 import { TaskQueueHeader } from "./components/TaskQueueHeader";
-import { TaskQueueModal } from "./components/TaskQueueModalCalender";
+import { TaskQueueModal } from "./components/EditableTaskQueueModal";
 import { styles } from "./styles/calendar.styles";
 import type { CalendarTaskItem } from "./utils/calender.types";
 
