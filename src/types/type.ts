@@ -40,6 +40,23 @@ export interface Subtask {
   updatedAt: string;
 }
 
+
+export interface  CalendarTaskItem {
+  id: string;
+  title: string;
+  notes?: string;
+  due?: string;
+  completed: boolean;
+  subtasks: {
+    id: string;
+    title: string;
+    notes?: string;
+    due?: string;
+    completed: boolean;
+  }[];
+};
+
+
 export type CreateTaskPayload = Pick<Task, "name"> &
   Partial<
     Pick<
