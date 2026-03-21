@@ -1,6 +1,6 @@
 import type { HomeTask } from "../../home/home.tasks";
 
-type SubtaskStatus = {
+export type SubtaskStatus = {
   id?: number;
   name?: string;
 };
