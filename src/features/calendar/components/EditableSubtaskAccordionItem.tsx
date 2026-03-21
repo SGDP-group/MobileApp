@@ -5,8 +5,8 @@ import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
   formatDateTime,
   getStatusLabel,
-  type SubtaskStatus,
-  type HomeSubtask
+  type HomeSubtask,
+  type SubtaskStatus
 } from "../utils/taskQueueModalCalender.utils";
 
 interface SubtaskAccordionItemProps {
