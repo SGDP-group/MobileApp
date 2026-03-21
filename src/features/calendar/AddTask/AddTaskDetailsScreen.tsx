@@ -1,3 +1,4 @@
+import type { CreateSubtaskPayload } from "@/src/types/type";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -21,7 +22,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/addTaskDetails.styles";
-import { CreateSubtaskPayload } from "@/src/types/type";
 
 type SubtaskDraft = {
   name: string;
@@ -36,7 +36,7 @@ type SubtaskPickerState = {
   mode: "date" | "time";
 };
 
-const TIMEZONE = "Asia/Colombo";
+const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Colombo";
 
 const VALIDATION_ERRORS = {
   MISSING_TASK_NAME: {
@@ -81,6 +81,11 @@ const SUCCESS_MESSAGES = {
   TASK_CREATED: {
     title: "Task Created",
     message: "Task was added successfully.",
+  },
+  TASK_CREATED_CALENDAR_FAILED: {
+    title: "Task Created with Issues",
+    message:
+      "Task was created successfully, but some calendar events could not be synced. Your calendar may be out of sync.",
   },
 };
 
@@ -258,13 +263,10 @@ export default function AddTaskDetailsScreen() {
     return true;
   };
 
-  const validateAllInputs = (): boolean => {
-    return (
-      validateTaskName(taskName) &&
-      validateSubtasksExist() &&
-      validateSubtaskDateTime()
-    );
-  };
+  const validateAllInputs = (): boolean =>
+    validateTaskName(taskName) &&
+    validateSubtasksExist() &&
+    validateSubtaskDateTime();
 
   const createSubtaskPayload = (
     createdTaskId: number,
@@ -314,7 +316,10 @@ export default function AddTaskDetailsScreen() {
     return signedInUser.user.email;
   };
 
-  const createSubtaskCalendarEvents = async (): Promise<void> => {
+  const createSubtaskCalendarEvents = async (): Promise<{
+    success: boolean;
+    failureCount: number;
+  }> => {
     try {
       const calendarEventPromises = validSubtasks.map((subtask) => {
         if (!subtask.startTime || !subtask.endTime) return null;
@@ -333,30 +338,49 @@ export default function AddTaskDetailsScreen() {
         });
       });
 
-      const nonNullPromises = calendarEventPromises.filter(
-        (p) => p !== null,
-      ) as Promise<any>[];
-      if (nonNullPromises.length > 0) {
-        await Promise.allSettled(nonNullPromises);
+      const isPromise = (p: unknown): p is Promise<any> => p !== null;
+      const nonNullPromises = calendarEventPromises.filter(isPromise);
+
+      if (nonNullPromises.length === 0) {
+        return { success: true, failureCount: 0 };
       }
+
+      const results = await Promise.allSettled(nonNullPromises);
+      const failures = results.filter((r) => r.status === "rejected");
+
+      if (failures.length > 0) {
+        console.warn(
+          `Failed to create ${failures.length} calendar event(s):`,
+          failures.map((f) => (f as PromiseRejectedResult).reason),
+        );
+        return { success: false, failureCount: failures.length };
+      }
+
+      return { success: true, failureCount: 0 };
     } catch (error) {
       console.error("Error creating calendar events:", error);
+      return { success: false, failureCount: validSubtasks.length };
     }
   };
 
-  const createSubtasks = async (createdTaskId: number): Promise<boolean> => {
+  const createSubtasks = async (
+    createdTaskId: number,
+  ): Promise<{ success: boolean; calendarFailureCount: number }> => {
     const payload = createSubtaskPayload(createdTaskId);
 
-    if (payload.length === 0) return true;
+    if (payload.length === 0) return { success: true, calendarFailureCount: 0 };
 
     try {
       await Promise.all(
         payload.map((subtask) => createFocusFrameSubtask(subtask)),
       );
 
-      await createSubtaskCalendarEvents();
+      const calendarResult = await createSubtaskCalendarEvents();
 
-      return true;
+      return {
+        success: true,
+        calendarFailureCount: calendarResult.failureCount,
+      };
     } catch (error) {
       console.error("Error creating subtasks:", error);
       Alert.alert(
@@ -364,7 +388,7 @@ export default function AddTaskDetailsScreen() {
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
         [{ text: "OK", onPress: () => navigation.goBack() }],
       );
-      return false;
+      return { success: false, calendarFailureCount: 0 };
     }
   };
 
@@ -397,14 +421,22 @@ export default function AddTaskDetailsScreen() {
         throw new Error("Task created without task id.");
       }
 
-      const subtasksCreated = await createSubtasks(createdTask.id);
-      if (!subtasksCreated) return;
+      const subtasksResult = await createSubtasks(createdTask.id);
+      if (!subtasksResult.success) return;
 
-      Alert.alert(
-        SUCCESS_MESSAGES.TASK_CREATED.title,
-        SUCCESS_MESSAGES.TASK_CREATED.message,
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      if (subtasksResult.calendarFailureCount > 0) {
+        Alert.alert(
+          SUCCESS_MESSAGES.TASK_CREATED_CALENDAR_FAILED.title,
+          SUCCESS_MESSAGES.TASK_CREATED_CALENDAR_FAILED.message,
+          [{ text: "OK", onPress: () => navigation.goBack() }],
+        );
+      } else {
+        Alert.alert(
+          SUCCESS_MESSAGES.TASK_CREATED.title,
+          SUCCESS_MESSAGES.TASK_CREATED.message,
+          [{ text: "OK", onPress: () => navigation.goBack() }],
+        );
+      }
     } catch (error) {
       console.error("Error creating task:", error);
       Alert.alert(
