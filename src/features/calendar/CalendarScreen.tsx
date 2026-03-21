@@ -2,6 +2,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useMemo, useState } from "react";
+import { Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HomeTask, useHomeTasks } from "../home/home.tasks";
 import { formatTaskLeadMeta, formatTaskTimestamp } from "../home/utils/home.helpers";
@@ -86,6 +87,14 @@ export default function CalendarScreen() {
     setTaskQueueModalVisible(false);
   };
 
+  const handleEditTask = (task: HomeTask) => {
+    Alert.alert("Edit Task", `Edit: ${task.name}`);
+  };
+
+  const handleDeleteTask = (task: HomeTask) => {
+    Alert.alert("Delete Task", `Delete: ${task.name}`);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <TaskQueueHeader
@@ -107,6 +116,8 @@ export default function CalendarScreen() {
         visible={taskQueueModalVisible}
         task={selectedTask}
         onClose={handleCloseTaskQueue}
+        onEditTask={handleEditTask}
+        onDeleteTask={handleDeleteTask}
       />
     </SafeAreaView>
   );

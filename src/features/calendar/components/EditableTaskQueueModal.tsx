@@ -8,9 +8,8 @@ import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
   formatDateObject,
   formatDateTime,
-  formatDuration,
   getSubtaskDuration,
-  toSafeDate,
+  toSafeDate
 } from "../utils/taskQueueModalCalender.utils";
 import { SubtaskAccordionItem } from "./EditableSubtaskAccordionItem";
 
@@ -18,9 +17,17 @@ interface TaskQueueModalProps {
   visible: boolean;
   task: HomeTask | null;
   onClose: () => void;
+  onEditTask?: (task: HomeTask) => void;
+  onDeleteTask?: (task: HomeTask) => void;
 }
 
-export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) {
+export function TaskQueueModal({
+  visible,
+  task,
+  onClose,
+  onEditTask,
+  onDeleteTask,
+}: TaskQueueModalProps) {
   const [expandedSubtaskIds, setExpandedSubtaskIds] = useState<number[]>([]);
   const [subtasks, setSubtasks] = useState<NonNullable<HomeTask["subtasks"]>>([]);
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
@@ -199,9 +206,27 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
         <View style={styles.taskQueueModalContent}>
           <View style={styles.taskQueueModalHeader}>
             <Text style={styles.taskQueueModalTitle}>{!task ? "Task Queue" : task.name}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={22} color="#E5F7FF" />
-            </TouchableOpacity>
+            <View style={styles.taskQueueHeaderActions}>
+              {task && (
+                <TouchableOpacity
+                  style={styles.taskQueueHeaderIconButton}
+                  onPress={() => onEditTask?.(task)}
+                >
+                  <Ionicons name="pencil" size={18} color="#70E1FF" />
+                </TouchableOpacity>
+              )}
+              {task && (
+                <TouchableOpacity
+                  style={styles.taskQueueHeaderIconButton}
+                  onPress={() => onDeleteTask?.(task)}
+                >
+                  <Ionicons name="trash" size={18} color="#FF8A80" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.taskQueueHeaderIconButton} onPress={onClose}>
+                <Ionicons name="close" size={22} color="#E5F7FF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {!task ? (

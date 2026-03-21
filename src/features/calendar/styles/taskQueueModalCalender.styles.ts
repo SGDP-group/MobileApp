@@ -31,6 +31,21 @@ export const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.text,
   },
+  taskQueueHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  taskQueueHeaderIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#15262D",
+    borderWidth: 1,
+    borderColor: "#24424E",
+  },
   taskQueueBody: {
     flex: 1,
   },
