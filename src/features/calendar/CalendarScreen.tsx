@@ -1,20 +1,22 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
-import React, { useCallback, useMemo } from "react";
-import { Alert } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { HomeTask, useHomeTasks } from "../home/home.tasks";
+import { formatTaskLeadMeta, formatTaskTimestamp } from "../home/utils/home.helpers";
 import { CalendarTaskListSection } from "./components/CalendarTaskListSection";
 import { TaskQueueHeader } from "./components/TaskQueueHeader";
-import { useHomeTasks } from "../home/home.tasks";
-import { formatTaskLeadMeta, formatTaskTimestamp } from "../home/utils/home.helpers";
-import type { CalendarTaskItem } from "./utils/calender.types";
+import { TaskQueueModal } from "./components/TaskQueueModalCalender";
 import { styles } from "./styles/calendar.styles";
+import type { CalendarTaskItem } from "./utils/calender.types";
 
 
 export default function CalendarScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const { upNextData, refreshTasks } = useHomeTasks();
+  const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<HomeTask | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -73,10 +75,15 @@ export default function CalendarScreen() {
   };
 
   const handleOpenTaskQueue = (item: CalendarTaskItem) => {
-    if (item) {
-      Alert.alert("Task Queue", `Open task queue for: ${item.title}`, [{ text: "OK" }]);
-      return;
-    }
+    const taskEntry = upNextData.find(
+      (entry) => entry.type === "task" && String(entry.task.id) === item.id,
+    );
+    setSelectedTask(taskEntry && taskEntry.type === "task" ? taskEntry.task : null);
+    setTaskQueueModalVisible(true);
+  };
+
+  const handleCloseTaskQueue = () => {
+    setTaskQueueModalVisible(false);
   };
 
   return (
@@ -95,6 +102,12 @@ export default function CalendarScreen() {
       />
 
       <BottomNav activeRoute="Calendar" />
+
+      <TaskQueueModal
+        visible={taskQueueModalVisible}
+        task={selectedTask}
+        onClose={handleCloseTaskQueue}
+      />
     </SafeAreaView>
   );
 }
