@@ -36,7 +36,36 @@ type SubtaskPickerState = {
   mode: "date" | "time";
 };
 
-const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Colombo";
+const getDeviceTimeZone = (): string => {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return timezone && timezone.trim().length > 0 ? timezone : "UTC";
+};
+
+const TIMEZONE = getDeviceTimeZone();
+
+const toTwoDigits = (value: number): string => `${value}`.padStart(2, "0");
+
+const toLocalApiDateTime = (value: Date): string => {
+  const year = value.getFullYear();
+  const month = toTwoDigits(value.getMonth() + 1);
+  const day = toTwoDigits(value.getDate());
+  const hours = toTwoDigits(value.getHours());
+  const minutes = toTwoDigits(value.getMinutes());
+  const seconds = toTwoDigits(value.getSeconds());
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
+const toOffsetDateTime = (value: Date): string => {
+  const localDateTime = toLocalApiDateTime(value);
+  const offsetMinutes = -value.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absOffsetMinutes = Math.abs(offsetMinutes);
+  const hours = toTwoDigits(Math.floor(absOffsetMinutes / 60));
+  const minutes = toTwoDigits(absOffsetMinutes % 60);
+
+  return `${localDateTime}${sign}${hours}:${minutes}`;
+};
 
 const VALIDATION_ERRORS = {
   MISSING_TASK_NAME: {
@@ -284,8 +313,8 @@ export default function AddTaskDetailsScreen() {
         description: subtask.description || "",
         task: { id: createdTaskId },
         taskOrder: index + 1,
-        startTime: subtaskStart.toISOString(),
-        endTime: subtaskEnd.toISOString(),
+        startTime: toLocalApiDateTime(subtaskStart),
+        endTime: toLocalApiDateTime(subtaskEnd),
         duration,
       };
     });
@@ -328,11 +357,11 @@ export default function AddTaskDetailsScreen() {
           summary: subtask.name,
           description: subtask.description || "",
           start: {
-            dateTime: subtask.startTime.toISOString(),
+            dateTime: toOffsetDateTime(subtask.startTime),
             timeZone: TIMEZONE,
           },
           end: {
-            dateTime: subtask.endTime.toISOString(),
+            dateTime: toOffsetDateTime(subtask.endTime),
             timeZone: TIMEZONE,
           },
         });
