@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
+import { getSubtaskStatuses, getSubtasksByTask, patchSubtask } from "@services/focusFrameSubtaskService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -18,7 +18,9 @@ import {
   formatDateObject,
   formatDateTime,
   getSubtaskDuration,
-  toSafeDate
+  toSafeDate,
+  type SubtaskStatus,
+  type HomeSubtask,
 } from "../utils/taskQueueModalCalender.utils";
 import { SubtaskAccordionItem } from "./EditableSubtaskAccordionItem";
 
@@ -48,6 +50,25 @@ export function TaskQueueModal({
   const [editableDescription, setEditableDescription] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
+  const [savingSubtaskId, setSavingSubtaskId] = useState<number | null>(null);
+  const [subtaskStatuses, setSubtaskStatuses] = useState<SubtaskStatus[]>([]);
+
+  const loadSubtasks = async (taskId: number): Promise<void> => {
+    setIsLoadingSubtasks(true);
+
+    try {
+      const fetchedSubtasks = await getSubtasksByTask(taskId);
+      setSubtasks(Array.isArray(fetchedSubtasks) ? fetchedSubtasks : []);
+    } catch (error) {
+      console.warn(
+        `Failed to load subtasks for task ${taskId}:`,
+        getSafeErrorMessage(error),
+      );
+      setSubtasks([]);
+    } finally {
+      setIsLoadingSubtasks(false);
+    }
+  };
 
   useEffect(() => {
     if (!visible || !task) {
@@ -66,38 +87,24 @@ export function TaskQueueModal({
   useEffect(() => {
     let isActive = true;
 
-    if (!visible || !task?.id) {
-      setSubtasks([]);
-      setIsLoadingSubtasks(false);
+    if (!visible) {
       return () => {
         isActive = false;
       };
     }
 
-    setIsLoadingSubtasks(true);
-    setSubtasks([]);
-
     void (async () => {
       try {
-        const fetchedSubtasks = await getSubtasksByTask(task.id);
+        const statuses = await getSubtaskStatuses();
         if (!isActive) {
           return;
         }
 
-        setSubtasks(Array.isArray(fetchedSubtasks) ? fetchedSubtasks : []);
-
+        setSubtaskStatuses(Array.isArray(statuses) ? statuses : []);
       } catch (error) {
-        console.warn(
-          `Failed to load subtasks for task ${task.id}:`,
-          getSafeErrorMessage(error),
-        );
-
+        console.warn("Failed to load subtask statuses:", getSafeErrorMessage(error));
         if (isActive) {
-          setSubtasks([]);
-        }
-      } finally {
-        if (isActive) {
-          setIsLoadingSubtasks(false);
+          setSubtaskStatuses([]);
         }
       }
     })();
@@ -105,6 +112,17 @@ export function TaskQueueModal({
     return () => {
       isActive = false;
     };
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible || !task?.id) {
+      setSubtasks([]);
+      setIsLoadingSubtasks(false);
+      return;
+    }
+
+    setSubtasks([]);
+    void loadSubtasks(task.id);
   }, [task?.id, visible]);
 
   useEffect(() => {
@@ -287,6 +305,50 @@ export function TaskQueueModal({
     );
   };
 
+  const handleEditSubtask = async (
+    subtask: HomeSubtask,
+    updates: {
+      name: string;
+      description?: string;
+      taskOrder?: number;
+      startTime?: string;
+      endTime?: string;
+      completed?: boolean;
+      statusId?: number;
+      statusName?: string;
+    },
+  ) => {
+    if (!task?.id) {
+      return;
+    }
+
+    const trimmedName = updates.name.trim();
+    if (!trimmedName) {
+      throw new Error("Subtask name is required.");
+    }
+
+    setSavingSubtaskId(subtask.id);
+    try {
+      await patchSubtask(subtask.id, {
+        name: trimmedName,
+        description: updates.description,
+        taskOrder: updates.taskOrder,
+        startTime: updates.startTime,
+        endTime: updates.endTime,
+        duration: subtask.duration,
+        estimatedTime: subtask.estimatedTime,
+        completed: updates.completed,
+        status:
+          typeof updates.statusId === "number"
+            ? { id: updates.statusId, name: updates.statusName ?? "" }
+            : subtask.status,
+      });
+      await loadSubtasks(task.id);
+    } finally {
+      setSavingSubtaskId(null);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -436,6 +498,9 @@ export function TaskQueueModal({
                         subtask={subtask}
                         isExpanded={!isExpanded}
                         onToggle={toggleSubtask}
+                        onEditSubtask={handleEditSubtask}
+                        isSaving={savingSubtaskId === subtask.id}
+                        statusOptions={subtaskStatuses}
                       />
                     );
                   })
