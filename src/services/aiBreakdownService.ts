@@ -25,12 +25,8 @@ export interface AIBreakdownResponse {
 }
 
 class AIBreakdownService {
-  private baseUrl =
-    process.env.EXPO_PUBLIC_AGENT_BASE_URL || "http://localhost:8003";
+  private baseUrl = process.env.EXPO_PUBLIC_AGENT_BASE_URL;
 
-  /**
-   * Break down a task into subtasks using AI
-   */
   async breakdownTask(
     request: AIBreakdownRequest,
   ): Promise<AIBreakdownResponse> {
@@ -39,7 +35,7 @@ class AIBreakdownService {
         console.log("AI Breakdown Request:", request);
       }
 
-      const response = await fetch(`${this.baseUrl}/breakdown`, {
+      const response = await fetch(`${this.baseUrl}/invoke-task-breakdown`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -69,32 +65,6 @@ class AIBreakdownService {
     }
   }
 
-  async getExampleBreakdown(taskType: string): Promise<GeneratedSubtask[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/example/${taskType}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch example: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return data.subtasks || [];
-    } catch (error) {
-      if (isDevelopment()) {
-        console.error("Example Breakdown Error:", error);
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * Validate if the breakdown request is valid
-   */
   validateRequest(request: AIBreakdownRequest): {
     valid: boolean;
     errors: string[];
@@ -129,21 +99,6 @@ class AIBreakdownService {
       valid: errors.length === 0,
       errors,
     };
-  }
-
-  /**
-   * Convert generated subtasks to a format suitable for task creation
-   */
-  formatSubtasksForCreation(
-    subtasks: GeneratedSubtask[],
-  ): Array<{ name: string; description: string; estimatedMinutes: number }> {
-    return subtasks
-      .sort((a, b) => a.order - b.order)
-      .map(({ name, description, estimated_minutes }) => ({
-        name,
-        description,
-        estimatedMinutes: estimated_minutes,
-      }));
   }
 }
 

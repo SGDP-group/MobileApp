@@ -537,9 +537,6 @@ export default function AddTaskDetailsScreen() {
     );
   };
 
-  // =========================================================================
-  // MAIN RENDER
-  // =========================================================================
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>

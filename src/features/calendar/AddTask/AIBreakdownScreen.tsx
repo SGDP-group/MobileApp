@@ -6,7 +6,7 @@ import { useNavigation } from "@react-navigation/native";
 import { aiBreakdownService } from "@services/aiBreakdownService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -19,23 +19,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/addTaskDetails.styles";
 
-type AISubtask = {
-  name: string;
-  description: string;
-  estimatedMinutes: number;
-  startTime: Date | null;
-  endTime: Date | null;
-};
-
-type SubtaskPickerState = {
-  index: number;
-  field: "startTime" | "endTime";
-  mode: "date" | "time";
-};
-
-const TIMEZONE =
-  Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Colombo";
-
 const VALIDATION_ERRORS = {
   MISSING_TASK_TITLE: {
     title: "Missing Task Title",
@@ -44,6 +27,18 @@ const VALIDATION_ERRORS = {
   MISSING_DESCRIPTION: {
     title: "Missing Description",
     message: "Please enter a task description.",
+  },
+  MISSING_START_TIME: {
+    title: "Missing Start Date/Time",
+    message: "Please select a start date and time.",
+  },
+  MISSING_END_TIME: {
+    title: "Missing End Date/Time",
+    message: "Please select an end date and time.",
+  },
+  INVALID_TIME_RANGE: {
+    title: "Invalid Time Range",
+    message: "End time must be after start time.",
   },
   MISSING_DURATION: {
     title: "Invalid Duration",
@@ -57,40 +52,6 @@ const VALIDATION_ERRORS = {
     title: "AI Breakdown Failed",
     message: "Failed to break down the task. Please try again.",
   },
-  MISSING_START_TIME: (index: number) => ({
-    title: "Missing Start Date/Time",
-    message: `Sub Task ${index}: Please set a start date and time.`,
-  }),
-  MISSING_END_TIME: (index: number) => ({
-    title: "Missing End Date/Time",
-    message: `Sub Task ${index}: Please set an end date and time.`,
-  }),
-  INVALID_SUBTASK_DATES: (index: number) => ({
-    title: "Invalid Subtask Dates",
-    message: `Sub Task ${index}: Start date/time must be before end date/time.`,
-  }),
-};
-
-const formatDate = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, "0");
-  const day = `${value.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const formatTime = (value: Date): string => {
-  const hours = `${value.getHours()}`.padStart(2, "0");
-  const minutes = `${value.getMinutes()}`.padStart(2, "0");
-  return `${hours}:${minutes}`;
-};
-
-const formatDateTime = (value: Date): string =>
-  `${formatDate(value)} ${formatTime(value)}`;
-
-const getTodayMinDate = (): Date => {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
 };
 
 export default function AIBreakdownScreen() {
@@ -98,19 +59,13 @@ export default function AIBreakdownScreen() {
 
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [totalDuration, setTotalDuration] = useState("");
-  const [maxTimePerTask, setMaxTimePerTask] = useState("");
-  const [aiSubtasks, setAiSubtasks] = useState<AISubtask[]>([]);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [endTime, setEndTime] = useState<Date | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [collapsedSubtasks, setCollapsedSubtasks] = useState<
-    Record<number, boolean>
-  >({});
-  const [activeSubtaskDateTimePicker, setActiveSubtaskDateTimePicker] =
-    useState<SubtaskPickerState | null>(null);
-  const [pendingSubtaskDateTime, setPendingSubtaskDateTime] =
-    useState<Date | null>(null);
-
-  const todayMinDate = useMemo(() => getTodayMinDate(), []);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
+  const [maximumTimePerTask, setMaximumTimePerTask] = useState<number>(5);
 
   const validateInputs = (): boolean => {
     if (!taskTitle.trim()) {
@@ -129,20 +84,26 @@ export default function AIBreakdownScreen() {
       return false;
     }
 
-    const duration = parseInt(totalDuration, 10);
-    if (isNaN(duration) || duration <= 0) {
+    if (!startTime) {
       Alert.alert(
-        VALIDATION_ERRORS.MISSING_DURATION.title,
-        VALIDATION_ERRORS.MISSING_DURATION.message,
+        VALIDATION_ERRORS.MISSING_START_TIME.title,
+        VALIDATION_ERRORS.MISSING_START_TIME.message,
       );
       return false;
     }
 
-    const maxTime = parseInt(maxTimePerTask, 10);
-    if (isNaN(maxTime) || maxTime <= 0 || maxTime > duration) {
+    if (!endTime) {
       Alert.alert(
-        VALIDATION_ERRORS.MISSING_MAX_TIME.title,
-        VALIDATION_ERRORS.MISSING_MAX_TIME.message,
+        VALIDATION_ERRORS.MISSING_END_TIME.title,
+        VALIDATION_ERRORS.MISSING_END_TIME.message,
+      );
+      return false;
+    }
+
+    if (startTime >= endTime) {
+      Alert.alert(
+        VALIDATION_ERRORS.INVALID_TIME_RANGE.title,
+        VALIDATION_ERRORS.INVALID_TIME_RANGE.message,
       );
       return false;
     }
@@ -150,30 +111,52 @@ export default function AIBreakdownScreen() {
     return true;
   };
 
-  const validateSubtaskTimes = (): boolean => {
-    for (let i = 0; i < aiSubtasks.length; i++) {
-      const subtask = aiSubtasks[i];
-      const subtaskNumber = i + 1;
+  const formatDate = (value: Date): string => {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, "0");
+    const day = `${value.getDate()}`.padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
-      if (!subtask.startTime) {
-        const error = VALIDATION_ERRORS.MISSING_START_TIME(subtaskNumber);
-        Alert.alert(error.title, error.message);
-        return false;
-      }
+  const formatTime = (value: Date): string => {
+    const hours = `${value.getHours()}`.padStart(2, "0");
+    const minutes = `${value.getMinutes()}`.padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
 
-      if (!subtask.endTime) {
-        const error = VALIDATION_ERRORS.MISSING_END_TIME(subtaskNumber);
-        Alert.alert(error.title, error.message);
-        return false;
-      }
+  const formatDateTime = (value: Date): string =>
+    `${formatDate(value)} ${formatTime(value)}`;
 
-      if (subtask.startTime >= subtask.endTime) {
-        const error = VALIDATION_ERRORS.INVALID_SUBTASK_DATES(subtaskNumber);
-        Alert.alert(error.title, error.message);
-        return false;
-      }
+  const handleDateTimeChange = (
+    event: DateTimePickerEvent,
+    selectedValue?: Date,
+    field: "start" | "end" = "start",
+  ) => {
+    if (event.type !== "set" || !selectedValue) {
+      setShowStartPicker(false);
+      setShowEndPicker(false);
+      setPickerMode("date");
+      return;
     }
-    return true;
+
+    if (pickerMode === "date") {
+      setPickerMode("time");
+      if (field === "start") {
+        setShowStartPicker(true);
+      } else {
+        setShowEndPicker(true);
+      }
+      return;
+    }
+
+    if (field === "start") {
+      setStartTime(selectedValue);
+      setShowStartPicker(false);
+    } else {
+      setEndTime(selectedValue);
+      setShowEndPicker(false);
+    }
+    setPickerMode("date");
   };
 
   const handleGenerateSubtasks = async () => {
@@ -182,11 +165,14 @@ export default function AIBreakdownScreen() {
     try {
       setIsGenerating(true);
 
+      const durationMs = endTime!.getTime() - startTime!.getTime();
+      const duration = Math.round(durationMs / (1000 * 60));
+
       const request = {
         title: taskTitle.trim(),
         description: taskDescription.trim(),
-        duration: parseInt(totalDuration, 10),
-        maximum_time_per_task: parseInt(maxTimePerTask, 10),
+        duration,
+        maximum_time_per_task: maximumTimePerTask,
         user_id: "0",
         session_id: `session_${Date.now()}`,
       };
@@ -207,20 +193,9 @@ export default function AIBreakdownScreen() {
         return;
       }
 
-      const formattedSubtasks: AISubtask[] = response.subtasks
-        .sort((a, b) => a.order - b.order)
-        .map((subtask) => ({
-          name: subtask.name,
-          description: subtask.description,
-          estimatedMinutes: subtask.estimated_minutes,
-          startTime: null,
-          endTime: null,
-        }));
-
-      setAiSubtasks(formattedSubtasks);
       Alert.alert(
         "AI Breakdown Complete",
-        `Generated ${formattedSubtasks.length} subtasks. Please set the start and end times.`,
+        `Successfully generated ${response.subtasks.length} subtasks!\n\nTotal estimated time: ${response.total_estimated_time} minutes`,
       );
     } catch (error) {
       console.error("Error generating subtasks:", error);
@@ -233,150 +208,6 @@ export default function AIBreakdownScreen() {
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  const updateSubtaskTime = (
-    index: number,
-    field: "startTime" | "endTime",
-    value: Date,
-  ) => {
-    setAiSubtasks((prev) =>
-      prev.map((item, idx) =>
-        idx === index ? { ...item, [field]: value } : item,
-      ),
-    );
-  };
-
-  const handleSubtaskDateTimeChange = (
-    event: DateTimePickerEvent,
-    selectedValue?: Date,
-  ) => {
-    const pickerContext = activeSubtaskDateTimePicker;
-
-    if (!pickerContext || event.type !== "set" || !selectedValue) {
-      setActiveSubtaskDateTimePicker(null);
-      setPendingSubtaskDateTime(null);
-      return;
-    }
-
-    if (pickerContext.mode === "date") {
-      const currentValue =
-        pendingSubtaskDateTime ??
-        aiSubtasks[pickerContext.index]?.[pickerContext.field] ??
-        new Date();
-      const next = new Date(selectedValue);
-      next.setHours(currentValue.getHours(), currentValue.getMinutes(), 0, 0);
-
-      setPendingSubtaskDateTime(next);
-      setActiveSubtaskDateTimePicker({ ...pickerContext, mode: "time" });
-      return;
-    }
-
-    const dateValue =
-      pendingSubtaskDateTime ??
-      aiSubtasks[pickerContext.index]?.[pickerContext.field] ??
-      new Date();
-    const next = new Date(dateValue);
-    next.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
-
-    updateSubtaskTime(pickerContext.index, pickerContext.field, next);
-    setActiveSubtaskDateTimePicker(null);
-    setPendingSubtaskDateTime(null);
-  };
-
-  const toggleSubtaskCollapse = (index: number) => {
-    setCollapsedSubtasks((prev) => ({
-      ...prev,
-      [index]: !(prev[index] ?? false),
-    }));
-  };
-
-  const renderSubtaskCard = (subtask: AISubtask, index: number) => {
-    const isCollapsed = collapsedSubtasks[index] ?? false;
-
-    return (
-      <View key={`subtask-${index}`} style={styles.subtaskCard}>
-        <View style={styles.subtaskHeader}>
-          <View style={styles.subtaskTitleWrap}>
-            <Text style={styles.subtaskOrderBadge}>{index + 1}</Text>
-            <View>
-              <Text style={styles.subtaskTitle}>{subtask.name}</Text>
-              <Text style={styles.helperText}>
-                {subtask.estimatedMinutes} min (est.)
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={{ marginRight: 10, padding: 2 }}
-            onPress={() => toggleSubtaskCollapse(index)}
-            accessibilityRole="button"
-            accessibilityLabel={`${
-              isCollapsed ? "Expand" : "Collapse"
-            } sub task ${index + 1}`}
-          >
-            <Ionicons
-              name={isCollapsed ? "chevron-down" : "chevron-up"}
-              size={18}
-              color={colors.text}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {!isCollapsed && (
-          <View style={styles.subtaskContent}>
-            <Text style={styles.helperText}>{subtask.description}</Text>
-
-            <View style={styles.row}>
-              <TouchableOpacity
-                style={[styles.input, styles.pickerInput, styles.timeInput]}
-                onPress={() => {
-                  setPendingSubtaskDateTime(subtask.startTime ?? new Date());
-                  setActiveSubtaskDateTimePicker({
-                    index,
-                    field: "startTime",
-                    mode: "date",
-                  });
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Set start date and time for sub task ${
-                  index + 1
-                }`}
-              >
-                <Text style={styles.pickerInputText}>
-                  {subtask.startTime
-                    ? formatDateTime(subtask.startTime)
-                    : "Start Date & Time"}
-                </Text>
-                <Ionicons name="time-outline" size={18} color={colors.text} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.input, styles.pickerInput, styles.timeInput]}
-                onPress={() => {
-                  setPendingSubtaskDateTime(subtask.endTime ?? new Date());
-                  setActiveSubtaskDateTimePicker({
-                    index,
-                    field: "endTime",
-                    mode: "date",
-                  });
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Set end date and time for sub task ${
-                  index + 1
-                }`}
-              >
-                <Text style={styles.pickerInputText}>
-                  {subtask.endTime
-                    ? formatDateTime(subtask.endTime)
-                    : "End Date & Time"}
-                </Text>
-                <Ionicons name="time-outline" size={18} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-    );
   };
 
   return (
@@ -426,24 +257,25 @@ export default function AIBreakdownScreen() {
 
         <View style={styles.formGroup}>
           <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <Text style={styles.label}>Total Duration (min) *</Text>
-              <TextInput
-                style={styles.input}
-                value={totalDuration}
-                onChangeText={setTotalDuration}
-                placeholder="5"
-                placeholderTextColor={colors.secondaryText}
-                keyboardType="number-pad"
-              />
-            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Max per Subtask (min) *</Text>
+              <Text style={styles.label}>Max Time per Subtask (min) *</Text>
               <TextInput
                 style={styles.input}
-                value={maxTimePerTask}
-                onChangeText={setMaxTimePerTask}
-                placeholder="2"
+                value={maximumTimePerTask.toString()}
+                onChangeText={(value) => {
+                  const num = parseInt(value, 10);
+                  if (!isNaN(num) && num > 0) {
+                    setMaximumTimePerTask(num);
+                  } else if (value === "") {
+                    setMaximumTimePerTask(0);
+                  }
+                }}
+                onBlur={() => {
+                  if (maximumTimePerTask === 0) {
+                    setMaximumTimePerTask(5);
+                  }
+                }}
+                placeholder="Max time per subtask"
                 placeholderTextColor={colors.secondaryText}
                 keyboardType="number-pad"
               />
@@ -451,6 +283,90 @@ export default function AIBreakdownScreen() {
           </View>
         </View>
 
+        <View style={styles.formGroup}>
+          <View style={styles.row}>
+            <View style={styles.dateTimePickerColumn}>
+              <TouchableOpacity
+                style={[styles.input, styles.dateTimePickerButton]}
+                onPress={() => {
+                  setShowStartPicker(true);
+                  setPickerMode("date");
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Set start date and time"
+              >
+                <Text
+                  style={{
+                    color: startTime ? colors.text : colors.secondaryText,
+                  }}
+                >
+                  {startTime ? formatDateTime(startTime) : "Start date & time"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1 }}>
+              <TouchableOpacity
+                style={[styles.input, styles.dateTimePickerButton]}
+                onPress={() => {
+                  setShowEndPicker(true);
+                  setPickerMode("date");
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Set end date and time"
+              >
+                <Text
+                  style={{
+                    color: endTime ? colors.text : colors.secondaryText,
+                  }}
+                >
+                  {endTime ? formatDateTime(endTime) : "End Date & Time"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {showStartPicker && (
+          <DateTimePicker
+            value={startTime || new Date()}
+            mode={pickerMode}
+            is24Hour
+            display="default"
+            onChange={(event, date) =>
+              handleDateTimeChange(event, date, "start")
+            }
+          />
+        )}
+
+        {showEndPicker && (
+          <DateTimePicker
+            value={endTime || new Date()}
+            mode={pickerMode}
+            is24Hour
+            display="default"
+            onChange={(event, date) => handleDateTimeChange(event, date, "end")}
+          />
+        )}
+
+        {startTime && endTime && (
+          <View style={styles.formGroup}>
+            <View style={styles.durationContainer}>
+              <Text style={styles.label}>Calculated Duration</Text>
+              <Text style={styles.durationText}>
+                {Math.round(
+                  (endTime.getTime() - startTime.getTime()) / (1000 * 60),
+                )}{" "}
+                minutes
+              </Text>
+              <Text style={styles.durationSubtaskLabel}>
+                Max per subtask: {maximumTimePerTask} minutes
+              </Text>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={styles.footer}>
         <TouchableOpacity
           style={[
             styles.saveButton,
@@ -465,37 +381,7 @@ export default function AIBreakdownScreen() {
             <Text style={styles.saveButtonText}>Generate Subtasks with AI</Text>
           )}
         </TouchableOpacity>
-
-        {aiSubtasks.length > 0 && (
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Generated Subtasks</Text>
-            {aiSubtasks.map((subtask, index) =>
-              renderSubtaskCard(subtask, index),
-            )}
-
-            {activeSubtaskDateTimePicker ? (
-              <DateTimePicker
-                value={
-                  pendingSubtaskDateTime ??
-                  aiSubtasks[activeSubtaskDateTimePicker.index]?.[
-                    activeSubtaskDateTimePicker.field
-                  ] ??
-                  new Date()
-                }
-                mode={activeSubtaskDateTimePicker.mode}
-                is24Hour
-                display="default"
-                minimumDate={
-                  activeSubtaskDateTimePicker.mode === "date"
-                    ? todayMinDate
-                    : undefined
-                }
-                onChange={handleSubtaskDateTimeChange}
-              />
-            ) : null}
-          </View>
-        )}
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
