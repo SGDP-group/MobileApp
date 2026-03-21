@@ -15,6 +15,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#1E3640",
     borderBottomWidth: 0,
+    position: "relative",
   },
   taskQueueModalHeader: {
     flexDirection: "row",
@@ -84,6 +85,19 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  taskQueueEditableInput: {
+    borderWidth: 1,
+    borderColor: "#24424E",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: colors.text,
+    backgroundColor: "#15262D",
+    fontSize: 14,
+  },
+  taskQueueEditableMultilineInput: {
+    minHeight: 90,
+  },
   taskQueueNoSubtasksText: {
     fontSize: 14,
     color: "#96B0BD",
@@ -105,6 +119,19 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     lineHeight: 21,
+  },
+  taskQueueUpdatingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10, 20, 25, 0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    zIndex: 10,
+  },
+  taskQueueUpdatingText: {
+    color: "#E5F7FF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   subtaskAccordionCard: {
     backgroundColor: "#16242B",

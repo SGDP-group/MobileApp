@@ -4,6 +4,8 @@ import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getTaskById, updateTask } from "@services/focusFrameTaskService";
+import { getStoredUserId } from "@services/focusFrameUserService";
 import { HomeTask, useHomeTasks } from "../home/home.tasks";
 import { formatTaskLeadMeta, formatTaskTimestamp } from "../home/utils/home.helpers";
 import { CalendarTaskListSection } from "./components/CalendarTaskListSection";
@@ -87,8 +89,24 @@ export default function CalendarScreen() {
     setTaskQueueModalVisible(false);
   };
 
-  const handleEditTask = (task: HomeTask) => {
-    Alert.alert("Edit Task", `Edit: ${task.name}`);
+  const handleEditTask = async (
+    task: HomeTask,
+    updates: { name: string; description?: string },
+  ) => {
+    const storedUserId = await getStoredUserId();
+    const resolvedUserId = task.userId ?? task.user?.id ?? storedUserId ?? undefined;
+
+    await updateTask(task.id, {
+      name: updates.name,
+      userId: resolvedUserId,
+      description: updates.description,
+    });
+
+    const refreshedTask = await getTaskById(task.id);
+
+    setSelectedTask(refreshedTask as HomeTask);
+
+    await refreshTasks();
   };
 
   const handleDeleteTask = (task: HomeTask) => {

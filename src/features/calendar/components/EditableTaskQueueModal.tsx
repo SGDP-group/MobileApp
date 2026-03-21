@@ -2,7 +2,16 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import React, { useEffect, useMemo, useState } from "react";
-import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import type { HomeTask } from "../../home/home.tasks";
 import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
@@ -17,7 +26,10 @@ interface TaskQueueModalProps {
   visible: boolean;
   task: HomeTask | null;
   onClose: () => void;
-  onEditTask?: (task: HomeTask) => void;
+  onEditTask?: (
+    task: HomeTask,
+    updates: { name: string; description?: string },
+  ) => Promise<void> | void;
   onDeleteTask?: (task: HomeTask) => void;
 }
 
@@ -31,6 +43,23 @@ export function TaskQueueModal({
   const [expandedSubtaskIds, setExpandedSubtaskIds] = useState<number[]>([]);
   const [subtasks, setSubtasks] = useState<NonNullable<HomeTask["subtasks"]>>([]);
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editableName, setEditableName] = useState("");
+  const [editableDescription, setEditableDescription] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  useEffect(() => {
+    if (!visible || !task) {
+      setIsEditing(false);
+      setIsSavingEdit(false);
+      setEditableName("");
+      setEditableDescription("");
+      return;
+    }
+
+    setEditableName(task.name ?? "");
+    setEditableDescription(task.description ?? "");
+  }, [task, visible]);
 
   useEffect(() => {
     let isActive = true;
@@ -195,6 +224,34 @@ export function TaskQueueModal({
     });
   };
 
+  const handleSaveEdit = async () => {
+    if (!task || !onEditTask) {
+      setIsEditing(false);
+      return;
+    }
+
+    const trimmedName = editableName.trim();
+    const trimmedDescription = editableDescription.trim();
+
+    if (!trimmedName) {
+      Alert.alert("Validation", "Task name is required.");
+      return;
+    }
+
+    try {
+      setIsSavingEdit(true);
+      await onEditTask(task, {
+        name: trimmedName,
+        description: trimmedDescription || undefined,
+      });
+      setIsEditing(false);
+    } catch (error) {
+      Alert.alert("Error", getSafeErrorMessage(error));
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -210,20 +267,46 @@ export function TaskQueueModal({
               {task && (
                 <TouchableOpacity
                   style={styles.taskQueueHeaderIconButton}
-                  onPress={() => onEditTask?.(task)}
+                  onPress={() => {
+                    if (isEditing) {
+                      void handleSaveEdit();
+                      return;
+                    }
+
+                    setIsEditing(true);
+                  }}
+                  disabled={isSavingEdit}
                 >
-                  <Ionicons name="pencil" size={18} color="#70E1FF" />
+                  <Ionicons
+                    name={isEditing ? "checkmark" : "pencil"}
+                    size={18}
+                    color="#70E1FF"
+                  />
                 </TouchableOpacity>
               )}
               {task && (
                 <TouchableOpacity
                   style={styles.taskQueueHeaderIconButton}
                   onPress={() => onDeleteTask?.(task)}
+                  disabled={isSavingEdit || isEditing}
                 >
                   <Ionicons name="trash" size={18} color="#FF8A80" />
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.taskQueueHeaderIconButton} onPress={onClose}>
+              <TouchableOpacity
+                style={styles.taskQueueHeaderIconButton}
+                onPress={() => {
+                  if (isEditing) {
+                    setIsEditing(false);
+                    setEditableName(task?.name ?? "");
+                    setEditableDescription(task?.description ?? "");
+                    return;
+                  }
+
+                  onClose();
+                }}
+                disabled={isSavingEdit}
+              >
                 <Ionicons name="close" size={22} color="#E5F7FF" />
               </TouchableOpacity>
             </View>
@@ -243,11 +326,38 @@ export function TaskQueueModal({
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.taskQueueMainSection}>
-             
+                <View style={styles.taskQueueFieldRow}>
+                  <Text style={styles.taskQueueFieldLabel}>Task Name</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editableName}
+                      onChangeText={setEditableName}
+                      style={styles.taskQueueEditableInput}
+                      placeholder="Task name"
+                      placeholderTextColor="#6F8A97"
+                      editable={!isSavingEdit}
+                    />
+                  ) : (
+                    <Text style={styles.taskQueueFieldValue}>{task.name}</Text>
+                  )}
+                </View>
 
                 <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Description</Text>
-                  <Text style={styles.taskQueueFieldValue}>{derivedMainDescription}</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editableDescription}
+                      onChangeText={setEditableDescription}
+                      style={[styles.taskQueueEditableInput, styles.taskQueueEditableMultilineInput]}
+                      placeholder="Description"
+                      placeholderTextColor="#6F8A97"
+                      multiline
+                      textAlignVertical="top"
+                      editable={!isSavingEdit}
+                    />
+                  ) : (
+                    <Text style={styles.taskQueueFieldValue}>{derivedMainDescription}</Text>
+                  )}
                 </View>
 
                 {/* <View style={styles.taskQueueFieldRow}>
@@ -289,6 +399,13 @@ export function TaskQueueModal({
                 )}
               </View>
             </ScrollView>
+          )}
+
+          {isSavingEdit && (
+            <View style={styles.taskQueueUpdatingOverlay}>
+              <ActivityIndicator size="large" color="#70E1FF" />
+              <Text style={styles.taskQueueUpdatingText}>Updating task...</Text>
+            </View>
           )}
         </View>
       </View>
