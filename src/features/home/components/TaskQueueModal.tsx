@@ -198,10 +198,23 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
       <View style={styles.taskQueueModalOverlay}>
         <View style={styles.taskQueueModalContent}>
           <View style={styles.taskQueueModalHeader}>
-            <Text style={styles.taskQueueModalTitle}>{!task ? "Task Queue" : task.name}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={22} color="#E5F7FF" />
-            </TouchableOpacity>
+            <View style={styles.taskQueueModalTitleContainer}>
+              <Text
+                style={styles.taskQueueModalTitle}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {!task ? "Task Queue" : task.name}
+              </Text>
+            </View>
+            <View style={styles.taskQueueHeaderActions}>
+              <TouchableOpacity
+                style={styles.taskQueueHeaderIconButton}
+                onPress={onClose}
+              >
+                <Ionicons name="close" size={22} color="#E5F7FF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {!task ? (
@@ -222,7 +235,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
 
                 <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Description</Text>
-                  <Text style={styles.taskQueueFieldValue}>{derivedMainDescription}</Text>
+                  <Text style={styles.taskQueueFieldValue}>{task.description}</Text>
                 </View>
 
                 {/* <View style={styles.taskQueueFieldRow}>

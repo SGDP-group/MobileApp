@@ -262,7 +262,15 @@ export function TaskQueueModal({
       <View style={styles.taskQueueModalOverlay}>
         <View style={styles.taskQueueModalContent}>
           <View style={styles.taskQueueModalHeader}>
-            <Text style={styles.taskQueueModalTitle}>{!task ? "Task Queue" : task.name}</Text>
+            <View style={styles.taskQueueModalTitleContainer}>
+              <Text
+                style={styles.taskQueueModalTitle}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {!task ? "Task Queue" : task.name}
+              </Text>
+            </View>
             <View style={styles.taskQueueHeaderActions}>
               {task && (
                 <TouchableOpacity
@@ -346,7 +354,7 @@ export function TaskQueueModal({
                   <Text style={styles.taskQueueFieldLabel}>Description</Text>
                   {isEditing ? (
                     <TextInput
-                      value={editableDescription}
+                      value={task.description}
                       onChangeText={setEditableDescription}
                       style={[styles.taskQueueEditableInput, styles.taskQueueEditableMultilineInput]}
                       placeholder="Description"
@@ -356,7 +364,7 @@ export function TaskQueueModal({
                       editable={!isSavingEdit}
                     />
                   ) : (
-                    <Text style={styles.taskQueueFieldValue}>{derivedMainDescription}</Text>
+                    <Text style={styles.taskQueueFieldValue}>{task.description}</Text>
                   )}
                 </View>
 

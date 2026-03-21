@@ -27,15 +27,21 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#1E3640",
   },
+  taskQueueModalTitleContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
   taskQueueModalTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: colors.text,
+    flexShrink: 1,
   },
   taskQueueHeaderActions: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    flexShrink: 0,
   },
   taskQueueHeaderIconButton: {
     width: 34,
