@@ -5,6 +5,7 @@ import React, { useCallback, useMemo } from "react";
 import { Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CalendarTaskListSection } from "./components/CalendarTaskListSection";
+import { TaskQueueHeader } from "./components/TaskQueueHeader";
 import { useHomeTasks } from "../home/home.tasks";
 import { formatTaskLeadMeta, formatTaskTimestamp } from "../home/utils/home.helpers";
 import type { CalendarTaskItem } from "./utils/calender.types";

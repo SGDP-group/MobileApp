@@ -102,6 +102,22 @@ export const styles = StyleSheet.create({
     color: "#FFFFFF",
     flex: 1,
   },
+  eventLead: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#3FD3FF",
+    marginBottom: 8,
+    letterSpacing: 0.6,
+  },
+  eventLeadUpcoming: {
+    color: "#3FD3FF",
+  },
+  eventLeadLate: {
+    color: "#FF8A80",
+  },
+  eventLeadNone: {
+    color: "#8DA7B5",
+  },
   eventDescription: {
     fontSize: 13,
     color: colors.secondary,
@@ -143,6 +159,19 @@ export const styles = StyleSheet.create({
   eventActions: {
     flexDirection: "row",
     gap: 12,
+  },
+  eventMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  eventMetaIcon: {
+    color: "#8DA7B5",
+  },
+  eventMetaText: {
+    fontSize: 12,
+    color: "#8DA7B5",
+    marginLeft: 6,
   },
   taskCard: {
     borderColor: colors.dot,
@@ -467,6 +496,21 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
     gap: 12,
+  },
+  eventActionButton: {
+    backgroundColor: "#12313C",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#1E3E4A",
+    flex: 1,
+  },
+  eventActionText: {
+    fontSize: 12,
+    color: "#70E1FF",
+    fontWeight: "600",
+    textAlign: "center",
   },
   startButton: {
     backgroundColor: "#5AC8FA",
