@@ -30,7 +30,7 @@ interface TaskQueueModalProps {
     task: HomeTask,
     updates: { name: string; description?: string },
   ) => Promise<void> | void;
-  onDeleteTask?: (task: HomeTask) => void;
+  onDeleteTask?: (task: HomeTask) => Promise<void> | void;
 }
 
 export function TaskQueueModal({
@@ -47,11 +47,13 @@ export function TaskQueueModal({
   const [editableName, setEditableName] = useState("");
   const [editableDescription, setEditableDescription] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   useEffect(() => {
     if (!visible || !task) {
       setIsEditing(false);
       setIsSavingEdit(false);
+      setIsDeletingTask(false);
       setEditableName("");
       setEditableDescription("");
       return;
@@ -252,6 +254,39 @@ export function TaskQueueModal({
     }
   };
 
+  const handleDeletePress = () => {
+    if (!task || !onDeleteTask) {
+      return;
+    }
+
+    Alert.alert(
+      "Delete Task",
+      "This will permanently delete this task and all related subtasks. This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              try {
+                setIsDeletingTask(true);
+                await onDeleteTask(task);
+              } catch (error) {
+                Alert.alert("Error", getSafeErrorMessage(error));
+              } finally {
+                setIsDeletingTask(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <Modal
       visible={visible}
@@ -283,7 +318,7 @@ export function TaskQueueModal({
 
                     setIsEditing(true);
                   }}
-                  disabled={isSavingEdit}
+                  disabled={isSavingEdit || isDeletingTask}
                 >
                   <Ionicons
                     name={isEditing ? "checkmark" : "pencil"}
@@ -295,8 +330,8 @@ export function TaskQueueModal({
               {task && (
                 <TouchableOpacity
                   style={styles.taskQueueHeaderIconButton}
-                  onPress={() => onDeleteTask?.(task)}
-                  disabled={isSavingEdit || isEditing}
+                  onPress={handleDeletePress}
+                  disabled={isSavingEdit || isDeletingTask || isEditing}
                 >
                   <Ionicons name="trash" size={18} color="#FF8A80" />
                 </TouchableOpacity>
@@ -313,7 +348,7 @@ export function TaskQueueModal({
 
                   onClose();
                 }}
-                disabled={isSavingEdit}
+                disabled={isSavingEdit || isDeletingTask}
               >
                 <Ionicons name="close" size={22} color="#E5F7FF" />
               </TouchableOpacity>
@@ -354,7 +389,7 @@ export function TaskQueueModal({
                   <Text style={styles.taskQueueFieldLabel}>Description</Text>
                   {isEditing ? (
                     <TextInput
-                      value={task.description}
+                      value={editableDescription}
                       onChangeText={setEditableDescription}
                       style={[styles.taskQueueEditableInput, styles.taskQueueEditableMultilineInput]}
                       placeholder="Description"
@@ -409,10 +444,12 @@ export function TaskQueueModal({
             </ScrollView>
           )}
 
-          {isSavingEdit && (
+          {(isSavingEdit || isDeletingTask) && (
             <View style={styles.taskQueueUpdatingOverlay}>
               <ActivityIndicator size="large" color="#70E1FF" />
-              <Text style={styles.taskQueueUpdatingText}>Updating task...</Text>
+              <Text style={styles.taskQueueUpdatingText}>
+                {isDeletingTask ? "Deleting task..." : "Updating task..."}
+              </Text>
             </View>
           )}
         </View>

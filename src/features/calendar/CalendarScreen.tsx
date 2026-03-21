@@ -4,7 +4,8 @@ import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getTaskById, updateTask } from "@services/focusFrameTaskService";
+import { deleteTask, getTaskById, updateTask } from "@services/focusFrameTaskService";
+import { deleteSubtask, getSubtasksByTask } from "@services/focusFrameSubtaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { HomeTask, useHomeTasks } from "../home/home.tasks";
 import { formatTaskLeadMeta, formatTaskTimestamp } from "../home/utils/home.helpers";
@@ -109,8 +110,20 @@ export default function CalendarScreen() {
     await refreshTasks();
   };
 
-  const handleDeleteTask = (task: HomeTask) => {
-    Alert.alert("Delete Task", `Delete: ${task.name}`);
+  const handleDeleteTask = async (task: HomeTask) => {
+    const subtasks = await getSubtasksByTask(task.id);
+
+    if (subtasks.length > 0) {
+      await Promise.all(subtasks.map((subtask) => deleteSubtask(subtask.id)));
+    }
+
+    await deleteTask(task.id);
+
+    setTaskQueueModalVisible(false);
+    setSelectedTask(null);
+    await refreshTasks();
+
+    Alert.alert("Deleted", `Task \"${task.name}\" and its subtasks were deleted.`);
   };
 
   return (

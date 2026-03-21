@@ -8,9 +8,8 @@ import { styles } from "../styles/taskQueueModal.styles";
 import {
   formatDateObject,
   formatDateTime,
-  formatDuration,
   getSubtaskDuration,
-  toSafeDate,
+  toSafeDate
 } from "../utils/taskQueueModal.utils";
 import { SubtaskAccordionItem } from "./SubtaskAccordionItem";
 
