@@ -7,6 +7,7 @@ import { useNavigation } from "@react-navigation/native";
 import { createSubtask as createFocusFrameSubtask } from "@services/focusFrameSubtaskService";
 import { createTask as createFocusFrameTask } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
+import { googleCalendarService } from "@services/googleCalendarService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
@@ -20,6 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/addTaskDetails.styles";
+import { CreateSubtaskPayload } from "@/src/types/type";
 
 type SubtaskDraft = {
   name: string;
@@ -33,6 +35,8 @@ type SubtaskPickerState = {
   field: "startTime" | "endTime";
   mode: "date" | "time";
 };
+
+const TIMEZONE = "Asia/Colombo";
 
 const VALIDATION_ERRORS = {
   MISSING_TASK_NAME: {
@@ -262,7 +266,9 @@ export default function AddTaskDetailsScreen() {
     );
   };
 
-  const createSubtaskPayload = (createdTaskId: number) => {
+  const createSubtaskPayload = (
+    createdTaskId: number,
+  ): CreateSubtaskPayload[] => {
     return validSubtasks.map((subtask, index) => {
       const subtaskStart = subtask.startTime!;
       const subtaskEnd = subtask.endTime!;
@@ -275,7 +281,6 @@ export default function AddTaskDetailsScreen() {
         name: subtask.name,
         description: subtask.description || "",
         task: { id: createdTaskId },
-        status: { id: 1 },
         taskOrder: index + 1,
         startTime: subtaskStart.toISOString(),
         endTime: subtaskEnd.toISOString(),
@@ -309,6 +314,36 @@ export default function AddTaskDetailsScreen() {
     return signedInUser.user.email;
   };
 
+  const createSubtaskCalendarEvents = async (): Promise<void> => {
+    try {
+      const calendarEventPromises = validSubtasks.map((subtask) => {
+        if (!subtask.startTime || !subtask.endTime) return null;
+
+        return googleCalendarService.createEvent({
+          summary: subtask.name,
+          description: subtask.description || "",
+          start: {
+            dateTime: subtask.startTime.toISOString(),
+            timeZone: TIMEZONE,
+          },
+          end: {
+            dateTime: subtask.endTime.toISOString(),
+            timeZone: TIMEZONE,
+          },
+        });
+      });
+
+      const nonNullPromises = calendarEventPromises.filter(
+        (p) => p !== null,
+      ) as Promise<any>[];
+      if (nonNullPromises.length > 0) {
+        await Promise.allSettled(nonNullPromises);
+      }
+    } catch (error) {
+      console.error("Error creating calendar events:", error);
+    }
+  };
+
   const createSubtasks = async (createdTaskId: number): Promise<boolean> => {
     const payload = createSubtaskPayload(createdTaskId);
 
@@ -316,8 +351,11 @@ export default function AddTaskDetailsScreen() {
 
     try {
       await Promise.all(
-        payload.map((subtask) => createFocusFrameSubtask(subtask as any)),
+        payload.map((subtask) => createFocusFrameSubtask(subtask)),
       );
+
+      await createSubtaskCalendarEvents();
+
       return true;
     } catch (error) {
       console.error("Error creating subtasks:", error);
