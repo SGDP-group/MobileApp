@@ -1,5 +1,6 @@
 import type { HomeTask as TaskWithSubtasks } from "../home.tasks";
 
+
 const DAYS = [
   "Sunday",
   "Monday",
@@ -83,49 +84,89 @@ export const getFormattedDate = (value: Date): string => {
   return `${dayName}, ${monthName} ${day}`;
 };
 
+export type TaskLeadStatus = "upcoming" | "late" | "none";
+
+export interface TaskLeadMeta {
+  status: TaskLeadStatus;
+  label: string;
+  startDateOfIncompleteSubtask: Date | null;
+}
+
+const NO_START_TIME_LABEL = "NO START TIME";
+
 export const formatTaskLead = (task: TaskWithSubtasks): string => {
-  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+  return formatTaskLeadMeta(task).label;
+};
 
-   const firstSubtaskWithStart = subtasks.reduce<
-     (typeof subtasks)[number] | undefined
-   >((best, current) => {
-     if (!current.startTime) {
-       return best;
-     }
-     const currentOrder = current.taskOrder ?? Number.MAX_SAFE_INTEGER;
-     if (!best) {
-       return current;
-     }
-     const bestOrder = best.taskOrder ?? Number.MAX_SAFE_INTEGER;
-     return currentOrder < bestOrder ? current : best;
-   }, undefined);
+export const formatTaskLeadMeta = (task: TaskWithSubtasks): TaskLeadMeta => {
+  const subtasks = Array.isArray(task.subTasks)
+    ? task.subTasks
+    : Array.isArray(task.subtasks)
+      ? task.subtasks
+      : [];
 
+  const leadIncomplete = subtasks.reduce<(typeof subtasks)[number] | undefined>(
+    (best, current) => {
+      if (current.completed || !current.startTime) return best;
+      if (!best) return current;
 
-  if (!firstSubtaskWithStart?.startTime) {
-    return "NO START TIME";
+      const currentOrder = current.taskOrder ?? Number.MAX_SAFE_INTEGER;
+      const bestOrder = (best.taskOrder) ?? Number.MAX_SAFE_INTEGER;
+
+      return currentOrder < bestOrder ? current : best;
+    },
+    undefined
+  );
+
+  const rawStartTime = leadIncomplete?.startTime;
+  if (!rawStartTime) {
+    return {
+      status: "none",
+      label: NO_START_TIME_LABEL,
+      startDateOfIncompleteSubtask: null,
+    };
   }
 
-  const startDate = toSubtaskStartDate(firstSubtaskWithStart.startTime);
-  if (!startDate) {
-    return "NO START TIME";
+  const startDate = toSubtaskStartDate(rawStartTime);
+  if (!startDate || !(startDate instanceof Date)) {
+    return {
+      status: "none",
+      label: NO_START_TIME_LABEL,
+      startDateOfIncompleteSubtask: null,
+    };
   }
 
   const diffMs = startDate.getTime() - Date.now();
-  const diffMinutes =
-    diffMs > 0
-      ? Math.ceil(diffMs / (60 * 1000))
-      : Math.floor(diffMs / (60 * 1000));
-  const absMinutes = Math.abs(diffMinutes);
-  const hours = Math.floor(absMinutes / 60);
-  const minutes = absMinutes % 60;
-
+  const absMs = Math.abs(diffMs);
+  
+ 
+  let hours: number;
+  let minutes: number;
+  if (diffMs >= 0) {
+    // Upcoming: round up to avoid under-reporting time remaining
+    const totalMinutes = Math.ceil(absMs / (1000 * 60));
+    hours = Math.floor(totalMinutes / 60);
+    minutes = totalMinutes % 60;
+  } else {
+    // Late: round down so we don't overstate how late the task is
+    const totalMinutes = Math.floor(absMs / (1000 * 60));
+    hours = Math.floor(totalMinutes / 60);
+    minutes = totalMinutes % 60;
+  }
+  
   const durationLabel = `${hours}H ${minutes}M`;
 
-  if (diffMinutes >= 0) {
-    return `STARTS IN ${durationLabel}`;
-  }
-
-  return `DUE ${durationLabel}`;
+  return diffMs >= 0
+    ? {
+        status: "upcoming",
+        label: `STARTS IN ${durationLabel}`,
+        startDateOfIncompleteSubtask: startDate,
+      }
+    : {
+        status: "late",
+        label: `LATE BY ${durationLabel}`,
+        startDateOfIncompleteSubtask: startDate,
+      };
 };
 
 export const formatTaskTimestamp = (value: string): string => {
