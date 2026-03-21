@@ -178,10 +178,25 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
+  subtaskHeaderInput: {
+    flex: 1,
+    minHeight: 36,
+    paddingVertical: 7,
+  },
   subtaskHeaderRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  subtaskHeaderIconButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#15262D",
+    borderWidth: 1,
+    borderColor: "#24424E",
   },
   subtaskStatusBadge: {
     fontSize: 10,
@@ -207,5 +222,63 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 10,
+  },
+  subtaskEditActionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginBottom: 2,
+  },
+  subtaskCompleteToggleRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  subtaskCompleteToggleButton: {
+    minWidth: 64,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2A4652",
+    backgroundColor: "#15262D",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  subtaskCompleteToggleButtonActive: {
+    borderColor: "#70E1FF",
+    backgroundColor: "#1C3640",
+  },
+  subtaskCompleteToggleText: {
+    color: "#9AB3BF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  subtaskCompleteToggleTextActive: {
+    color: "#E5F7FF",
+  },
+  subtaskStatusOptionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  subtaskStatusOptionButton: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2A4652",
+    backgroundColor: "#15262D",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  subtaskStatusOptionButtonActive: {
+    borderColor: "#70E1FF",
+    backgroundColor: "#1C3640",
+  },
+  subtaskStatusOptionText: {
+    color: "#9AB3BF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  subtaskStatusOptionTextActive: {
+    color: "#E5F7FF",
   },
 });
