@@ -15,9 +15,6 @@ import {
 import type { HomeTask } from "../../home/home.tasks";
 import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
-  formatDateObject,
-  formatDateTime,
-  getSubtaskDuration,
   toSafeDate,
   type HomeSubtask,
   type SubtaskStatus,
@@ -53,12 +50,47 @@ export function TaskQueueModal({
   const [savingSubtaskId, setSavingSubtaskId] = useState<number | null>(null);
   const [subtaskStatuses, setSubtaskStatuses] = useState<SubtaskStatus[]>([]);
 
+  const normalizeStatusName = (value?: string): string | undefined => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed.toLowerCase() : undefined;
+  };
+
   const loadSubtasks = async (taskId: number): Promise<void> => {
     setIsLoadingSubtasks(true);
 
     try {
       const fetchedSubtasks = await getSubtasksByTask(taskId);
-      setSubtasks(Array.isArray(fetchedSubtasks) ? fetchedSubtasks : []);
+      const normalizedSubtasks = Array.isArray(fetchedSubtasks)
+        ? fetchedSubtasks.map((subtask) => {
+          const rawSubtask = subtask as HomeSubtask & {
+            status?: { id?: number; name?: string };
+            status_id?: number;
+            status_name?: string;
+            StatusId?: number;
+            StatusName?: string;
+          };
+
+          return {
+            ...rawSubtask,
+            statusId:
+              rawSubtask.statusId ??
+              rawSubtask.status?.id ??
+              rawSubtask.status_id ??
+              rawSubtask.StatusId,
+            statusName:
+              rawSubtask.statusName ??
+              rawSubtask.status?.name ??
+              rawSubtask.status_name ??
+              rawSubtask.StatusName,
+          };
+        })
+        : [];
+
+      setSubtasks(normalizedSubtasks);
     } catch (error) {
       console.warn(
         `Failed to load subtasks for task ${taskId}:`,
@@ -100,7 +132,23 @@ export function TaskQueueModal({
           return;
         }
 
-        setSubtaskStatuses(Array.isArray(statuses) ? statuses : []);
+        const normalizedStatuses: SubtaskStatus[] = Array.isArray(statuses)
+          ? statuses.map((status) => {
+            const rawStatus = status as {
+              id?: number;
+              name?: string;
+              StatusId?: number;
+              StatusName?: string;
+            };
+
+            return {
+              id: rawStatus.id ?? rawStatus.StatusId,
+              name: rawStatus.name ?? rawStatus.StatusName,
+            };
+          })
+          : [];
+
+        setSubtaskStatuses(normalizedStatuses);
       } catch (error) {
         console.warn("Failed to load subtask statuses:", getSafeErrorMessage(error));
         if (isActive) {
@@ -125,21 +173,67 @@ export function TaskQueueModal({
     void loadSubtasks(task.id);
   }, [task?.id, visible]);
 
-  useEffect(() => {
-    if (!visible || subtasks.length === 0) {
-      setExpandedSubtaskIds([]);
-      return;
-    }
-
-    setExpandedSubtaskIds(subtasks.map((subtask) => subtask.id));
-  }, [subtasks, visible]);
-
-  const sortedSubtasks = useMemo(() => {
+  const normalizedSubtasks = useMemo(() => {
     if (subtasks.length === 0) {
       return [];
     }
 
-    return [...subtasks]
+    const statusIdByName = new Map<string, number>();
+    const statusNameById = new Map<number, string>();
+
+    subtaskStatuses.forEach((status) => {
+      if (typeof status.id !== "number") {
+        return;
+      }
+
+      if (typeof status.name === "string") {
+        const normalizedName = normalizeStatusName(status.name);
+        if (normalizedName) {
+          statusIdByName.set(normalizedName, status.id);
+        }
+
+        statusNameById.set(status.id, status.name);
+      }
+    });
+
+    return subtasks.map((subtask) => {
+      const normalizedName = normalizeStatusName(subtask.statusName);
+      const resolvedStatusId =
+        typeof subtask.statusId === "number"
+          ? subtask.statusId
+          : normalizedName
+            ? statusIdByName.get(normalizedName)
+            : undefined;
+
+      const resolvedStatusName =
+        subtask.statusName ??
+        (typeof resolvedStatusId === "number"
+          ? statusNameById.get(resolvedStatusId)
+          : undefined);
+
+      return {
+        ...subtask,
+        statusId: resolvedStatusId ?? subtask.statusId ?? 0,
+        statusName: resolvedStatusName ?? subtask.statusName ?? "",
+      };
+    });
+  }, [subtaskStatuses, subtasks]);
+
+  useEffect(() => {
+    if (!visible || normalizedSubtasks.length === 0) {
+      setExpandedSubtaskIds([]);
+      return;
+    }
+
+    setExpandedSubtaskIds(normalizedSubtasks.map((subtask) => subtask.id));
+  }, [normalizedSubtasks, visible]);
+
+  const sortedSubtasks = useMemo(() => {
+    if (normalizedSubtasks.length === 0) {
+      return [];
+    }
+
+    return [...normalizedSubtasks]
       .sort((a, b) => {
         const aOrder =
           typeof a.taskOrder === "number" ? a.taskOrder : Number.MAX_SAFE_INTEGER;
@@ -154,92 +248,14 @@ export function TaskQueueModal({
         const bStart = toSafeDate(b.startTime)?.getTime() ?? Number.MAX_SAFE_INTEGER;
         return aStart - bStart;
       });
-  }, [subtasks]);
+  }, [normalizedSubtasks]);
 
-  const derivedMainDescription = useMemo(() => {
-    const firstDescription = sortedSubtasks.find(
-      (subtask) => typeof subtask.description === "string" && subtask.description.trim().length > 0,
-    );
-
-    if (firstDescription?.description) {
-      return firstDescription.description;
-    }
-
-    if (typeof task?.description === "string" && task.description.trim().length > 0) {
-      return task.description;
-    }
-
-    return "No description available";
-  }, [sortedSubtasks, task?.description]);
-
-  const derivedMainDuration = useMemo(() => {
-    const totalDuration = sortedSubtasks.reduce((total, subtask) => {
-      return total + getSubtaskDuration(subtask.duration, subtask.estimatedTime);
-    }, 0);
-
-    return totalDuration;
-  }, [sortedSubtasks]);
-
-  const derivedStartTime = useMemo(() => {
-    if (sortedSubtasks.length === 0) {
-      return formatDateTime(task?.updatedAt);
-    }
-
-    let earliestStartTimestamp: number | null = null;
-
-    sortedSubtasks.forEach((subtask) => {
-      const startDate = toSafeDate(subtask.startTime);
-      if (!startDate) {
-        return;
-      }
-
-      const startTimestamp = startDate.getTime();
-      if (earliestStartTimestamp === null || startTimestamp < earliestStartTimestamp) {
-        earliestStartTimestamp = startTimestamp;
-      }
-    });
-
-    if (!earliestStartTimestamp) {
-      return formatDateTime(task?.updatedAt);
-    }
-
-    return formatDateObject(new Date(earliestStartTimestamp));
-  }, [sortedSubtasks, task?.updatedAt]);
-
-  const derivedDeadline = useMemo(() => {
-    if (sortedSubtasks.length === 0) {
-      return formatDateTime(task?.updatedAt);
-    }
-
-    let latestEndTimestamp: number | null = null;
-
-    sortedSubtasks.forEach((subtask) => {
-      const startDate = toSafeDate(subtask.startTime);
-      const duration = getSubtaskDuration(subtask.duration, subtask.estimatedTime);
-
-      if (!startDate || duration <= 0) {
-        return;
-      }
-
-      const endTimestamp = startDate.getTime() + duration * 60 * 1000;
-      if (!latestEndTimestamp || endTimestamp > latestEndTimestamp) {
-        latestEndTimestamp = endTimestamp;
-      }
-    });
-
-    if (!latestEndTimestamp) {
-      return formatDateTime(task?.updatedAt);
-    }
-
-    return formatDateObject(new Date(latestEndTimestamp));
-  }, [sortedSubtasks, task?.updatedAt]);
 
   const toggleSubtask = (subtaskId: number) => {
     setExpandedSubtaskIds((prev) => {
       if (prev.includes(subtaskId)) {
         return prev.filter((id) => id !== subtaskId);
       }
-
       return [...prev, subtaskId];
     });
   };
@@ -338,16 +354,20 @@ export function TaskQueueModal({
         duration: subtask.duration,
         estimatedTime: subtask.estimatedTime,
         completed: updates.completed,
-        status:
+        statusId:
           typeof updates.statusId === "number"
-            ? { id: updates.statusId, name: updates.statusName ?? "" }
-            : subtask.status,
+            ? updates.statusId
+            : typeof subtask.statusId === "number"
+              ? subtask.statusId
+              : undefined,
       });
       await loadSubtasks(task.id);
     } finally {
       setSavingSubtaskId(null);
     }
   };
+
+  const isUpdatingSubtask = savingSubtaskId !== null;
 
   return (
     <Modal
@@ -380,7 +400,7 @@ export function TaskQueueModal({
 
                     setIsEditing(true);
                   }}
-                  disabled={isSavingEdit || isDeletingTask}
+                  disabled={isSavingEdit || isDeletingTask || isUpdatingSubtask}
                 >
                   <Ionicons
                     name={isEditing ? "checkmark" : "pencil"}
@@ -393,7 +413,7 @@ export function TaskQueueModal({
                 <TouchableOpacity
                   style={styles.taskQueueHeaderIconButton}
                   onPress={handleDeletePress}
-                  disabled={isSavingEdit || isDeletingTask || isEditing}
+                  disabled={isSavingEdit || isDeletingTask || isEditing || isUpdatingSubtask}
                 >
                   <Ionicons name="trash" size={18} color="#FF8A80" />
                 </TouchableOpacity>
@@ -410,7 +430,7 @@ export function TaskQueueModal({
 
                   onClose();
                 }}
-                disabled={isSavingEdit || isDeletingTask}
+                disabled={isSavingEdit || isDeletingTask || isUpdatingSubtask}
               >
                 <Ionicons name="close" size={22} color="#E5F7FF" />
               </TouchableOpacity>
@@ -496,7 +516,7 @@ export function TaskQueueModal({
                       <SubtaskAccordionItem
                         key={subtask.id}
                         subtask={subtask}
-                        isExpanded={!isExpanded}
+                        isExpanded={isExpanded}
                         onToggle={toggleSubtask}
                         onEditSubtask={handleEditSubtask}
                         isSaving={savingSubtaskId === subtask.id}
@@ -509,11 +529,15 @@ export function TaskQueueModal({
             </ScrollView>
           )}
 
-          {(isSavingEdit || isDeletingTask) && (
+          {(isSavingEdit || isDeletingTask || isUpdatingSubtask) && (
             <View style={styles.taskQueueUpdatingOverlay}>
               <ActivityIndicator size="large" color="#70E1FF" />
               <Text style={styles.taskQueueUpdatingText}>
-                {isDeletingTask ? "Deleting task..." : "Updating task..."}
+                {isDeletingTask
+                  ? "Deleting task..."
+                  : isUpdatingSubtask
+                    ? "Updating subtask..."
+                    : "Updating task..."}
               </Text>
             </View>
           )}
