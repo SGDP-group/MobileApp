@@ -65,10 +65,10 @@ export function SubtaskAccordionItem({
   const [editableEndTime, setEditableEndTime] = useState(subtask.endTime ?? "");
   const [editableCompleted, setEditableCompleted] = useState(Boolean(subtask.completed));
   const [editableStatusId, setEditableStatusId] = useState<number | undefined>(
-    subtask.status?.id,
+    subtask.statusId,
   );
   const [editableStatusName, setEditableStatusName] = useState<string | undefined>(
-    subtask.status?.name,
+    subtask.statusName,
   );
 
   useEffect(() => {
@@ -81,8 +81,8 @@ export function SubtaskAccordionItem({
     setEditableStartTime(subtask.startTime ?? "");
     setEditableEndTime(subtask.endTime ?? "");
     setEditableCompleted(Boolean(subtask.completed));
-    setEditableStatusId(subtask.status?.id);
-    setEditableStatusName(subtask.status?.name);
+    setEditableStatusId(subtask.statusId);
+    setEditableStatusName(subtask.statusName);
   }, [
     subtask.completed,
     subtask.description,
@@ -90,8 +90,8 @@ export function SubtaskAccordionItem({
     subtask.id,
     subtask.name,
     subtask.startTime,
-    subtask.status?.name,
-    subtask.status?.id,
+    subtask.statusName,
+    subtask.statusId,
     subtask.taskOrder,
   ]);
 
@@ -111,8 +111,8 @@ export function SubtaskAccordionItem({
   });
 
   const currentStatusOption =
-    subtask.status?.id !== undefined || subtask.status?.name
-      ? [{ id: subtask.status?.id, name: subtask.status?.name ?? "Current" }]
+    subtask.statusId !== undefined || subtask.statusName !== undefined
+      ? [{ id: subtask.statusId, name: subtask.statusName ?? "Current" }]
       : [];
   const resolvedStatusOptions = [...normalizedStatusOptions];
   currentStatusOption.forEach((currentOption) => {
@@ -213,8 +213,8 @@ export function SubtaskAccordionItem({
     setEditableStartTime(subtask.startTime ?? "");
     setEditableEndTime(subtask.endTime ?? "");
     setEditableCompleted(Boolean(subtask.completed));
-    setEditableStatusId(subtask.status?.id);
-    setEditableStatusName(subtask.status?.name);
+    setEditableStatusId(subtask.statusId);
+    setEditableStatusName(subtask.statusName);
   };
 
   return (
@@ -423,7 +423,7 @@ export function SubtaskAccordionItem({
             ) : (
               <View style={styles.subtaskCompleteToggleRow}>
                 <Text style={styles.taskQueueFieldValue}>
-                  {subtask.status?.name ?? statusLabel}
+                  {subtask.statusName }
                 </Text>
               </View>
             )}
