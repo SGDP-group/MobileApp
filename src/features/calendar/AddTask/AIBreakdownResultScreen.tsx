@@ -1,5 +1,8 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { createSubtask as createFocusFrameSubtask } from "@services/focusFrameSubtaskService";
+import { createTask as createFocusFrameTask } from "@services/focusFrameTaskService";
+import { getStoredUserId } from "@services/focusFrameUserService";
 import {
     RootNavigationProp,
     RootStackParamList,
@@ -68,6 +71,18 @@ const VALIDATION_ERRORS = {
   SAVE_FAILED: {
     title: "Error",
     message: "Failed to save task. Please try again.",
+  },
+  USER_NOT_LINKED: {
+    title: "User Not Linked",
+    message: "Please sign in to save tasks.",
+  },
+  TASK_CREATION_FAILED: {
+    title: "Task Creation Failed",
+    message: "Failed to create task. Please try again.",
+  },
+  SUBTASK_CREATION_FAILED: {
+    title: "Subtask Creation Failed",
+    message: "Failed to create some subtasks. Please try again.",
   },
 };
 
@@ -192,7 +207,7 @@ const SubtaskItem: React.FC<{
           <Ionicons
             name={expanded ? "chevron-down" : "chevron-forward"}
             size={20}
-            color={colors.primary}
+            color={"#8AE8FF"}
             style={styles.expandIcon}
           />
           <View style={styles.subtaskContent}>
@@ -286,6 +301,7 @@ export default function AIBreakdownResultScreen() {
   const result = route.params?.result;
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [subtasks, setSubtasks] = useState<Subtask[]>(
     result?.tasks[0]?.subtasks || [],
   );
@@ -428,12 +444,70 @@ export default function AIBreakdownResultScreen() {
     );
   };
 
+  const createSubtasks = async (taskId: number): Promise<boolean> => {
+    if (subtasks.length === 0) return true;
+
+    try {
+      const subtaskPayload = subtasks.map((subtask, index) => ({
+        name: subtask.description,
+        description: "",
+        estimated_time: subtask.estimated_time,
+        duration: subtask.estimated_time,
+        taskOrder: index + 1,
+        task: { id: taskId },
+        status: { id: 1 },
+        startTime: new Date().toISOString(),
+        endTime: new Date(
+          Date.now() + subtask.estimated_time * 60 * 1000,
+        ).toISOString(),
+      }));
+
+      await Promise.all(
+        subtaskPayload.map((subtask) =>
+          createFocusFrameSubtask(subtask as any),
+        ),
+      );
+      return true;
+    } catch (error) {
+      console.error("Error creating subtasks:", error);
+      Alert.alert(
+        VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.title,
+        VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
+      );
+      return false;
+    }
+  };
+
   const handleSaveTask = async () => {
     if (!validateAllInputs()) {
       return;
     }
 
     try {
+      setIsSaving(true);
+
+      const userId = await getStoredUserId();
+      if (!userId) {
+        Alert.alert(
+          VALIDATION_ERRORS.USER_NOT_LINKED.title,
+          VALIDATION_ERRORS.USER_NOT_LINKED.message,
+        );
+        return;
+      }
+
+      const createdTask = await createFocusFrameTask({
+        name: mainTask?.description || "AI Breakdown Task",
+        description: mainTask?.description || "",
+        user: { id: userId, email: "" },
+      });
+
+      if (!createdTask?.id) {
+        throw new Error("Task created without task id.");
+      }
+
+      const subtasksCreated = await createSubtasks(createdTask.id);
+      if (!subtasksCreated) return;
+
       setIsEditing(false);
       const totalSubtaskCount = getTotalSubtaskCount(subtasks);
       const successMsg = SUCCESS_MESSAGES.SAVE_SUCCESS(
@@ -441,12 +515,18 @@ export default function AIBreakdownResultScreen() {
         totalSubtaskCount,
         totalTime,
       );
-      Alert.alert(successMsg.title, successMsg.message);
+
+      Alert.alert(successMsg.title, successMsg.message, [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
     } catch (error) {
+      console.error("Error creating task:", error);
       Alert.alert(
-        VALIDATION_ERRORS.SAVE_FAILED.title,
-        VALIDATION_ERRORS.SAVE_FAILED.message,
+        VALIDATION_ERRORS.TASK_CREATION_FAILED.title,
+        VALIDATION_ERRORS.TASK_CREATION_FAILED.message,
       );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -482,7 +562,7 @@ export default function AIBreakdownResultScreen() {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+          <Ionicons name="chevron-back" size={24} color={"#8AE8FF"} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {isEditing ? "Edit Subtasks" : "AI Breakdown Results"}
@@ -526,21 +606,13 @@ export default function AIBreakdownResultScreen() {
 
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
-                <Ionicons
-                  name="time-outline"
-                  size={18}
-                  color={colors.primary}
-                />
+                <Ionicons name="time-outline" size={18} color={"#8AE8FF"} />
                 <Text style={styles.statLabel}>Total Time</Text>
                 <Text style={styles.statValue}>{totalTime} min</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Ionicons
-                  name="list-outline"
-                  size={18}
-                  color={colors.primary}
-                />
+                <Ionicons name="list-outline" size={18} color={"#8AE8FF"} />
                 <Text style={styles.statLabel}>Subtasks</Text>
                 <Text style={styles.statValue}>{subtaskCount}</Text>
               </View>
@@ -570,8 +642,14 @@ export default function AIBreakdownResultScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleSaveTask}>
-          <Text style={styles.primaryButtonText}>Save Task</Text>
+        <TouchableOpacity
+          style={[styles.primaryButton, isSaving && { opacity: 0.6 }]}
+          onPress={handleSaveTask}
+          disabled={isSaving}
+        >
+          <Text style={styles.primaryButtonText}>
+            {isSaving ? "Saving..." : "Save Task"}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

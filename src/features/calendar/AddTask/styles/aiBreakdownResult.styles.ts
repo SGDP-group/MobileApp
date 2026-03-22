@@ -4,7 +4,7 @@ import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "#0F1A1F",
   },
   headerRow: {
     flexDirection: "row",
@@ -28,7 +28,7 @@ export const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border || "#E0E0E0",
+    backgroundColor: "#1E3640",
     marginHorizontal: 16,
   },
   content: {
@@ -50,12 +50,14 @@ export const styles = StyleSheet.create({
 
   // Main Task
   mainTaskContainer: {
-    backgroundColor: colors.primary + "15",
+    backgroundColor: "#16242B",
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
+    borderLeftColor: "#8AE8FF",
+    borderWidth: 1,
+    borderColor: "#223D47",
   },
   mainTaskHeader: {
     flexDirection: "row",
@@ -89,7 +91,7 @@ export const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.background,
+    backgroundColor: "#0F1A1F",
     borderRadius: 8,
     paddingVertical: 12,
   },
@@ -106,13 +108,13 @@ export const styles = StyleSheet.create({
   statValue: {
     fontSize: 16,
     fontWeight: "700",
-    color: colors.primary,
+    color: "#8AE8FF",
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 40,
-    backgroundColor: colors.border || "#E0E0E0",
+    backgroundColor: "#223D47",
   },
 
   // Subtasks Section
@@ -122,14 +124,14 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: colors.text,
+    color: "#8AE8FF",
     marginBottom: 12,
   },
   subtasksContainer: {
-    backgroundColor: colors.background,
+    backgroundColor: "#16242B",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border || "#E0E0E0",
+    borderColor: "#223D47",
     overflow: "hidden",
   },
 
@@ -141,7 +143,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingRight: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border || "#F0F0F0",
+    borderBottomColor: "#223D47",
   },
   subtaskLeft: {
     flex: 1,
@@ -160,7 +162,7 @@ export const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: "#8AE8FF",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -185,7 +187,7 @@ export const styles = StyleSheet.create({
   estimatedTime: {
     fontSize: 14,
     fontWeight: "600",
-    color: colors.primary,
+    color: "#8AE8FF",
   },
 
   // Footer
@@ -200,29 +202,29 @@ export const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: colors.primary,
+    backgroundColor: "#8AE8FF",
     justifyContent: "center",
     alignItems: "center",
   },
   primaryButtonText: {
     fontSize: 14,
     fontWeight: "700",
-    color: colors.background,
+    color: "#0F1A1F",
   },
   secondaryButton: {
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: colors.background,
+    backgroundColor: "#16242B",
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: "#8AE8FF",
     justifyContent: "center",
     alignItems: "center",
   },
   secondaryButtonText: {
     fontSize: 14,
     fontWeight: "700",
-    color: colors.primary,
+    color: "#8AE8FF",
   },
 });
