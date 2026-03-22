@@ -8,9 +8,8 @@ import { styles } from "../styles/taskQueueModal.styles";
 import {
   formatDateObject,
   formatDateTime,
-  formatDuration,
   getSubtaskDuration,
-  toSafeDate,
+  toSafeDate
 } from "../utils/taskQueueModal.utils";
 import { SubtaskAccordionItem } from "./SubtaskAccordionItem";
 
@@ -84,7 +83,6 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
     }
 
     return [...subtasks]
-      // .filter((subtask) => !subtask.completed)
       .sort((a, b) => {
         const aOrder =
           typeof a.taskOrder === "number" ? a.taskOrder : Number.MAX_SAFE_INTEGER;
@@ -199,10 +197,23 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
       <View style={styles.taskQueueModalOverlay}>
         <View style={styles.taskQueueModalContent}>
           <View style={styles.taskQueueModalHeader}>
-            <Text style={styles.taskQueueModalTitle}>{!task ? "Task Queue" : task.name}</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={22} color="#E5F7FF" />
-            </TouchableOpacity>
+            <View style={styles.taskQueueModalTitleContainer}>
+              <Text
+                style={styles.taskQueueModalTitle}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {!task ? "Task Queue" : task.name}
+              </Text>
+            </View>
+            <View style={styles.taskQueueHeaderActions}>
+              <TouchableOpacity
+                style={styles.taskQueueHeaderIconButton}
+                onPress={onClose}
+              >
+                <Ionicons name="close" size={22} color="#E5F7FF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {!task ? (
@@ -219,24 +230,19 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.taskQueueMainSection}>
-                {/* <Text style={styles.taskQueueSectionTitle}>Main Task</Text> */}
-{/* 
-                <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Name</Text>
-                  <Text style={styles.taskQueueFieldValue}>{task.name}</Text>
-                </View> */}
+             
 
                 <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Description</Text>
-                  <Text style={styles.taskQueueFieldValue}>{derivedMainDescription}</Text>
+                  <Text style={styles.taskQueueFieldValue}>{task.description}</Text>
                 </View>
 
-                <View style={styles.taskQueueFieldRow}>
+                {/* <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Start time</Text>
                   <Text style={styles.taskQueueFieldValue}>{derivedStartTime}</Text>
-                </View>
+                </View> */}
 
-                <View style={styles.taskQueueFieldRow}>
+                {/* <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Deadline</Text>
                   <Text style={styles.taskQueueFieldValue}>{derivedDeadline}</Text>
                 </View>
@@ -244,7 +250,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
                 <View style={styles.taskQueueFieldRow}>
                   <Text style={styles.taskQueueFieldLabel}>Duration</Text>
                   <Text style={styles.taskQueueFieldValue}>{formatDuration(derivedMainDuration)}</Text>
-                </View>
+                </View> */}
               </View>
 
               <View style={styles.taskQueueSubtasksSection}>

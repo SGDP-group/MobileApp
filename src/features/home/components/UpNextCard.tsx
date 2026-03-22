@@ -3,7 +3,7 @@ import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import type { HomeTask, HomeUpNextItem } from "../home.tasks";
 import { styles } from "../styles/home.styles";
-import { formatTaskLead, formatTaskTimestamp } from "../utils/home.helpers";
+import { formatTaskLeadMeta, formatTaskTimestamp } from "../utils/home.helpers";
 
 interface UpNextCardProps {
   item: HomeUpNextItem;
@@ -43,14 +43,25 @@ export function UpNextCard({ item, onOpenTaskQueue }: UpNextCardProps) {
     );
   }
 
+  const taskLead = formatTaskLeadMeta(item.task);
+  const leadStyle =
+    taskLead.status === "late"
+      ? styles.eventLeadLate 
+      : taskLead.status === "upcoming"
+        ? styles.eventLeadUpcoming
+        : styles.eventLeadNone;
+  const taskStartTimestamp = taskLead.startDateOfIncompleteSubtask
+    ? formatTaskTimestamp(taskLead.startDateOfIncompleteSubtask.toISOString())
+    : formatTaskTimestamp(item.task.updatedAt);
+
   return (
     <View style={styles.eventCard}>
-      <Text style={styles.eventLead}>{formatTaskLead(item.task)}</Text>
+      <Text style={[styles.eventLead, leadStyle]}>{taskLead.label}</Text>
       <Text style={styles.eventTitle}>{item.task.name}</Text>
       <View style={styles.eventMeta}>
-        <Ionicons name="document-text-outline" size={14} color="#8DA7B5" />
+        <Ionicons name="time" size={14} style={styles.eventMetaIcon} />
         <Text style={styles.eventMetaText}>
-          Updated {formatTaskTimestamp(item.task.updatedAt)}
+          Start {taskStartTimestamp}
         </Text>
       </View>
       <TouchableOpacity

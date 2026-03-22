@@ -1,3 +1,4 @@
+import type { CreateSubtaskPayload } from "@/src/types/type";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
   DateTimePickerEvent,
@@ -7,6 +8,7 @@ import { useNavigation } from "@react-navigation/native";
 import { createSubtask as createFocusFrameSubtask } from "@services/focusFrameSubtaskService";
 import { createTask as createFocusFrameTask } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
+import { googleCalendarService } from "@services/googleCalendarService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
@@ -32,6 +34,37 @@ type SubtaskPickerState = {
   index: number;
   field: "startTime" | "endTime";
   mode: "date" | "time";
+};
+
+const getDeviceTimeZone = (): string => {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return timezone && timezone.trim().length > 0 ? timezone : "UTC";
+};
+
+const TIMEZONE = getDeviceTimeZone();
+
+const toTwoDigits = (value: number): string => `${value}`.padStart(2, "0");
+
+const toLocalApiDateTime = (value: Date): string => {
+  const year = value.getFullYear();
+  const month = toTwoDigits(value.getMonth() + 1);
+  const day = toTwoDigits(value.getDate());
+  const hours = toTwoDigits(value.getHours());
+  const minutes = toTwoDigits(value.getMinutes());
+  const seconds = toTwoDigits(value.getSeconds());
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
+const toOffsetDateTime = (value: Date): string => {
+  const localDateTime = toLocalApiDateTime(value);
+  const offsetMinutes = -value.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absOffsetMinutes = Math.abs(offsetMinutes);
+  const hours = toTwoDigits(Math.floor(absOffsetMinutes / 60));
+  const minutes = toTwoDigits(absOffsetMinutes % 60);
+
+  return `${localDateTime}${sign}${hours}:${minutes}`;
 };
 
 const VALIDATION_ERRORS = {
@@ -77,6 +110,11 @@ const SUCCESS_MESSAGES = {
   TASK_CREATED: {
     title: "Task Created",
     message: "Task was added successfully.",
+  },
+  TASK_CREATED_CALENDAR_FAILED: {
+    title: "Task Created with Issues",
+    message:
+      "Task was created successfully, but some calendar events could not be synced. Your calendar may be out of sync.",
   },
 };
 
@@ -254,15 +292,14 @@ export default function AddTaskDetailsScreen() {
     return true;
   };
 
-  const validateAllInputs = (): boolean => {
-    return (
-      validateTaskName(taskName) &&
-      validateSubtasksExist() &&
-      validateSubtaskDateTime()
-    );
-  };
+  const validateAllInputs = (): boolean =>
+    validateTaskName(taskName) &&
+    validateSubtasksExist() &&
+    validateSubtaskDateTime();
 
-  const createSubtaskPayload = (createdTaskId: number) => {
+  const createSubtaskPayload = (
+    createdTaskId: number,
+  ): CreateSubtaskPayload[] => {
     return validSubtasks.map((subtask, index) => {
       const subtaskStart = subtask.startTime!;
       const subtaskEnd = subtask.endTime!;
@@ -275,10 +312,9 @@ export default function AddTaskDetailsScreen() {
         name: subtask.name,
         description: subtask.description || "",
         task: { id: createdTaskId },
-        status: { id: 1 },
         taskOrder: index + 1,
-        startTime: subtaskStart.toISOString(),
-        endTime: subtaskEnd.toISOString(),
+        startTime: toLocalApiDateTime(subtaskStart),
+        endTime: toLocalApiDateTime(subtaskEnd),
         duration,
       };
     });
@@ -309,16 +345,107 @@ export default function AddTaskDetailsScreen() {
     return signedInUser.user.email;
   };
 
-  const createSubtasks = async (createdTaskId: number): Promise<boolean> => {
-    const payload = createSubtaskPayload(createdTaskId);
+  const createSubtaskCalendarEvents = async (): Promise<{
+    success: boolean;
+    failureCount: number;
+  }> => {
+    try {
+      const calendarEventPromises = validSubtasks.map((subtask) => {
+        if (!subtask.startTime || !subtask.endTime) return null;
 
-    if (payload.length === 0) return true;
+        return googleCalendarService.createEvent({
+          summary: subtask.name,
+          description: subtask.description || "",
+          start: {
+            dateTime: toOffsetDateTime(subtask.startTime),
+            timeZone: TIMEZONE,
+          },
+          end: {
+            dateTime: toOffsetDateTime(subtask.endTime),
+            timeZone: TIMEZONE,
+          },
+        });
+      });
 
+      const isPromise = (p: unknown): p is Promise<any> => p !== null;
+      const nonNullPromises = calendarEventPromises.filter(isPromise);
+
+      if (nonNullPromises.length === 0) {
+        return { success: true, failureCount: 0 };
+      }
+
+      const results = await Promise.allSettled(nonNullPromises);
+      const failures = results.filter((r) => r.status === "rejected");
+
+      if (failures.length > 0) {
+        console.warn(
+          `Failed to create ${failures.length} calendar event(s):`,
+          failures.map((f) => (f as PromiseRejectedResult).reason),
+        );
+        return { success: false, failureCount: failures.length };
+      }
+
+      return { success: true, failureCount: 0 };
+    } catch (error) {
+      console.error("Error creating calendar events:", error);
+      return { success: false, failureCount: validSubtasks.length };
+    }
+  };
+
+  const createSubtasks = async (
+    createdTaskId: number,
+  ): Promise<{ success: boolean; calendarFailureCount: number }> => {
+    // For each subtask, create Google event, then subtask with googleEventId
+    if (validSubtasks.length === 0) return { success: true, calendarFailureCount: 0 };
+
+    let calendarFailureCount = 0;
     try {
       await Promise.all(
-        payload.map((subtask) => createFocusFrameSubtask(subtask as any)),
+        validSubtasks.map(async (subtask, index) => {
+          let googleEventId: string | undefined = undefined;
+          if (subtask.startTime && subtask.endTime) {
+            try {
+              const event = await googleCalendarService.createEvent({
+                summary: subtask.name,
+                description: subtask.description || "",
+                start: {
+                  dateTime: toOffsetDateTime(subtask.startTime),
+                  timeZone: TIMEZONE,
+                },
+                end: {
+                  dateTime: toOffsetDateTime(subtask.endTime),
+                  timeZone: TIMEZONE,
+                },
+              });
+              googleEventId = event?.id;
+            } catch (err) {
+              calendarFailureCount++;
+              console.warn("Failed to create Google event for subtask", subtask.name, err);
+            }
+          }
+          const subtaskStart = subtask.startTime!;
+          const subtaskEnd = subtask.endTime!;
+          const duration = Math.max(
+            0,
+            Math.round((subtaskEnd.getTime() - subtaskStart.getTime()) / 60000),
+          );
+          const payload: CreateSubtaskPayload = {
+            name: subtask.name,
+            description: subtask.description || "",
+            task: { id: createdTaskId },
+            taskOrder: index + 1,
+            startTime: toLocalApiDateTime(subtaskStart),
+            endTime: toLocalApiDateTime(subtaskEnd),
+            duration,
+            googleEventId,
+          };
+          await createFocusFrameSubtask(payload);
+        })
       );
-      return true;
+      return {
+        success: true,
+        calendarFailureCount,
+      };
     } catch (error) {
       console.error("Error creating subtasks:", error);
       Alert.alert(
@@ -326,7 +453,7 @@ export default function AddTaskDetailsScreen() {
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
         [{ text: "OK", onPress: () => navigation.goBack() }],
       );
-      return false;
+      return { success: false, calendarFailureCount };
     }
   };
 
@@ -359,14 +486,22 @@ export default function AddTaskDetailsScreen() {
         throw new Error("Task created without task id.");
       }
 
-      const subtasksCreated = await createSubtasks(createdTask.id);
-      if (!subtasksCreated) return;
+      const subtasksResult = await createSubtasks(createdTask.id);
+      if (!subtasksResult.success) return;
 
-      Alert.alert(
-        SUCCESS_MESSAGES.TASK_CREATED.title,
-        SUCCESS_MESSAGES.TASK_CREATED.message,
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      if (subtasksResult.calendarFailureCount > 0) {
+        Alert.alert(
+          SUCCESS_MESSAGES.TASK_CREATED_CALENDAR_FAILED.title,
+          SUCCESS_MESSAGES.TASK_CREATED_CALENDAR_FAILED.message,
+          [{ text: "OK", onPress: () => navigation.goBack() }],
+        );
+      } else {
+        Alert.alert(
+          SUCCESS_MESSAGES.TASK_CREATED.title,
+          SUCCESS_MESSAGES.TASK_CREATED.message,
+          [{ text: "OK", onPress: () => navigation.goBack() }],
+        );
+      }
     } catch (error) {
       console.error("Error creating task:", error);
       Alert.alert(

@@ -157,12 +157,27 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#23343C",
   },
+  eventMetaIcon: {
+    color: "#8DA7B5",
+  },
+  eventMetaIconLate: {
+    color: "#FF8A80",
+  },
   eventLead: {
     fontSize: 11,
     fontWeight: "600",
     color: "#3FD3FF",
     marginBottom: 8,
     letterSpacing: 0.6,
+  },
+  eventLeadUpcoming: {
+    color: "#3FD3FF",
+  },
+  eventLeadLate: {
+    color: "#FF8A80",
+  },
+  eventLeadNone: {
+    color: "#8DA7B5",
   },
   eventTitle: {
     fontSize: 16,

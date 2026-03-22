@@ -16,6 +16,8 @@ import { clearStoredUser, findOrCreateUser } from "../../services/focusFrameUser
 import { tokenManager } from "../../utils/tokenManager";
 import { LoadingScreen } from "../components/LoadingScreen";
 
+import { setGlobalLogoutHandler } from "@utils/globalLogout";
+
 export type RootStackParamList = {
   Welcome: undefined;
   Home: { userInfo?: any };
@@ -109,6 +111,7 @@ export function RootNavigator() {
     };
 
     initializeAuth();
+    setGlobalLogoutHandler(handleLogout);
   }, []);
 
   const handleLogout = async () => {
