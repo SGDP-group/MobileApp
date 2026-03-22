@@ -31,6 +31,7 @@ const QUICK_ACTIONS = [
 export default function HomeScreen({ userInfo }: HomeScreenProps) {
   const navigation = useNavigation<RootNavigationProp>();
   const userName = userInfo?.user?.name ?? "User";
+  const userEmail = userInfo?.user?.email ?? "";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<HomeTask | null>(null);
@@ -40,7 +41,7 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
     openScanner,
     closeScanner,
     handleScan,
-  } = useQrCodeScanner();
+  } = useQrCodeScanner(userEmail);
 
   const { upNextData, refreshTasks } = useHomeTasks();
 

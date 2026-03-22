@@ -1,12 +1,13 @@
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert } from "react-native";
-import { parseQrPayload, QrPayload } from "../utils/qrPayloadParser";
+import { authenticateToken } from "../../../services/authTokenService";
+import { parseQrPayload } from "../utils/qrPayloadParser";
 
 interface UseQrCodeScannerResult {
   isScannerVisible: boolean;
   isProcessingScan: boolean;
-  scannedQrPayload: QrPayload | null;
+  scannedQrPayload: string | null;
   openScanner: () => void;
   closeScanner: () => void;
   handleScan: (rawPayload: string) => Promise<void>;
@@ -30,10 +31,10 @@ const triggerSuccessHaptic = async (): Promise<void> => {
   }
 };
 
-export const useQrCodeScanner = (): UseQrCodeScannerResult => {
+export const useQrCodeScanner = (email: string): UseQrCodeScannerResult => {
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const [isProcessingScan, setIsProcessingScan] = useState(false);
-  const [scannedQrPayload, setScannedQrPayload] = useState<QrPayload | null>(
+  const [scannedQrPayload, setScannedQrPayload] = useState<string | null>(
     null,
   );
   const scanLockRef = useRef(false);
@@ -110,8 +111,14 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
     setIsProcessingScan(true);
 
     try {
-      const parsedPayload = parseQrPayload(rawPayload);
-      setScannedQrPayload(parsedPayload);
+      const token = parseQrPayload(rawPayload);
+      const authenticated = await authenticateToken(token, email);
+
+      if (!authenticated) {
+        throw new Error("Authentication failed. Please try again.");
+      }
+
+      setScannedQrPayload(token);
       await triggerSuccessHaptic();
       clearCooldownTimer();
       setIsScannerVisible(false);
@@ -119,7 +126,7 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
     } catch (error) {
       showInvalidQrAlert(error);
     }
-  }, [clearCooldownTimer, showInvalidQrAlert]);
+  }, [clearCooldownTimer, email, showInvalidQrAlert]);
 
   return {
     isScannerVisible,
