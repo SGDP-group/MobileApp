@@ -4,8 +4,8 @@ export interface User {
 }
 
 export interface SubtaskStatus {
-  id: number;
-  name: string;
+  StatusId: number;
+  StatusName: string;
 }
 
 export interface Task {
@@ -35,10 +35,28 @@ export interface Subtask {
   completed: boolean;
   isTracked: boolean;
   isAiBreakdown: boolean;
-  status?: SubtaskStatus;
+  statusName: string;
+  statusId: number;
   createdAt: string;
   updatedAt: string;
 }
+
+
+export interface  CalendarTaskItem {
+  id: string;
+  title: string;
+  notes?: string;
+  due?: string;
+  completed: boolean;
+  subtasks: {
+    id: string;
+    title: string;
+    notes?: string;
+    due?: string;
+    completed: boolean;
+  }[];
+};
+
 
 export type CreateTaskPayload = Pick<Task, "name"> &
   Partial<

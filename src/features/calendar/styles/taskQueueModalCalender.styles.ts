@@ -15,6 +15,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#1E3640",
     borderBottomWidth: 0,
+    position: "relative",
   },
   taskQueueModalHeader: {
     flexDirection: "row",
@@ -39,6 +40,7 @@ export const styles = StyleSheet.create({
   taskQueueHeaderActions: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
     flexShrink: 0,
   },
   taskQueueHeaderIconButton: {
@@ -89,6 +91,19 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  taskQueueEditableInput: {
+    borderWidth: 1,
+    borderColor: "#24424E",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: colors.text,
+    backgroundColor: "#15262D",
+    fontSize: 14,
+  },
+  taskQueueEditableMultilineInput: {
+    minHeight: 90,
+  },
   taskQueueNoSubtasksText: {
     fontSize: 14,
     color: "#96B0BD",
@@ -110,6 +125,19 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     lineHeight: 21,
+  },
+  taskQueueUpdatingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(10, 20, 25, 0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    zIndex: 10,
+  },
+  taskQueueUpdatingText: {
+    color: "#E5F7FF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   subtaskAccordionCard: {
     backgroundColor: "#16242B",
@@ -150,10 +178,25 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     flex: 1,
   },
+  subtaskHeaderInput: {
+    flex: 1,
+    minHeight: 36,
+    paddingVertical: 7,
+  },
   subtaskHeaderRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+  },
+  subtaskHeaderIconButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#15262D",
+    borderWidth: 1,
+    borderColor: "#24424E",
   },
   subtaskStatusBadge: {
     fontSize: 10,
@@ -179,5 +222,63 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 10,
+  },
+  subtaskEditActionsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginBottom: 2,
+  },
+  subtaskCompleteToggleRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  subtaskCompleteToggleButton: {
+    minWidth: 64,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2A4652",
+    backgroundColor: "#15262D",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  subtaskCompleteToggleButtonActive: {
+    borderColor: "#70E1FF",
+    backgroundColor: "#1C3640",
+  },
+  subtaskCompleteToggleText: {
+    color: "#9AB3BF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  subtaskCompleteToggleTextActive: {
+    color: "#E5F7FF",
+  },
+  subtaskStatusOptionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  subtaskStatusOptionButton: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2A4652",
+    backgroundColor: "#15262D",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  subtaskStatusOptionButtonActive: {
+    borderColor: "#70E1FF",
+    backgroundColor: "#1C3640",
+  },
+  subtaskStatusOptionText: {
+    color: "#9AB3BF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  subtaskStatusOptionTextActive: {
+    color: "#E5F7FF",
   },
 });
