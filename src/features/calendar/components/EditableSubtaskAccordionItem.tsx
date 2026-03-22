@@ -1,9 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import React, { useEffect, useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
-  formatDateTime,
   getStatusLabel,
   type HomeSubtask,
   type SubtaskStatus
@@ -30,6 +32,11 @@ interface SubtaskAccordionItemProps {
   statusOptions?: SubtaskStatus[];
 }
 
+type SubtaskPickerState = {
+  field: "startTime" | "endTime";
+  mode: "date" | "time";
+};
+
 export function SubtaskAccordionItem({
   subtask,
   isExpanded,
@@ -38,6 +45,7 @@ export function SubtaskAccordionItem({
   isSaving = false,
   statusOptions = [],
 }: SubtaskAccordionItemProps) {
+
   const normalizeId = (value: unknown): string | undefined => {
     if (value === null || value === undefined) {
       return undefined;
@@ -70,6 +78,10 @@ export function SubtaskAccordionItem({
   const [editableStatusName, setEditableStatusName] = useState<string | undefined>(
     subtask.statusName,
   );
+  const [activeDateTimePicker, setActiveDateTimePicker] = useState<SubtaskPickerState | null>(
+    null,
+  );
+  const [pendingDateTime, setPendingDateTime] = useState<Date | null>(null);
 
   useEffect(() => {
     setIsEditing(false);
@@ -83,6 +95,8 @@ export function SubtaskAccordionItem({
     setEditableCompleted(Boolean(subtask.completed));
     setEditableStatusId(subtask.statusId);
     setEditableStatusName(subtask.statusName);
+    setActiveDateTimePicker(null);
+    setPendingDateTime(null);
   }, [
     subtask.completed,
     subtask.description,
@@ -215,6 +229,66 @@ export function SubtaskAccordionItem({
     setEditableCompleted(Boolean(subtask.completed));
     setEditableStatusId(subtask.statusId);
     setEditableStatusName(subtask.statusName);
+    setActiveDateTimePicker(null);
+    setPendingDateTime(null);
+  };
+
+  const openDateTimePicker = (field: "startTime" | "endTime") => {
+    const currentValue =
+      field === "startTime" ? editableStartTime : editableEndTime;
+
+    setPendingDateTime(toDate(currentValue) ?? new Date());
+    setActiveDateTimePicker({ field, mode: "date" });
+  };
+
+  const handleDateTimeChange = (
+    event: DateTimePickerEvent,
+    selectedValue?: Date,
+  ) => {
+    if (!activeDateTimePicker || event.type !== "set" || !selectedValue) {
+      setActiveDateTimePicker(null);
+      setPendingDateTime(null);
+      return;
+    }
+
+    if (activeDateTimePicker.mode === "date") {
+      const currentValue =
+        pendingDateTime ??
+        toDate(
+          activeDateTimePicker.field === "startTime"
+            ? editableStartTime
+            : editableEndTime,
+        ) ??
+        new Date();
+
+      const next = new Date(selectedValue);
+      next.setHours(currentValue.getHours(), currentValue.getMinutes(), 0, 0);
+
+      setPendingDateTime(next);
+      setActiveDateTimePicker({ ...activeDateTimePicker, mode: "time" });
+      return;
+    }
+
+    const dateValue =
+      pendingDateTime ??
+      toDate(
+        activeDateTimePicker.field === "startTime"
+          ? editableStartTime
+          : editableEndTime,
+      ) ??
+      new Date();
+
+    const next = new Date(dateValue);
+    next.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
+
+    if (activeDateTimePicker.field === "startTime") {
+      setEditableStartTime(next.toISOString());
+    } else {
+      setEditableEndTime(next.toISOString());
+    }
+
+    setActiveDateTimePicker(null);
+    setPendingDateTime(null);
   };
 
   return (
@@ -324,17 +398,24 @@ export function SubtaskAccordionItem({
           <View style={styles.taskQueueFieldRow}>
             <Text style={styles.taskQueueFieldLabel}>Start Time</Text>
             {isEditing ? (
-              <TextInput
-                value={editableStartTime}
-                onChangeText={setEditableStartTime}
-                style={styles.taskQueueEditableInput}
-                placeholder="e.g. 2026-03-22T08:30:00"
-                placeholderTextColor="#6F8A97"
-                editable={!isSaving}
-              />
+              <TouchableOpacity
+                style={[
+                  styles.taskQueueEditableInput,
+                  { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+                ]}
+                onPress={() => openDateTimePicker("startTime")}
+                disabled={isSaving}
+              >
+                <Text style={styles.taskQueueFieldValue}>
+                  {editableStartTime
+                    ? formatDateTimeForDisplay(editableStartTime)
+                    : "Start Date & Time"}
+                </Text>
+                <Ionicons name="time-outline" size={16} color="#E5F7FF" />
+              </TouchableOpacity>
             ) : (
               <Text style={styles.taskQueueFieldValue}>
-                {formatDateTime(subtask.startTime)}
+                {formatDateTimeForDisplay(subtask.startTime)}
               </Text>
             )}
           </View>
@@ -342,20 +423,45 @@ export function SubtaskAccordionItem({
           <View style={styles.taskQueueFieldRow}>
             <Text style={styles.taskQueueFieldLabel}>End Time</Text>
             {isEditing ? (
-              <TextInput
-                value={editableEndTime}
-                onChangeText={setEditableEndTime}
-                style={styles.taskQueueEditableInput}
-                placeholder="e.g. 2026-03-22T09:00:00"
-                placeholderTextColor="#6F8A97"
-                editable={!isSaving}
-              />
+              <TouchableOpacity
+                style={[
+                  styles.taskQueueEditableInput,
+                  { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+                ]}
+                onPress={() => openDateTimePicker("endTime")}
+                disabled={isSaving}
+              >
+                <Text style={styles.taskQueueFieldValue}>
+                  {editableEndTime
+                    ? formatDateTimeForDisplay(editableEndTime)
+                    : "End Date & Time"}
+                </Text>
+                <Ionicons name="time-outline" size={16} color="#E5F7FF" />
+              </TouchableOpacity>
             ) : (
               <Text style={styles.taskQueueFieldValue}>
-                {formatDateTime(subtask.endTime)}
+                {formatDateTimeForDisplay(subtask.endTime)}
               </Text>
             )}
           </View>
+
+          {isEditing && activeDateTimePicker ? (
+            <DateTimePicker
+              value={
+                pendingDateTime ??
+                toDate(
+                  activeDateTimePicker.field === "startTime"
+                    ? editableStartTime
+                    : editableEndTime,
+                ) ??
+                new Date()
+              }
+              mode={activeDateTimePicker.mode}
+              is24Hour
+              display="default"
+              onChange={handleDateTimeChange}
+            />
+          ) : null}
 
           <View style={styles.taskQueueFieldRow}>
             <Text style={styles.taskQueueFieldLabel}>Task Order</Text>
