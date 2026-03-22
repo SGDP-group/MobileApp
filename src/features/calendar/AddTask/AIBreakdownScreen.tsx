@@ -1,6 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
-    DateTimePickerEvent,
+  DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { aiBreakdownService } from "@services/aiBreakdownService";
@@ -9,13 +9,13 @@ import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "./styles/addTaskDetails.styles";
@@ -67,9 +67,11 @@ export default function AIBreakdownScreen() {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [endTime, setEndTime] = useState<Date | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [activePickerField, setActivePickerField] = useState<
+    "start" | "end" | null
+  >(null);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
+  const [pendingDateTime, setPendingDateTime] = useState<Date | null>(null);
   const [maximumTimePerTask, setMaximumTimePerTask] = useState<number>(5);
 
   const validateInputs = (): boolean => {
@@ -132,36 +134,61 @@ export default function AIBreakdownScreen() {
   const formatDateTime = (value: Date): string =>
     `${formatDate(value)} ${formatTime(value)}`;
 
+  const getTodayMinDate = (): Date => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  };
+
   const handleDateTimeChange = (
     event: DateTimePickerEvent,
     selectedValue?: Date,
-    field: "start" | "end" = "start",
   ) => {
-    if (event.type !== "set" || !selectedValue) {
-      setShowStartPicker(false);
-      setShowEndPicker(false);
+    if (event.type !== "set" || !selectedValue || !activePickerField) {
+      setActivePickerField(null);
       setPickerMode("date");
+      setPendingDateTime(null);
       return;
     }
 
+    // Validate that selected date is not in the past (when in date mode)
     if (pickerMode === "date") {
-      setPickerMode("time");
-      if (field === "start") {
-        setShowStartPicker(true);
-      } else {
-        setShowEndPicker(true);
+      const todayStart = getTodayMinDate();
+      const selectedDateStart = new Date(selectedValue);
+      selectedDateStart.setHours(0, 0, 0, 0);
+
+      if (selectedDateStart < todayStart) {
+        Alert.alert("Invalid Date", "Please select today or a future date.");
+        return;
       }
+
+      setPendingDateTime(selectedValue);
+      setPickerMode("time");
       return;
     }
 
-    if (field === "start") {
-      setStartTime(selectedValue);
-      setShowStartPicker(false);
+    const dateValue =
+      pendingDateTime ||
+      (activePickerField === "start" ? startTime : endTime) ||
+      new Date();
+      
+    const finalDateTime = new Date(dateValue);
+    finalDateTime.setHours(
+      selectedValue.getHours(),
+      selectedValue.getMinutes(),
+      0,
+      0,
+    );
+
+    if (activePickerField === "start") {
+      setStartTime(finalDateTime);
     } else {
-      setEndTime(selectedValue);
-      setShowEndPicker(false);
+      setEndTime(finalDateTime);
     }
+
+    setActivePickerField(null);
     setPickerMode("date");
+    setPendingDateTime(null);
   };
 
   const handleGenerateSubtasks = async () => {
@@ -199,7 +226,7 @@ export default function AIBreakdownScreen() {
 
       const response = await aiBreakdownService.breakdownTask(request);
 
-      if (!response.success || response.subtasks.length === 0) {
+      if (!response.success || !response.tasks || response.tasks.length === 0) {
         Alert.alert(
           VALIDATION_ERRORS.AI_BREAKDOWN_FAILED.title,
           response.error || VALIDATION_ERRORS.AI_BREAKDOWN_FAILED.message,
@@ -207,10 +234,9 @@ export default function AIBreakdownScreen() {
         return;
       }
 
-      Alert.alert(
-        "AI Breakdown Complete",
-        `Successfully generated ${response.subtasks.length} subtasks!\n\nTotal estimated time: ${response.total_estimated_time} minutes`,
-      );
+      (navigation as any).navigate("AIBreakdownResult", {
+        result: response,
+      });
     } catch (error) {
       console.error("Error generating subtasks:", error);
       const errorMessage =
@@ -299,66 +325,52 @@ export default function AIBreakdownScreen() {
 
         <View style={styles.formGroup}>
           <View style={styles.row}>
-            <View style={styles.dateTimePickerColumn}>
-              <TouchableOpacity
-                style={[styles.input, styles.dateTimePickerButton]}
-                onPress={() => {
-                  setShowStartPicker(true);
-                  setPickerMode("date");
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Set start date and time"
-              >
-                <Text
-                  style={{
-                    color: startTime ? colors.text : colors.secondaryText,
-                  }}
-                >
-                  {startTime ? formatDateTime(startTime) : "Start date & time"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                style={[styles.input, styles.dateTimePickerButton]}
-                onPress={() => {
-                  setShowEndPicker(true);
-                  setPickerMode("date");
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Set end date and time"
-              >
-                <Text
-                  style={{
-                    color: endTime ? colors.text : colors.secondaryText,
-                  }}
-                >
-                  {endTime ? formatDateTime(endTime) : "End Date & Time"}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={[styles.input, styles.pickerInput, styles.timeInput]}
+              onPress={() => {
+                setPendingDateTime(startTime ?? new Date());
+                setActivePickerField("start");
+                setPickerMode("date");
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Set start date and time"
+            >
+              <Text style={styles.pickerInputText}>
+                {startTime ? formatDateTime(startTime) : "Start Date & Time"}
+              </Text>
+              <Ionicons name="time-outline" size={18} color={colors.text} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.input, styles.pickerInput, styles.timeInput]}
+              onPress={() => {
+                setPendingDateTime(endTime ?? new Date());
+                setActivePickerField("end");
+                setPickerMode("date");
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Set end date and time"
+            >
+              <Text style={styles.pickerInputText}>
+                {endTime ? formatDateTime(endTime) : "End Date & Time"}
+              </Text>
+              <Ionicons name="time-outline" size={18} color={colors.text} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {showStartPicker && (
+        {activePickerField && (
           <DateTimePicker
-            value={startTime || new Date()}
-            mode={pickerMode}
-            is24Hour
-            display="default"
-            onChange={(event, date) =>
-              handleDateTimeChange(event, date, "start")
+            value={
+              pendingDateTime ||
+              (activePickerField === "start" ? startTime : endTime) ||
+              new Date()
             }
-          />
-        )}
-
-        {showEndPicker && (
-          <DateTimePicker
-            value={endTime || new Date()}
             mode={pickerMode}
             is24Hour
             display="default"
-            onChange={(event, date) => handleDateTimeChange(event, date, "end")}
+            minimumDate={getTodayMinDate()}
+            onChange={handleDateTimeChange}
           />
         )}
 
