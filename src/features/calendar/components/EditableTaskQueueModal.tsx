@@ -516,7 +516,7 @@ export function TaskQueueModal({
                       <SubtaskAccordionItem
                         key={subtask.id}
                         subtask={subtask}
-                        isExpanded={isExpanded}
+                        isExpanded={!isExpanded}
                         onToggle={toggleSubtask}
                         onEditSubtask={handleEditSubtask}
                         isSaving={savingSubtaskId === subtask.id}
