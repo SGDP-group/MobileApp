@@ -13,7 +13,7 @@ import { CalendarTaskListSection } from "./components/CalendarTaskListSection";
 import { TaskQueueHeader } from "./components/TaskQueueHeader";
 import { TaskQueueModal } from "./components/EditableTaskQueueModal";
 import { styles } from "./styles/calendar.styles";
-import type { CalendarTaskItem } from "./utils/calender.types";
+import type { CalendarTaskItem } from "./utils/calendar.types";
 
 
 export default function CalendarScreen() {
