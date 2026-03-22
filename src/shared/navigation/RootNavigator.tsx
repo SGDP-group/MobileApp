@@ -105,6 +105,7 @@ export function RootNavigator() {
     };
 
     initializeAuth();
+    setGlobalLogoutHandler(handleLogout);
   }, []);
 
   const handleLogout = async () => {

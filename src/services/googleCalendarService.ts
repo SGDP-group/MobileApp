@@ -81,11 +81,21 @@ class GoogleCalendarService {
       }
 
       return await response.json();
-    } catch (error) {
+    } catch (error: any) {
       // Only log detailed errors in development
       if (isDevelopment()) {
         console.error("API Request Error:", error);
       }
+      // Trigger global logout if token error
+      if (
+        typeof error?.message === "string" &&
+        error.message.includes("Failed to get access token. Please sign in again.")
+      ) {
+        // Dynamically import to avoid circular dependency
+        const { triggerGlobalLogout } = await import("@utils/globalLogout");
+        triggerGlobalLogout("Your Google session has expired. Please sign in again.");
+      }
+      throw error;
     }
   }
   async listEvents(
