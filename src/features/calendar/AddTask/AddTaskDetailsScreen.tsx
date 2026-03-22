@@ -395,20 +395,56 @@ export default function AddTaskDetailsScreen() {
   const createSubtasks = async (
     createdTaskId: number,
   ): Promise<{ success: boolean; calendarFailureCount: number }> => {
-    const payload = createSubtaskPayload(createdTaskId);
+    // For each subtask, create Google event, then subtask with googleEventId
+    if (validSubtasks.length === 0) return { success: true, calendarFailureCount: 0 };
 
-    if (payload.length === 0) return { success: true, calendarFailureCount: 0 };
-
+    let calendarFailureCount = 0;
     try {
       await Promise.all(
-        payload.map((subtask) => createFocusFrameSubtask(subtask)),
+        validSubtasks.map(async (subtask, index) => {
+          let googleEventId: string | undefined = undefined;
+          if (subtask.startTime && subtask.endTime) {
+            try {
+              const event = await googleCalendarService.createEvent({
+                summary: subtask.name,
+                description: subtask.description || "",
+                start: {
+                  dateTime: toOffsetDateTime(subtask.startTime),
+                  timeZone: TIMEZONE,
+                },
+                end: {
+                  dateTime: toOffsetDateTime(subtask.endTime),
+                  timeZone: TIMEZONE,
+                },
+              });
+              googleEventId = event?.id;
+            } catch (err) {
+              calendarFailureCount++;
+              console.warn("Failed to create Google event for subtask", subtask.name, err);
+            }
+          }
+          const subtaskStart = subtask.startTime!;
+          const subtaskEnd = subtask.endTime!;
+          const duration = Math.max(
+            0,
+            Math.round((subtaskEnd.getTime() - subtaskStart.getTime()) / 60000),
+          );
+          const payload: CreateSubtaskPayload = {
+            name: subtask.name,
+            description: subtask.description || "",
+            task: { id: createdTaskId },
+            taskOrder: index + 1,
+            startTime: toLocalApiDateTime(subtaskStart),
+            endTime: toLocalApiDateTime(subtaskEnd),
+            duration,
+            googleEventId,
+          };
+          await createFocusFrameSubtask(payload);
+        })
       );
-
-      const calendarResult = await createSubtaskCalendarEvents();
-
       return {
         success: true,
-        calendarFailureCount: calendarResult.failureCount,
+        calendarFailureCount,
       };
     } catch (error) {
       console.error("Error creating subtasks:", error);
@@ -417,7 +453,7 @@ export default function AddTaskDetailsScreen() {
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
         [{ text: "OK", onPress: () => navigation.goBack() }],
       );
-      return { success: false, calendarFailureCount: 0 };
+      return { success: false, calendarFailureCount };
     }
   };
 
