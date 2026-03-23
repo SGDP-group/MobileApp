@@ -1,20 +1,17 @@
-export type CalendarTaskItem = {
+export interface CalendarTaskItem {
   id: string;
   title: string;
   notes?: string;
   due?: string;
-  leadLabel: string;
-  leadStatus: "upcoming" | "late" | "none";
-  metaText: string;
+  leadLabel?: string;
+  leadStatus?: string;
+  metaText?: string;
   completed: boolean;
-  subtasks: {
+  subtasks: Array<{
     id: string;
     title: string;
     notes?: string;
     due?: string;
     completed: boolean;
-  }[];
-};
-
-
-
+  }>;
+}

@@ -28,6 +28,7 @@ interface SubtaskAccordionItemProps {
       statusName?: string;
     },
   ) => Promise<void> | void;
+  onDeleteSubtask?: (subtask: HomeSubtask) => Promise<void> | void;
   isSaving?: boolean;
   statusOptions?: SubtaskStatus[];
 }
@@ -42,9 +43,25 @@ export function SubtaskAccordionItem({
   isExpanded,
   onToggle,
   onEditSubtask,
+  onDeleteSubtask,
   isSaving = false,
   statusOptions = [],
 }: SubtaskAccordionItemProps) {
+    const handleDelete = () => {
+      if (!onDeleteSubtask) return;
+      Alert.alert(
+        "Delete Subtask",
+        "Are you sure you want to delete this subtask? This action cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => void onDeleteSubtask(subtask),
+          },
+        ]
+      );
+    };
   const toDate = (value?: string): Date | null => {
     if (!value) {
       return null;
@@ -366,13 +383,22 @@ export function SubtaskAccordionItem({
               </TouchableOpacity>
             </>
           ) : (
-            <TouchableOpacity
-              style={styles.subtaskHeaderIconButton}
-              onPress={() => setIsEditing(true)}
-              disabled={isSaving}
-            >
-              <Ionicons name="pencil" size={14} color="#70E1FF" />
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={styles.subtaskHeaderIconButton}
+                onPress={() => setIsEditing(true)}
+                disabled={isSaving}
+              >
+                <Ionicons name="pencil" size={14} color="#70E1FF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.subtaskHeaderIconButton}
+                onPress={handleDelete}
+                disabled={isSaving}
+              >
+                <Ionicons name="trash" size={14} color="#FF8A80" />
+              </TouchableOpacity>
+            </>
           ))}
           <TouchableOpacity
             style={styles.subtaskHeaderIconButton}
@@ -383,6 +409,7 @@ export function SubtaskAccordionItem({
               onToggle(subtask.id);
             }}
           >
+            
             <Ionicons
               name={isExpanded ? "chevron-up" : "chevron-down"}
               size={16}
