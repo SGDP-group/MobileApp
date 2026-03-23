@@ -1,3 +1,4 @@
+import AIBreakdownResultScreen from "@/src/features/calendar/AddTask/AIBreakdownResultScreen";
 import { GoogleSignin, User } from "@react-native-google-signin/google-signin";
 import { NavigationProp } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -7,6 +8,7 @@ import AnalyticsScreen from "../../features/analytics/AnalyticsScreen";
 import WelcomeScreen from "../../features/auth/screens/WelcomeScreen";
 import AddTaskDetailsScreen from "../../features/calendar/AddTask/AddTaskDetailsScreen";
 import AddTaskScreen from "../../features/calendar/AddTask/AddTaskScreen";
+import AIBreakdownScreen from "../../features/calendar/AddTask/AIBreakdownScreen";
 import CalendarScreen from "../../features/calendar/CalendarScreen";
 import FocusTrackingScreen from "../../features/focus";
 import HomeScreen from "../../features/home/HomeScreen";
@@ -24,6 +26,8 @@ export type RootStackParamList = {
   Focus: undefined;
   AddTask: undefined;
   AddTaskDetails: undefined;
+  AIBreakdownDetails: undefined;
+  AIBreakdownResult: { result: any };
   Loading: undefined;
 };
 
@@ -151,6 +155,15 @@ export function RootNavigator() {
           <Stack.Screen
             name="AddTaskDetails"
             component={AddTaskDetailsScreen}
+          />
+          <Stack.Screen
+            name="AIBreakdownDetails"
+            component={AIBreakdownScreen}
+          />
+          <Stack.Screen
+            name="AIBreakdownResult"
+            component={AIBreakdownResultScreen}
+            options={{ headerShown: false }}
           />
         </>
       ) : (

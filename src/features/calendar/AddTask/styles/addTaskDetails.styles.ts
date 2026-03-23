@@ -182,4 +182,28 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
+  dateTimePickerColumn: {
+    flex: 1,
+    marginRight: 12,
+  },
+  dateTimePickerButton: {
+    justifyContent: "center",
+  },
+  durationContainer: {
+    backgroundColor: "#16242B",
+    padding: 16,
+    borderRadius: 8,
+  },
+  durationText: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#78E5FF",
+    marginTop: 8,
+  },
+  durationSubtaskLabel: {
+    fontSize: 12,
+    color: "#8AE8FF",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
 });
