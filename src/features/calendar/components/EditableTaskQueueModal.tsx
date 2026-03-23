@@ -309,6 +309,7 @@ export function TaskQueueModal({
               try {
                 setIsDeletingTask(true);
                 await onDeleteTask(task);
+                
               } catch (error) {
                 Alert.alert("Error", getSafeErrorMessage(error));
               } finally {
@@ -345,6 +346,51 @@ export function TaskQueueModal({
 
     setSavingSubtaskId(subtask.id);
     try {
+      let googleEventId = subtask.googleEventId;
+      const hasTimes = updates.startTime && updates.endTime;
+      if (hasTimes) {
+        try {
+          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+          const { googleCalendarService } = await import("@services/googleCalendarService");
+          if (googleEventId) {
+            // Update existing event
+            await googleCalendarService.updateEvent(googleEventId, {
+              summary: trimmedName,
+              description: updates.description || "",
+              start: updates.startTime ? { dateTime: updates.startTime, timeZone } : undefined,
+              end: updates.endTime ? { dateTime: updates.endTime, timeZone } : undefined,
+
+            });
+          } else {
+            // Create new event
+            const event = await googleCalendarService.createEvent({
+              summary: trimmedName,
+              description: updates.description || "",
+              start: {
+                dateTime: updates.startTime,
+                timeZone: timeZone,
+              },
+              end: {
+                dateTime: updates.endTime,
+                timeZone: timeZone,
+              },
+            });
+            googleEventId = event?.id;
+          }
+        } catch (calendarError) {
+          console.warn("Failed to sync Google Calendar event for subtask", subtask.name, calendarError);
+        }
+      } else if (googleEventId && (!updates.startTime || !updates.endTime)) {
+        // If times are removed, delete the event
+        try {
+          const { googleCalendarService } = await import("@services/googleCalendarService");
+          await googleCalendarService.deleteEvent(googleEventId);
+          googleEventId = undefined;
+        } catch (calendarError) {
+          console.warn("Failed to delete Google Calendar event for subtask", subtask.name, calendarError);
+        }
+      }
+
       await patchSubtask(subtask.id, {
         name: trimmedName,
         description: updates.description,
@@ -360,6 +406,7 @@ export function TaskQueueModal({
             : typeof subtask.statusId === "number"
               ? subtask.statusId
               : undefined,
+        googleEventId,
       });
       await loadSubtasks(task.id);
     } finally {
