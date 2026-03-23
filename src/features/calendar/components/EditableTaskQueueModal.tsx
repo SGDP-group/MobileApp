@@ -1,7 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { getSubtaskStatuses, getSubtasksByTask, patchSubtask, deleteSubtask } from "@services/focusFrameSubtaskService";
+import { getSubtaskStatuses, getSubtasksByTask, patchSubtask } from "@services/focusFrameSubtaskService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
-import { googleCalendarService } from "@services/googleCalendarService";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -346,20 +345,6 @@ export function TaskQueueModal({
 
     setSavingSubtaskId(subtask.id);
     try {
-      // Show loading indicator while editing Google Calendar event
-      if (subtask.googleEventId) {
-        try {
-          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-          await googleCalendarService.updateEvent(subtask.googleEventId, {
-            summary: trimmedName,
-            description: updates.description,
-            start: updates.startTime ? { dateTime: updates.startTime, timeZone } : undefined,
-            end: updates.endTime ? { dateTime: updates.endTime, timeZone } : undefined,
-          });
-        } catch (calendarError) {
-          Alert.alert("Google Calendar Sync Failed", "Could not update Google Calendar event. Please check your connection or re-authenticate.");
-        }
-      }
       await patchSubtask(subtask.id, {
         name: trimmedName,
         description: updates.description,
@@ -376,25 +361,6 @@ export function TaskQueueModal({
               ? subtask.statusId
               : undefined,
       });
-      await loadSubtasks(task.id);
-    } finally {
-      setSavingSubtaskId(null);
-    }
-  };
-  // Delete subtask and remove from Google Calendar if needed
-  const handleDeleteSubtask = async (subtask: HomeSubtask) => {
-    if (!task?.id) return;
-    setSavingSubtaskId(subtask.id);
-    try {
-      // Show loading indicator while deleting Google Calendar event
-      if (subtask.googleEventId) {
-        try {
-          await googleCalendarService.deleteEvent(subtask.googleEventId);
-        } catch (calendarError) {
-          Alert.alert("Google Calendar Sync Failed", "Could not delete Google Calendar event. Please check your connection or re-authenticate.");
-        }
-      }
-      await deleteSubtask(subtask.id);
       await loadSubtasks(task.id);
     } finally {
       setSavingSubtaskId(null);
@@ -478,30 +444,24 @@ export function TaskQueueModal({
                 Choose a task from Up Next to view queue details.
               </Text>
             </View>
-          return (
-            <Modal
-              visible={visible}
-              animationType="slide"
-              transparent={true}
-              onRequestClose={onClose}
+          ) : (
+            <ScrollView
+              style={styles.taskQueueBody}
+              contentContainerStyle={styles.taskQueueBodyContent}
+              showsVerticalScrollIndicator={false}
             >
-              <View style={styles.modalContainer}>
-                {/* ...existing code... */}
-                {isLoadingSubtasks && (
-                  <View style={styles.loadingOverlay}>
-                    <ActivityIndicator size="large" color="#000" />
-                  </View>
-                )}
-                {/* Show loading indicator for subtask edit/delete */}
-                {savingSubtaskId !== null && (
-                  <View style={styles.loadingOverlay}>
-                    <ActivityIndicator size="large" color="#000" />
-                  </View>
-                )}
-                {/* ...existing code... */}
-              </View>
-            </Modal>
-          );
+              <View style={styles.taskQueueMainSection}>
+                <View style={styles.taskQueueFieldRow}>
+                  <Text style={styles.taskQueueFieldLabel}>Task Name</Text>
+                  {isEditing ? (
+                    <TextInput
+                      value={editableName}
+                      onChangeText={setEditableName}
+                      style={styles.taskQueueEditableInput}
+                      placeholder="Task name"
+                      placeholderTextColor="#6F8A97"
+                      editable={!isSavingEdit}
+                    />
                   ) : (
                     <Text style={styles.taskQueueFieldValue}>{task.name}</Text>
                   )}
@@ -559,7 +519,6 @@ export function TaskQueueModal({
                         isExpanded={!isExpanded}
                         onToggle={toggleSubtask}
                         onEditSubtask={handleEditSubtask}
-                        onDeleteSubtask={handleDeleteSubtask}
                         isSaving={savingSubtaskId === subtask.id}
                         statusOptions={subtaskStatuses}
                       />
