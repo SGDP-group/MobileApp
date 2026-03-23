@@ -171,7 +171,7 @@ export default function AIBreakdownScreen() {
       pendingDateTime ||
       (activePickerField === "start" ? startTime : endTime) ||
       new Date();
-      
+
     const finalDateTime = new Date(dateValue);
     finalDateTime.setHours(
       selectedValue.getHours(),
@@ -236,6 +236,7 @@ export default function AIBreakdownScreen() {
 
       (navigation as any).navigate("AIBreakdownResult", {
         result: response,
+        startTime: startTime,
       });
     } catch (error) {
       console.error("Error generating subtasks:", error);
