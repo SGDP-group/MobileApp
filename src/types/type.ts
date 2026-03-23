@@ -39,7 +39,6 @@ export interface Subtask {
   statusId: number;
   createdAt: string;
   updatedAt: string;
-  googleEventId?: string;
 }
 
 
