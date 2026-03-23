@@ -4,6 +4,7 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { createSubtask as createFocusFrameSubtask } from "@services/focusFrameSubtaskService";
 import { createTask as createFocusFrameTask } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
+import { googleCalendarService } from "@services/googleCalendarService";
 import {
   calculateEndTime,
   formatDateFromDate,
@@ -165,6 +166,37 @@ const validateSubtaskDescription = (description: string): boolean => {
     return false;
   }
   return true;
+};
+
+const getDeviceTimeZone = (): string => {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return timezone && timezone.trim().length > 0 ? timezone : "UTC";
+};
+
+const TIMEZONE = getDeviceTimeZone();
+
+const toTwoDigits = (value: number): string => `${value}`.padStart(2, "0");
+
+const toLocalApiDateTime = (value: Date): string => {
+  const year = value.getFullYear();
+  const month = toTwoDigits(value.getMonth() + 1);
+  const day = toTwoDigits(value.getDate());
+  const hours = toTwoDigits(value.getHours());
+  const minutes = toTwoDigits(value.getMinutes());
+  const seconds = toTwoDigits(value.getSeconds());
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+};
+
+const toOffsetDateTime = (value: Date): string => {
+  const localDateTime = toLocalApiDateTime(value);
+  const offsetMinutes = -value.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? "+" : "-";
+  const absOffsetMinutes = Math.abs(offsetMinutes);
+  const hours = toTwoDigits(Math.floor(absOffsetMinutes / 60));
+  const minutes = toTwoDigits(absOffsetMinutes % 60);
+
+  return `${localDateTime}${sign}${hours}:${minutes}`;
 };
 
 const SubtaskItem: React.FC<{
@@ -1018,7 +1050,15 @@ export default function AIBreakdownResultScreen() {
     if (subtasks.length === 0) return true;
 
     try {
-      const subtaskPayload = subtasks.map((subtask, index) => {
+      let calendarFailureCount = 0;
+      const CALENDAR_API_DELAY = 500;
+
+      const delay = (ms: number) =>
+        new Promise((resolve) => setTimeout(resolve, ms));
+
+      const subtaskPayload = [];
+      for (let index = 0; index < subtasks.length; index++) {
+        const subtask = subtasks[index];
         const dateStr = subtask.date || formatDateFromDate(new Date());
         const startTimeStr = subtask.startTime || "09:00";
         const endTimeStr =
@@ -1032,7 +1072,44 @@ export default function AIBreakdownResultScreen() {
           `${dateStr}T${endTimeStr}:00Z`,
         ).toISOString();
 
-        return {
+        let googleEventId: string | undefined = undefined;
+        if (subtask.startTime && subtask.endTime) {
+          try {
+            const startDate = new Date(`${dateStr}T${startTimeStr}:00`);
+            const endDate = new Date(`${dateStr}T${endTimeStr}:00`);
+            const event = await googleCalendarService.createEvent({
+              summary: subtask.description,
+              description: `Subtask of "${mainTask?.description || "Task"}". Estimated time: ${subtask.estimated_time} minutes`,
+              start: {
+                dateTime: toOffsetDateTime(startDate),
+                timeZone: TIMEZONE,
+              },
+              end: {
+                dateTime: toOffsetDateTime(endDate),
+                timeZone: TIMEZONE,
+              },
+            });
+            googleEventId = event?.id;
+
+            // Add delay between API calls to respect rate limits
+            if (index < subtasks.length - 1) {
+              await delay(CALENDAR_API_DELAY);
+            }
+          } catch (error) {
+            console.warn(
+              `Failed to create Google Calendar event for subtask "${subtask.description}":`,
+              error,
+            );
+            calendarFailureCount++;
+
+            // Still add delay even on error to respect rate limits
+            if (index < subtasks.length - 1) {
+              await delay(CALENDAR_API_DELAY);
+            }
+          }
+        }
+
+        subtaskPayload.push({
           name: subtask.description,
           description: "",
           estimatedTime: subtask.estimated_time,
@@ -1043,14 +1120,22 @@ export default function AIBreakdownResultScreen() {
           startTime: startDateTime,
           endTime: endDateTime,
           isAiBreakdown: true,
-        };
-      });
+          googleEventId,
+        });
+      }
 
       await Promise.all(
         subtaskPayload.map((subtask) =>
           createFocusFrameSubtask(subtask as any),
         ),
       );
+
+      if (calendarFailureCount > 0) {
+        console.warn(
+          `Created ${subtaskPayload.length} subtasks, but ${calendarFailureCount} Google Calendar event(s) failed to create`,
+        );
+      }
+
       return true;
     } catch (error) {
       console.error("Error creating subtasks:", error);
