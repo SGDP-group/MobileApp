@@ -21,6 +21,7 @@ export default function CalendarScreen() {
   const { upNextData, refreshTasks } = useHomeTasks();
   const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<HomeTask | null>(null);
+  const [isLoadingAction, setIsLoadingAction] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -94,36 +95,57 @@ export default function CalendarScreen() {
     task: HomeTask,
     updates: { name: string; description?: string },
   ) => {
-    const storedUserId = await getStoredUserId();
-    const resolvedUserId = task.userId ?? task.user?.id ?? storedUserId ?? undefined;
+    setIsLoadingAction(true);
+    try {
+      const storedUserId = await getStoredUserId();
+      const resolvedUserId = task.userId ?? task.user?.id ?? storedUserId ?? undefined;
 
-    await updateTask(task.id, {
-      name: updates.name,
-      userId: resolvedUserId,
-      description: updates.description,
-    });
+      await updateTask(task.id, {
+        name: updates.name,
+        userId: resolvedUserId,
+        description: updates.description,
+      });
 
-    const refreshedTask = await getTaskById(task.id);
-
-    setSelectedTask(refreshedTask as HomeTask);
-
-    await refreshTasks();
+      const refreshedTask = await getTaskById(task.id);
+      setSelectedTask(refreshedTask as HomeTask);
+      await refreshTasks();
+    } finally {
+      setIsLoadingAction(false);
+    }
   };
 
   const handleDeleteTask = async (task: HomeTask) => {
-    const subtasks = await getSubtasksByTask(task.id);
+    setIsLoadingAction(true);
+    try {
+      const subtasks = await getSubtasksByTask(task.id);
 
-    if (subtasks.length > 0) {
-      await Promise.all(subtasks.map((subtask) => deleteSubtask(subtask.id)));
+      if (subtasks.length > 0) {
+        await Promise.all(
+          subtasks.map(async (subtask) => {
+            if (subtask.googleEventId) {
+              try {
+                const { googleCalendarService } = await import("@services/googleCalendarService");
+                await googleCalendarService.deleteEvent(subtask.googleEventId);
+              } catch (calendarError) {
+                console.error("Failed to delete Google Calendar event:", calendarError);
+                Alert.alert("Google Calendar Sync Failed", "Could not delete associated Google Calendar event. Please check your connection or re-authenticate.");
+              }
+            }
+            await deleteSubtask(subtask.id);
+          })
+        );
+      }
+
+      await deleteTask(task.id);
+
+      setTaskQueueModalVisible(false);
+      setSelectedTask(null);
+      await refreshTasks();
+
+      Alert.alert("Deleted", `Task \"${task.name}\" and its subtasks were deleted.`);
+    } finally {
+      setIsLoadingAction(false);
     }
-
-    await deleteTask(task.id);
-
-    setTaskQueueModalVisible(false);
-    setSelectedTask(null);
-    await refreshTasks();
-
-    Alert.alert("Deleted", `Task \"${task.name}\" and its subtasks were deleted.`);
   };
 
   return (
@@ -150,6 +172,22 @@ export default function CalendarScreen() {
         onEditTask={handleEditTask}
         onDeleteTask={handleDeleteTask}
       />
+
+      {isLoadingAction && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
