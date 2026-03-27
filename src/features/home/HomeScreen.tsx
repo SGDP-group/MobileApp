@@ -65,16 +65,10 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
       return;
     }
 
-    if (scannedQrPayload.type === "wifi") {
-      navigation.navigate("DeviceProvisioning", {
-        prefilledSsid: scannedQrPayload.ssid,
-      });
-      clearScannedQrPayload();
-      return;
-    }
-
+    navigation.navigate("DeviceProvisioning", {
+      prefilledSsid: scannedQrPayload.ssid,
+    });
     clearScannedQrPayload();
-    Alert.alert("Unsupported QR", "This QR is not a device setup Wi-Fi QR code.");
   }, [clearScannedQrPayload, navigation, scannedQrPayload]);
 
   const handleQuickAction = useCallback((actionId: string) => {

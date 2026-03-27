@@ -1,17 +1,6 @@
 const MAX_RAW_PAYLOAD_LENGTH = 2048;
-const MAX_FIELD_LENGTH = 128;
 const WIFI_SSID_MAX_LENGTH = 32;
 const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F]/;
-
-const EXPECTED_KEYS = ["ID", "Code"] as const;
-
-type QrPayloadKey = (typeof EXPECTED_KEYS)[number];
-
-export interface QrLegacyPayload {
-  type: "legacy";
-  ID: string;
-  Code: string;
-}
 
 export interface QrWifiPayload {
   type: "wifi";
@@ -19,44 +8,15 @@ export interface QrWifiPayload {
   security: "nopass" | "WEP" | "WPA";
 }
 
-export type QrPayload = QrLegacyPayload | QrWifiPayload;
-
-const hasExactExpectedKeys = (value: Record<string, unknown>): boolean => {
-  const keys = Object.keys(value);
-
-  if (keys.length !== EXPECTED_KEYS.length) {
-    return false;
-  }
-
-  return EXPECTED_KEYS.every((key) =>
-    Object.prototype.hasOwnProperty.call(value, key),
-  );
-};
-
-const sanitizeField = (key: QrPayloadKey, value: unknown): string => {
-  if (typeof value !== "string") {
-    throw new Error(`${key} must be a string.`);
-  }
-
-  const normalizedValue = value.trim();
-
-  if (normalizedValue.length === 0) {
-    throw new Error(`${key} cannot be empty.`);
-  }
-
-  if (normalizedValue.length > MAX_FIELD_LENGTH) {
-    throw new Error(`${key} is too long.`);
-  }
-
-  if (CONTROL_CHAR_PATTERN.test(normalizedValue)) {
-    throw new Error(`${key} contains invalid characters.`);
-  }
-
-  return normalizedValue;
-};
+export type QrPayload = QrWifiPayload;
 
 const parseWifiQrPayload = (payload: string): QrWifiPayload => {
-  const body = payload.slice(5);
+  const wifiStart = payload.toUpperCase().indexOf("WIFI:");
+  if (wifiStart < 0) {
+    throw new Error("Wi-Fi QR prefix not found.");
+  }
+
+  const body = payload.slice(wifiStart + 5);
   const parts = body.split(";");
 
   let securityRaw = "";
@@ -78,7 +38,7 @@ const parseWifiQrPayload = (payload: string): QrWifiPayload => {
   }
 
   if (ssidRaw.length === 0) {
-    throw new Error("Wi-Fi SSID cannot be empty.");
+    throw new Error("Wi-Fi SSID missing in QR code.");
   }
 
   if (ssidRaw.length > WIFI_SSID_MAX_LENGTH) {
@@ -89,7 +49,7 @@ const parseWifiQrPayload = (payload: string): QrWifiPayload => {
     throw new Error("Wi-Fi SSID contains invalid characters.");
   }
 
-  const normalizedSecurity = securityRaw.toUpperCase();
+  const normalizedSecurity = securityRaw.toUpperCase() || "NOPASS";
   let security: "nopass" | "WEP" | "WPA";
 
   if (normalizedSecurity === "NOPASS") {
@@ -124,35 +84,5 @@ export const parseQrPayload = (rawPayload: unknown): QrPayload => {
     throw new Error("QR payload is too large.");
   }
 
-  if (trimmedPayload.toUpperCase().startsWith("WIFI:")) {
-    return parseWifiQrPayload(trimmedPayload);
-  }
-
-  let parsedPayload: unknown;
-
-  try {
-    parsedPayload = JSON.parse(trimmedPayload);
-  } catch {
-    throw new Error("QR payload must be valid JSON.");
-  }
-
-  if (
-    parsedPayload === null ||
-    typeof parsedPayload !== "object" ||
-    Array.isArray(parsedPayload)
-  ) {
-    throw new Error("QR payload must be a JSON object.");
-  }
-
-  const objectPayload = parsedPayload as Record<string, unknown>;
-
-  if (!hasExactExpectedKeys(objectPayload)) {
-    throw new Error("QR payload must contain only ID and Code keys.");
-  }
-
-  return {
-    type: "legacy",
-    ID: sanitizeField("ID", objectPayload.ID),
-    Code: sanitizeField("Code", objectPayload.Code),
-  };
+  return parseWifiQrPayload(trimmedPayload);
 };
