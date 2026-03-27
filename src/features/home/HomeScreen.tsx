@@ -25,7 +25,7 @@ const QUICK_ACTIONS = [
   { id: "start", label: "Start Focus\nSession", icon: "play" as const },
   { id: "plan", label: "Plan Tasks", icon: "checkmark-circle" as const },
   { id: "analytics", label: "Analytics", icon: "stats-chart" as const },
-  { id: "settings", label: "Settings", icon: "settings" as const },
+  { id: "setup", label: "Setup Device", icon: "wifi" as const },
 ] as const;
 
 export default function HomeScreen({ userInfo }: HomeScreenProps) {
@@ -72,6 +72,9 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
         return;
       case "settings":
         Alert.alert("Settings", "Settings are coming soon.");
+        return;
+      case "setup":
+        navigation.navigate("DeviceProvisioning");
         return;
       default:
         Alert.alert("Action", "This action is coming soon.");

@@ -12,6 +12,7 @@ import AIBreakdownScreen from "../../features/calendar/AddTask/AIBreakdownScreen
 import CalendarScreen from "../../features/calendar/CalendarScreen";
 import FocusTrackingScreen from "../../features/focus";
 import HomeScreen from "../../features/home/HomeScreen";
+import DeviceProvisioningScreen from "../../features/provisioning/screens/DeviceProvisioningScreen";
 import { clearStoredUser, findOrCreateUser } from "../../services/focusFrameUserService";
 import { tokenManager } from "../../utils/tokenManager";
 import { LoadingScreen } from "../components/LoadingScreen";
@@ -28,6 +29,7 @@ export type RootStackParamList = {
   AddTaskDetails: undefined;
   AIBreakdownDetails: undefined;
   AIBreakdownResult: { result: any };
+  DeviceProvisioning: undefined;
   Loading: undefined;
 };
 
@@ -163,6 +165,11 @@ export function RootNavigator() {
           <Stack.Screen
             name="AIBreakdownResult"
             component={AIBreakdownResultScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="DeviceProvisioning"
+            component={DeviceProvisioningScreen}
             options={{ headerShown: false }}
           />
         </>
