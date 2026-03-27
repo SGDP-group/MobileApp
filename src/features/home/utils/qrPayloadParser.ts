@@ -55,6 +55,60 @@ const sanitizeField = (key: QrPayloadKey, value: unknown): string => {
   return normalizedValue;
 };
 
+const parseWifiQrPayload = (payload: string): QrWifiPayload => {
+  const body = payload.slice(5);
+  const parts = body.split(";");
+
+  let securityRaw = "";
+  let ssidRaw = "";
+
+  for (const part of parts) {
+    if (part.length < 3 || part[1] !== ":") {
+      continue;
+    }
+
+    const key = part[0].toUpperCase();
+    const value = part.slice(2).trim();
+
+    if (key === "T") {
+      securityRaw = value;
+    } else if (key === "S") {
+      ssidRaw = value;
+    }
+  }
+
+  if (ssidRaw.length === 0) {
+    throw new Error("Wi-Fi SSID cannot be empty.");
+  }
+
+  if (ssidRaw.length > WIFI_SSID_MAX_LENGTH) {
+    throw new Error("Wi-Fi SSID is too long.");
+  }
+
+  if (CONTROL_CHAR_PATTERN.test(ssidRaw)) {
+    throw new Error("Wi-Fi SSID contains invalid characters.");
+  }
+
+  const normalizedSecurity = securityRaw.toUpperCase();
+  let security: "nopass" | "WEP" | "WPA";
+
+  if (normalizedSecurity === "NOPASS") {
+    security = "nopass";
+  } else if (normalizedSecurity === "WEP") {
+    security = "WEP";
+  } else if (normalizedSecurity === "WPA" || normalizedSecurity === "WPA2" || normalizedSecurity === "WPA3") {
+    security = "WPA";
+  } else {
+    throw new Error("Unsupported Wi-Fi security type.");
+  }
+
+  return {
+    type: "wifi",
+    ssid: ssidRaw,
+    security,
+  };
+};
+
 export const parseQrPayload = (rawPayload: unknown): QrPayload => {
   if (typeof rawPayload !== "string") {
     throw new Error("QR payload must be a string.");
@@ -70,41 +124,8 @@ export const parseQrPayload = (rawPayload: unknown): QrPayload => {
     throw new Error("QR payload is too large.");
   }
 
-  if (trimmedPayload.startsWith("WIFI:")) {
-    const match = trimmedPayload.match(/^WIFI:T:([^;]+);S:([^;]+);(?:P:([^;]*);)?;$/);
-    if (!match) {
-      throw new Error("Unsupported Wi-Fi QR format.");
-    }
-
-    const securityRaw = match[1].trim();
-    const ssidRaw = match[2].trim();
-
-    if (ssidRaw.length === 0) {
-      throw new Error("Wi-Fi SSID cannot be empty.");
-    }
-
-    if (ssidRaw.length > WIFI_SSID_MAX_LENGTH) {
-      throw new Error("Wi-Fi SSID is too long.");
-    }
-
-    if (CONTROL_CHAR_PATTERN.test(ssidRaw)) {
-      throw new Error("Wi-Fi SSID contains invalid characters.");
-    }
-
-    let security: "nopass" | "WEP" | "WPA";
-    if (securityRaw === "nopass") {
-      security = "nopass";
-    } else if (securityRaw === "WEP" || securityRaw === "WPA") {
-      security = securityRaw;
-    } else {
-      throw new Error("Unsupported Wi-Fi security type.");
-    }
-
-    return {
-      type: "wifi",
-      ssid: ssidRaw,
-      security,
-    };
+  if (trimmedPayload.toUpperCase().startsWith("WIFI:")) {
+    return parseWifiQrPayload(trimmedPayload);
   }
 
   let parsedPayload: unknown;

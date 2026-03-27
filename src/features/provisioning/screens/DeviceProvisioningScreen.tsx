@@ -1,9 +1,9 @@
+import { RouteProp, useRoute } from "@react-navigation/native";
 import {
     pingProvisioningServer,
     submitProvisioning,
 } from "@services/deviceProvisioningService";
 import { getStoredUserId } from "@services/focusFrameUserService";
-import { RouteProp, useRoute } from "@react-navigation/native";
 import type { RootStackParamList } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useState } from "react";
 import {
