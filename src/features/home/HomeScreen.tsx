@@ -25,7 +25,6 @@ const QUICK_ACTIONS = [
   { id: "start", label: "Start Focus\nSession", icon: "play" as const },
   { id: "plan", label: "Plan Tasks", icon: "checkmark-circle" as const },
   { id: "analytics", label: "Analytics", icon: "stats-chart" as const },
-  { id: "setup", label: "Setup Device", icon: "wifi" as const },
 ] as const;
 
 export default function HomeScreen({ userInfo }: HomeScreenProps) {
@@ -37,6 +36,8 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
   const {
     isScannerVisible,
     isProcessingScan,
+    scannedQrPayload,
+    clearScannedQrPayload,
     openScanner,
     closeScanner,
     handleScan,
@@ -59,6 +60,23 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
     }, [refreshTasks]),
   );
 
+  useEffect(() => {
+    if (!scannedQrPayload) {
+      return;
+    }
+
+    if (scannedQrPayload.type === "wifi") {
+      navigation.navigate("DeviceProvisioning", {
+        prefilledSsid: scannedQrPayload.ssid,
+      });
+      clearScannedQrPayload();
+      return;
+    }
+
+    clearScannedQrPayload();
+    Alert.alert("Unsupported QR", "This QR is not a device setup Wi-Fi QR code.");
+  }, [clearScannedQrPayload, navigation, scannedQrPayload]);
+
   const handleQuickAction = useCallback((actionId: string) => {
     switch (actionId) {
       case "plan":
@@ -72,9 +90,6 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
         return;
       case "settings":
         Alert.alert("Settings", "Settings are coming soon.");
-        return;
-      case "setup":
-        navigation.navigate("DeviceProvisioning");
         return;
       default:
         Alert.alert("Action", "This action is coming soon.");

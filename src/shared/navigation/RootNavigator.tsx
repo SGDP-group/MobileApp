@@ -29,7 +29,7 @@ export type RootStackParamList = {
   AddTaskDetails: undefined;
   AIBreakdownDetails: undefined;
   AIBreakdownResult: { result: any };
-  DeviceProvisioning: undefined;
+  DeviceProvisioning: { prefilledSsid?: string } | undefined;
   Loading: undefined;
 };
 

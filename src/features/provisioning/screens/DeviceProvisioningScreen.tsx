@@ -3,6 +3,8 @@ import {
     submitProvisioning,
 } from "@services/deviceProvisioningService";
 import { getStoredUserId } from "@services/focusFrameUserService";
+import { RouteProp, useRoute } from "@react-navigation/native";
+import type { RootStackParamList } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useState } from "react";
 import {
     ActivityIndicator,
@@ -17,8 +19,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+type DeviceProvisioningRouteProp = RouteProp<RootStackParamList, "DeviceProvisioning">;
+
 export default function DeviceProvisioningScreen() {
-  const [wifiSsid, setWifiSsid] = useState("");
+  const route = useRoute<DeviceProvisioningRouteProp>();
+  const [wifiSsid, setWifiSsid] = useState(route.params?.prefilledSsid ?? "");
   const [wifiPassword, setWifiPassword] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

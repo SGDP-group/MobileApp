@@ -7,6 +7,7 @@ interface UseQrCodeScannerResult {
   isScannerVisible: boolean;
   isProcessingScan: boolean;
   scannedQrPayload: QrPayload | null;
+  clearScannedQrPayload: () => void;
   openScanner: () => void;
   closeScanner: () => void;
   handleScan: (rawPayload: string) => Promise<void>;
@@ -72,6 +73,10 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
     setIsScannerVisible(false);
   }, [clearCooldownTimer]);
 
+  const clearScannedQrPayload = useCallback(() => {
+    setScannedQrPayload(null);
+  }, []);
+
   const showInvalidQrAlert = useCallback(
     (error: unknown) => {
       let handled = false;
@@ -125,6 +130,7 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
     isScannerVisible,
     isProcessingScan,
     scannedQrPayload,
+    clearScannedQrPayload,
     openScanner,
     closeScanner,
     handleScan,
