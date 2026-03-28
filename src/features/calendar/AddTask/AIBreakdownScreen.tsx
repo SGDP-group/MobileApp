@@ -151,7 +151,6 @@ export default function AIBreakdownScreen() {
       return;
     }
 
-    // Validate that selected date is not in the past (when in date mode)
     if (pickerMode === "date") {
       const todayStart = getTodayMinDate();
       const selectedDateStart = new Date(selectedValue);
@@ -253,6 +252,25 @@ export default function AIBreakdownScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {isGenerating && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={{ color: '#fff', marginTop: 15, fontWeight: '600', fontSize: 16 }}>
+            Generating subtasks...
+          </Text>
+        </View>
+      )}
+
       <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backButton}

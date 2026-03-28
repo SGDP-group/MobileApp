@@ -102,11 +102,7 @@ export default function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
               onPress={signIn}
             />
 
-            <SocialButton
-              title="Sign in with Google"
-              variant="secondary"
-              onPress={signIn}
-            />
+            
 
             <Text style={styles.legalText}>
               By continuing, you agree to our{"\n"}
