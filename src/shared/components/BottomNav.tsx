@@ -8,7 +8,7 @@ import { styles } from "./BottomNav.styles";
 export type BottomNavRoute =
   | "Home"
   | "Calendar"
-  | "Focus"
+  | "Add Task"
   | "Analytics"
   | "Settings";
 
@@ -24,7 +24,7 @@ const items: Array<{
 }> = [
   { id: "Home", label: "Home", icon: "home" },
   { id: "Calendar", label: "Calendar", icon: "calendar" },
-  { id: "Focus", label: "Focus", icon: "eye" },
+  { id: "Add Task", label: "Add Task", icon: "add-circle" },
   { id: "Analytics", label: "Analytics", icon: "stats-chart" },
   { id: "Settings", label: "Settings", icon: "settings" },
 ];
@@ -45,8 +45,8 @@ export function BottomNav({ activeRoute, onPress }: BottomNavProps) {
       case "Calendar":
         navigation.navigate("Calendar");
         return;
-      case "Focus":
-        navigation.navigate("Focus");
+      case "Add Task":
+        navigation.navigate("AddTask");
         return;
       case "Analytics":
         navigation.navigate("Analytics");
