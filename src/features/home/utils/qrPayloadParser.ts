@@ -38,6 +38,28 @@ const buildWifiCandidates = (raw: string): string[] => {
   return candidates;
 };
 
+const parseSsidOnlyPayload = (payload: string): QrWifiPayload => {
+  const ssidRaw = payload.trim();
+
+  if (ssidRaw.length === 0) {
+    throw new Error("Wi-Fi SSID missing in QR code.");
+  }
+
+  if (ssidRaw.length > WIFI_SSID_MAX_LENGTH) {
+    throw new Error("Wi-Fi SSID is too long.");
+  }
+
+  if (CONTROL_CHAR_PATTERN.test(ssidRaw)) {
+    throw new Error("Wi-Fi SSID contains invalid characters.");
+  }
+
+  return {
+    type: "wifi",
+    ssid: ssidRaw,
+    security: "nopass",
+  };
+};
+
 const parseWifiQrPayload = (payload: string): QrWifiPayload => {
   const wifiStart = payload.toUpperCase().indexOf("WIFI:");
   if (wifiStart < 0) {
@@ -117,6 +139,12 @@ export const parseQrPayload = (rawPayload: unknown): QrPayload => {
   for (const candidate of candidates) {
     if (candidate.toUpperCase().includes("WIFI:")) {
       return parseWifiQrPayload(candidate);
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (/^[A-Za-z0-9._\-]{1,32}$/.test(candidate)) {
+      return parseSsidOnlyPayload(candidate);
     }
   }
 
