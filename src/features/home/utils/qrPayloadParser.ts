@@ -10,6 +10,34 @@ export interface QrWifiPayload {
 
 export type QrPayload = QrWifiPayload;
 
+const stripWrappingQuotes = (value: string): string => {
+  if (value.length >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+    return value.slice(1, -1);
+  }
+
+  return value;
+};
+
+const buildWifiCandidates = (raw: string): string[] => {
+  const candidates: string[] = [];
+
+  const normalized = stripWrappingQuotes(raw.trim().replace(/\uFEFF/g, ""));
+  if (normalized.length > 0) {
+    candidates.push(normalized);
+  }
+
+  try {
+    const decoded = stripWrappingQuotes(decodeURIComponent(normalized));
+    if (decoded.length > 0 && !candidates.includes(decoded)) {
+      candidates.push(decoded);
+    }
+  } catch {
+    // Ignore decode failures and continue with raw candidate.
+  }
+
+  return candidates;
+};
+
 const parseWifiQrPayload = (payload: string): QrWifiPayload => {
   const wifiStart = payload.toUpperCase().indexOf("WIFI:");
   if (wifiStart < 0) {
@@ -84,5 +112,13 @@ export const parseQrPayload = (rawPayload: unknown): QrPayload => {
     throw new Error("QR payload is too large.");
   }
 
-  return parseWifiQrPayload(trimmedPayload);
+  const candidates = buildWifiCandidates(trimmedPayload);
+
+  for (const candidate of candidates) {
+    if (candidate.toUpperCase().includes("WIFI:")) {
+      return parseWifiQrPayload(candidate);
+    }
+  }
+
+  throw new Error("WIFI QR prefix not found.");
 };
