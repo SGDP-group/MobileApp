@@ -17,6 +17,7 @@ export interface GeneratedSubtask {
 }
 
 export interface AIBreakdownResponse {
+  tasks: any;
   success: boolean;
   subtasks: GeneratedSubtask[];
   total_estimated_time: number;
