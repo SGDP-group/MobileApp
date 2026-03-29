@@ -35,7 +35,7 @@ export default function AnalyticsScreen() {
         Alert.alert(
           "User Not Found",
           "No user information found. Please log in again.",
-          [{ text: "OK", onPress: () => navigation.navigate("Welcome") }]
+          [{ text: "OK", onPress: () => navigation.navigate({ name: "Welcome", params: undefined }) }]
         );
         return;
       }
@@ -43,7 +43,10 @@ export default function AnalyticsScreen() {
       setSessionData(data);
     } catch (error) {
       console.error("Failed to load analytics data:", error);
-      Alert.alert("Service Error", "Could not connect to analytics service");
+       Alert.alert(
+          "Service Error", "Could not connect to analytics service."  ,
+          [{ text: "OK", onPress: () => navigation.navigate({ name: "Home", params: {} }) }]
+        );
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -176,17 +179,7 @@ export default function AnalyticsScreen() {
     </View>
   );
 
-  if (!sessionData) {
-    return (
-      <SafeAreaView style={styles.container}>  
-            <View style={styles.loadingContainer}>
-
-          <Text style={styles.loadingText}>session data loading...</Text>
-          
-        </View>
-      </SafeAreaView>
-    );
-  }
+ 
 
   return (
     <SafeAreaView style={styles.container}>
