@@ -1,4 +1,3 @@
-import { NavigationContainer } from '@react-navigation/native';
 import { LoadingProvider } from '@shared/contexts/LoadingContext';
 import { RootNavigator } from "@shared/navigation/RootNavigator";
 
