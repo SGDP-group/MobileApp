@@ -50,6 +50,7 @@ export function UpNextCard({ item, onOpenTaskQueue }: UpNextCardProps) {
       : taskLead.status === "upcoming"
         ? styles.eventLeadUpcoming
         : styles.eventLeadNone;
+        
   const taskStartTimestamp = taskLead.startDateOfIncompleteSubtask
     ? formatTaskTimestamp(taskLead.startDateOfIncompleteSubtask.toISOString())
     : formatTaskTimestamp(item.task.updatedAt);
