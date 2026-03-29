@@ -10,7 +10,6 @@ import AddTaskDetailsScreen from "../../features/calendar/AddTask/components/Add
 import AddTaskScreen from "../../features/calendar/AddTask/components/AddTaskScreen";
 import AIBreakdownScreen from "../../features/calendar/AddTask/components/AIBreakdownScreen";
 import CalendarScreen from "../../features/calendar/CalendarScreen";
-import FocusTrackingScreen from "../../features/focus";
 import HomeScreen from "../../features/home/HomeScreen";
 import { clearStoredUser, findOrCreateUser } from "../../services/focusFrameUserService";
 import { tokenManager } from "../../utils/tokenManager";
@@ -147,7 +146,6 @@ export function RootNavigator() {
           </Stack.Screen>
           <Stack.Screen name="Calendar" component={CalendarScreen} />
           <Stack.Screen name="Analytics" component={AnalyticsScreen} />
-          <Stack.Screen name="Focus" component={FocusTrackingScreen} />
           <Stack.Screen name="AddTask" component={AddTaskScreen} />
           <Stack.Screen
             name="AddTaskDetails"

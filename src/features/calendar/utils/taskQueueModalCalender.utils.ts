@@ -112,3 +112,18 @@ export const getStatusLabel = (
 
   return "Pending";
 };
+export const getStatusLabelStatus = (
+  statusName?: string,
+): string => {
+  // if (statusName?.toLocaleLowerCase() === "completed") {
+  //   return "Completed";
+  // }
+  // if (statusName?.toLocaleLowerCase() === "pending") {
+  //   return "Pending";
+  // }
+  if (statusName) {
+    return statusName;
+  }
+
+  return "Pending";
+};
