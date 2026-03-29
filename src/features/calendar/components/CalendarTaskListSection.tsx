@@ -2,7 +2,7 @@ import { colors } from "@shared/theme/colors";
 import React from "react";
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from "react-native";
 import { styles } from "../styles/calendar.styles";
-import type { CalendarTaskItem } from "../utils/calender.types";
+import type { CalendarTaskItem } from "./../utils/calendar.types";
 import { CalendarTaskCard } from "./CalendarTaskCard";
 
 interface CalendarTaskListSectionProps {
@@ -21,6 +21,7 @@ export function CalendarTaskListSection({
   onOpenTaskQueue,
 }: CalendarTaskListSectionProps) {
   if (isLoading) {
+    
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator

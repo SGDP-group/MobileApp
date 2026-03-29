@@ -43,13 +43,11 @@ export default function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
 
       if (isSuccessResponse(response)) {
         setUserInfo(response.data);
-        // Don't log sensitive user information
-        // Call the callback to notify parent navigator
         if (onLoginSuccess) {
           onLoginSuccess(response.data);
         }
       } else {
-        // Sign in cancelled
+        
       }
     } catch (error) {
       if (isErrorWithCode(error)) {
@@ -102,11 +100,7 @@ export default function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
               onPress={signIn}
             />
 
-            <SocialButton
-              title="Sign in with Google"
-              variant="secondary"
-              onPress={signIn}
-            />
+            
 
             <Text style={styles.legalText}>
               By continuing, you agree to our{"\n"}

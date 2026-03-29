@@ -15,27 +15,40 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AnalyticsService } from "../../services/analyticsService";
 import { FocusSession } from "../../types/analytics";
 import { styles } from "./styles/analytics.styles";
+import { useLoading } from "@/src/shared/contexts/LoadingContext";
+import { getStoredUserId } from "@/src/services/focusFrameUserService";
 
 const CARD_SNAP_INTERVAL = 280;
 
 export default function AnalyticsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const [sessionData, setSessionData] = useState<FocusSession | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
+  const { setIsLoading } = useLoading(); 
 
   const loadSessionData = async () => {
     try {
-      setLoading(true);
-      // Using a mock user ID for now - in real app this would come from auth context
-      const data = await AnalyticsService.getFocusSession("user123");
+      setIsLoading(true,"Analyzing your focus session...");
+      const userId = await getStoredUserId();
+      if (!userId) {
+        Alert.alert(
+          "User Not Found",
+          "No user information found. Please log in again.",
+          [{ text: "OK", onPress: () => navigation.navigate({ name: "Welcome", params: undefined }) }]
+        );
+        return;
+      }
+      const data = await AnalyticsService.getFocusSession(userId.toString());
       setSessionData(data);
     } catch (error) {
       console.error("Failed to load analytics data:", error);
-      Alert.alert("Service Error", "Could not connect to analytics service");
+       Alert.alert(
+          "Service Error", "Could not connect to analytics service."  ,
+          [{ text: "OK", onPress: () => navigation.navigate({ name: "Home", params: {} }) }]
+        );
     } finally {
-      setLoading(false);
+      setIsLoading(false);
       setRefreshing(false);
     }
   };
@@ -45,8 +58,10 @@ export default function AnalyticsScreen() {
   }, []);
 
   const onRefresh = () => {
+    setIsLoading(true,"Refreshing analytics...");
     setRefreshing(true);
     loadSessionData();
+    setIsLoading(false);
   };
 
   const viewabilityConfig = {
@@ -164,15 +179,7 @@ export default function AnalyticsScreen() {
     </View>
   );
 
-  if (loading && !sessionData) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading analytics...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+ 
 
   return (
     <SafeAreaView style={styles.container}>

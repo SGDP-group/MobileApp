@@ -2,7 +2,7 @@ import React from "react";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Text, TouchableOpacity, View } from "react-native";
 import { styles } from "../styles/calendar.styles";
-import type { CalendarTaskItem } from "../utils/calender.types";
+import type { CalendarTaskItem } from "./../utils/calendar.types";
 
 interface CalendarTaskCardProps {
   item: CalendarTaskItem;

@@ -1,5 +1,10 @@
+import { LoadingProvider } from '@shared/contexts/LoadingContext';
 import { RootNavigator } from "@shared/navigation/RootNavigator";
 
 export default function App() {
-  return <RootNavigator />;
+  return (
+    <LoadingProvider>
+        <RootNavigator />
+    </LoadingProvider>
+  );
 }

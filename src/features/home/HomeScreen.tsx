@@ -13,7 +13,6 @@ import { TaskQueueModal } from "./components/TaskQueueModal";
 import { UpNextSection } from "./components/UpNextSection";
 import { HomeTask, useHomeTasks } from "./home.tasks";
 import { useQrCodeScanner } from "./hooks/useQrCodeScanner";
-
 import { styles } from "./styles/home.styles";
 
 interface HomeScreenProps {
