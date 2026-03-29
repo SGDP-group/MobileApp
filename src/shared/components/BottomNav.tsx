@@ -26,7 +26,7 @@ const items: Array<{
   { id: "Calendar", label: "Calendar", icon: "calendar" },
   { id: "Add Task", label: "Add Task", icon: "add-circle" },
   { id: "Analytics", label: "Analytics", icon: "stats-chart" },
-  { id: "Settings", label: "Settings", icon: "settings" },
+  // { id: "Settings", label: "Settings", icon: "settings" },
 ];
 
 export function BottomNav({ activeRoute, onPress }: BottomNavProps) {
@@ -51,9 +51,9 @@ export function BottomNav({ activeRoute, onPress }: BottomNavProps) {
       case "Analytics":
         navigation.navigate("Analytics");
         return;
-      case "Settings":
-        Alert.alert("Settings", "Settings are coming soon.");
-        return;
+      // case "Settings":
+      //   Alert.alert("Settings", "Settings are coming soon.");
+      //   return;
       default:
         Alert.alert("Action", "This action is coming soon.");
     }
