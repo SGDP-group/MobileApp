@@ -26,11 +26,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getDeviceTimeZone, toTwoDigits } from "./../utils/timezone";
 import { styles as detailsStyles } from "../styles/addTaskDetails.styles";
 import { styles } from "../styles/aiBreakdownResult.styles";
 import { Subtask } from "../types/types";
-import { VALIDATION_ERRORS,SUCCESS_MESSAGES } from "../utils/validationMessages";
-import { getDeviceTimeZone,toTwoDigits } from "../utils/timezone";
+import { SUCCESS_MESSAGES, VALIDATION_ERRORS } from "../utils/validationMessages";
 const getDurationDisplay = (time: number | string): string => {
   const parsedTime = typeof time === "string" ? parseInt(time, 10) : time;
   return isNaN(parsedTime) || parsedTime <= 0 ? "--" : parsedTime.toString();

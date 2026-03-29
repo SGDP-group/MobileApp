@@ -1,3 +1,4 @@
+import { useLoading } from "@/src/shared/contexts/LoadingContext";
 import type { CreateSubtaskPayload } from "@/src/types/type";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
@@ -12,9 +13,6 @@ import { googleCalendarService } from "@services/googleCalendarService";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
-import { SubtaskDraft,SubtaskPickerState } from "../types/types";
-import { getDeviceTimeZone,toLocalApiDateTime,toOffsetDateTime,formatDate , getEmptySubtask,formatDateTime,getTodayMinDate } from "../utils/timezone";
-import { VALIDATION_ERRORS,SUCCESS_MESSAGES } from "../utils/validationMessages";
 import {
   Alert,
   ScrollView,
@@ -24,8 +22,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { formatDateTime, getDeviceTimeZone, getEmptySubtask, getTodayMinDate, toLocalApiDateTime, toOffsetDateTime } from "./../utils/timezone";
 import { styles } from "../styles/addTaskDetails.styles";
-import { useLoading } from "@/src/shared/contexts/LoadingContext";
+import { SubtaskDraft, SubtaskPickerState } from "../types/types";
+import { SUCCESS_MESSAGES, VALIDATION_ERRORS } from "../utils/validationMessages";
 
 const TIMEZONE = getDeviceTimeZone();
 
