@@ -69,9 +69,9 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
       case "analytics":
         navigation.navigate("Analytics");
         return;
-      case "settings":
-        Alert.alert("Settings", "Settings are coming soon.");
-        return;
+      // case "settings":
+      //   Alert.alert("Settings", "Settings are coming soon.");
+      //   return;
       default:
         Alert.alert("Action", "This action is coming soon.");
     }
@@ -114,7 +114,7 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
           userName={userName}
           avatarUri={userInfo?.user?.photo}
           onOpenScanner={openScanner}
-          onOpenNotifications={() => Alert.alert("Notifications", "Coming soon.")}
+          // onOpenNotifications={() => Alert.alert("Notifications", "Coming soon.")}
           onOpenProfile={() => Alert.alert("Profile", "Coming soon.")}
         />
 
