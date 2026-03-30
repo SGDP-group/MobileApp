@@ -32,8 +32,9 @@ export function HomeHeader({
 
       <View style={styles.headerActions}>
         <TouchableOpacity style={styles.iconButton} onPress={onOpenScanner}>
-          <Ionicons name="scan-outline" size={20} color="#E5F7FF" />
-        </TouchableOpacity>
+  {/* Changed icon name to reflect 'Add Device' or 'Setup' */}
+  <Ionicons name="wifi" size={22} color="#E5F7FF" />
+</TouchableOpacity>
 {/* 
         <TouchableOpacity
           style={styles.iconButton}

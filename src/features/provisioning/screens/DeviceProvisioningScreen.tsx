@@ -1,10 +1,8 @@
-import { RouteProp, useRoute } from "@react-navigation/native";
 import {
     pingProvisioningServer,
     submitProvisioning,
 } from "@services/deviceProvisioningService";
 import { getStoredUserId } from "@services/focusFrameUserService";
-import type { RootStackParamList } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useState } from "react";
 import {
     ActivityIndicator,
@@ -16,209 +14,230 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
-type DeviceProvisioningRouteProp = RouteProp<RootStackParamList, "DeviceProvisioning">;
+interface DeviceProvisioningModalProps {
+    visible: boolean;
+    onClose: () => void;
+    initialSsid?: string;
+}
 
-export default function DeviceProvisioningScreen() {
-  const route = useRoute<DeviceProvisioningRouteProp>();
-  const [wifiSsid, setWifiSsid] = useState(route.params?.prefilledSsid ?? "");
-  const [wifiPassword, setWifiPassword] = useState("");
-  const [isChecking, setIsChecking] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export default function DeviceProvisioningModal({
+    visible,
+    onClose,
+    initialSsid = "",
+}: DeviceProvisioningModalProps) {
+    const [wifiSsid, setWifiSsid] = useState(initialSsid);
+    const [wifiPassword, setWifiPassword] = useState("");
+    const [isChecking, setIsChecking] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCheckConnection = useCallback(async () => {
-    setIsChecking(true);
+    const handleCheckConnection = useCallback(async () => {
+        setIsChecking(true);
+        try {
+            const reachable = await pingProvisioningServer();
+            if (!reachable) {
+                Alert.alert(
+                    "Device Not Reachable",
+                    "Connect your phone to PiSetup-XXXX and try again."
+                );
+                return;
+            }
+            Alert.alert("Connected", "Pi provisioning server is reachable.");
+        } catch {
+            Alert.alert("Connection Failed", "Could not reach the device.");
+        } finally {
+            setIsChecking(false);
+        }
+    }, []);
 
-    try {
-      const reachable = await pingProvisioningServer();
-      if (!reachable) {
-        Alert.alert(
-          "Device Not Reachable",
-          "Connect your phone to PiSetup-XXXX and try again.",
-        );
-        return;
-      }
+    const handleSubmit = useCallback(async () => {
+        if (!wifiSsid || !wifiPassword) {
+            Alert.alert("Missing Info", "Please enter both SSID and Password.");
+            return;
+        }
 
-      Alert.alert("Connected", "Pi provisioning server is reachable.");
-    } catch {
-      Alert.alert(
-        "Connection Failed",
-        "Could not reach the device. Join PiSetup-XXXX and retry.",
-      );
-    } finally {
-      setIsChecking(false);
-    }
-  }, []);
+        setIsSubmitting(true);
+        try {
+            const userId = await getStoredUserId();
+            if (!userId) {
+                Alert.alert("Sign In Required", "Please sign in again.");
+                return;
+            }
+            const response = await submitProvisioning({ userId, wifiSsid, wifiPassword });
 
-  const handleSubmit = useCallback(async () => {
-    setIsSubmitting(true);
+            if (response.status === "error") {
+                Alert.alert("Error", response.message || "Please retry.");
+                return;
+            }
 
-    try {
-      const userId = await getStoredUserId();
-      if (!userId) {
-        Alert.alert("Sign In Required", "Please sign in again before setup.");
-        return;
-      }
+            Alert.alert("Success", "Settings sent! Device is rebooting.");
+            setWifiPassword("");
+            onClose(); // Close modal on success
+        } catch (error) {
+            Alert.alert("Failed", "Provisioning request failed.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [wifiPassword, wifiSsid, onClose]);
 
-      const response = await submitProvisioning({
-        userId,
-        wifiSsid,
-        wifiPassword,
-      });
+    const isBusy = isChecking || isSubmitting;
 
-      if (response.status === "error") {
-        Alert.alert("Provisioning Failed", response.message || "Please retry.");
-        return;
-      }
-
-      Alert.alert(
-        "Setup Submitted",
-        "The device is applying your Wi-Fi settings. It will switch off SoftAP when done.",
-      );
-      setWifiPassword("");
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Provisioning request failed.";
-      Alert.alert("Provisioning Failed", message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [wifiPassword, wifiSsid]);
-
-  const isBusy = isChecking || isSubmitting;
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.content}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <Text style={styles.title}>Device Setup</Text>
-        <Text style={styles.subtitle}>
-          1. Open Wi-Fi Settings and connect to PiSetup-XXXX. {"\n"}
-          2. Return here and submit your home Wi-Fi.
-        </Text>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => {
-            void handleCheckConnection();
-          }}
-          disabled={isBusy}
+    return (
+        <Modal 
+            visible={visible} 
+            animationType="slide" 
+            transparent={false}
+            onRequestClose={onClose}
         >
-          <Text style={styles.secondaryButtonText}>Check Device Connection</Text>
-        </TouchableOpacity>
+            <SafeAreaView style={styles.container}>
+                {/* Header with Close Button */}
+                <View style={styles.header}>
+                    <Text style={styles.title}>Device Setup</Text>
+                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                        <Ionicons name="close" size={28} color="#E9F7FF" />
+                    </TouchableOpacity>
+                </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Home Wi-Fi Name (SSID)</Text>
-          <TextInput
-            value={wifiSsid}
-            onChangeText={setWifiSsid}
-            placeholder="Enter SSID"
-            placeholderTextColor="#78909C"
-            autoCapitalize="none"
-            style={styles.input}
-          />
-        </View>
+                <KeyboardAvoidingView
+                    style={styles.content}
+                    behavior={Platform.OS === "ios" ? "padding" : undefined}
+                >
+                    <Text style={styles.subtitle}>
+                        1. Connect your phone Wi-Fi to **PiSetup-XXXX**. {"\n"}
+                        2. Enter your home Wi-Fi details below.
+                    </Text>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Home Wi-Fi Password</Text>
-          <TextInput
-            value={wifiPassword}
-            onChangeText={setWifiPassword}
-            placeholder="Enter password"
-            placeholderTextColor="#78909C"
-            secureTextEntry
-            autoCapitalize="none"
-            style={styles.input}
-          />
-        </View>
+                    <TouchableOpacity
+                        style={styles.secondaryButton}
+                        onPress={() => void handleCheckConnection()}
+                        disabled={isBusy}
+                    >
+                        <Text style={styles.secondaryButtonText}>
+                            {isChecking ? "Checking..." : "Check Device Connection"}
+                        </Text>
+                    </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.primaryButton, isBusy ? styles.primaryButtonDisabled : null]}
-          onPress={() => {
-            void handleSubmit();
-          }}
-          disabled={isBusy}
-        >
-          {isSubmitting ? (
-            <ActivityIndicator size="small" color="#06222E" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Send To Device</Text>
-          )}
-        </TouchableOpacity>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>Home Wi-Fi Name (SSID)</Text>
+                        <TextInput
+                            value={wifiSsid}
+                            onChangeText={setWifiSsid}
+                            placeholder="e.g. MyHomeNetwork"
+                            placeholderTextColor="#78909C"
+                            autoCapitalize="none"
+                            style={styles.input}
+                        />
+                    </View>
+
+                    <View style={styles.formGroup}>
+                        <Text style={styles.label}>Home Wi-Fi Password</Text>
+                        <TextInput
+                            value={wifiPassword}
+                            onChangeText={setWifiPassword}
+                            placeholder="Enter password"
+                            placeholderTextColor="#78909C"
+                            secureTextEntry
+                            autoCapitalize="none"
+                            style={styles.input}
+                        />
+                    </View>
+
+                    <TouchableOpacity
+                        style={[styles.primaryButton, isBusy ? styles.primaryButtonDisabled : null]}
+                        onPress={() => void handleSubmit()}
+                        disabled={isBusy}
+                    >
+                        {isSubmitting ? (
+                            <ActivityIndicator size="small" color="#06222E" />
+                        ) : (
+                            <Text style={styles.primaryButtonText}>Send To Device</Text>
+                        )}
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </Modal>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#09161E",
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#E9F7FF",
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: "#B3CBD6",
-    marginBottom: 18,
-  },
-  formGroup: {
-    marginBottom: 14,
-  },
-  label: {
-    color: "#CFE6F0",
-    fontSize: 13,
-    marginBottom: 6,
-  },
-  input: {
-    height: 46,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#21404F",
-    backgroundColor: "#0F222D",
-    color: "#EAF8FF",
-    paddingHorizontal: 12,
-  },
-  secondaryButton: {
-    backgroundColor: "#123142",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#255067",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-  },
-  secondaryButtonText: {
-    color: "#9FDEF7",
-    textAlign: "center",
-    fontWeight: "600",
-  },
-  primaryButton: {
-    marginTop: 12,
-    backgroundColor: "#79D7FF",
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryButtonDisabled: {
-    opacity: 0.7,
-  },
-  primaryButtonText: {
-    color: "#06222E",
-    fontWeight: "700",
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#09161E",
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: "#123142",
+    },
+    closeButton: {
+        padding: 5,
+    },
+    content: {
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+    },
+    title: {
+        fontSize: 22,
+        fontWeight: "700",
+        color: "#E9F7FF",
+    },
+    subtitle: {
+        fontSize: 14,
+        lineHeight: 22,
+        color: "#B3CBD6",
+        marginBottom: 20,
+    },
+    formGroup: {
+        marginBottom: 16,
+    },
+    label: {
+        color: "#CFE6F0",
+        fontSize: 13,
+        marginBottom: 6,
+    },
+    input: {
+        height: 48,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: "#21404F",
+        backgroundColor: "#0F222D",
+        color: "#EAF8FF",
+        paddingHorizontal: 12,
+    },
+    secondaryButton: {
+        backgroundColor: "#123142",
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: "#255067",
+        paddingVertical: 12,
+        marginBottom: 20,
+    },
+    secondaryButtonText: {
+        color: "#9FDEF7",
+        textAlign: "center",
+        fontWeight: "600",
+    },
+    primaryButton: {
+        marginTop: 10,
+        backgroundColor: "#79D7FF",
+        borderRadius: 10,
+        paddingVertical: 14,
+        alignItems: "center",
+    },
+    primaryButtonDisabled: {
+        opacity: 0.5,
+    },
+    primaryButtonText: {
+        color: "#06222E",
+        fontWeight: "700",
+    },
 });
