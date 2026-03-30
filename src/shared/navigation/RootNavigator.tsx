@@ -1,4 +1,4 @@
-import AIBreakdownResultScreen from "@/src/features/calendar/AddTask/AIBreakdownResultScreen";
+import AIBreakdownResultScreen from "@/src/features/calendar/AddTask/components/AIBreakdownResultScreen";
 import { GoogleSignin, User } from "@react-native-google-signin/google-signin";
 import { NavigationProp } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -6,16 +6,14 @@ import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
 import AnalyticsScreen from "../../features/analytics/AnalyticsScreen";
 import WelcomeScreen from "../../features/auth/screens/WelcomeScreen";
-import AddTaskDetailsScreen from "../../features/calendar/AddTask/AddTaskDetailsScreen";
-import AddTaskScreen from "../../features/calendar/AddTask/AddTaskScreen";
-import AIBreakdownScreen from "../../features/calendar/AddTask/AIBreakdownScreen";
+import AddTaskDetailsScreen from "../../features/calendar/AddTask/components/AddTaskDetailsScreen";
+import AddTaskScreen from "../../features/calendar/AddTask/components/AddTaskScreen";
+import AIBreakdownScreen from "../../features/calendar/AddTask/components/AIBreakdownScreen";
 import CalendarScreen from "../../features/calendar/CalendarScreen";
-import FocusTrackingScreen from "../../features/focus";
 import HomeScreen from "../../features/home/HomeScreen";
 import DeviceProvisioningScreen from "../../features/provisioning/screens/DeviceProvisioningScreen";
 import { clearStoredUser, findOrCreateUser } from "../../services/focusFrameUserService";
 import { tokenManager } from "../../utils/tokenManager";
-import { LoadingScreen } from "../components/LoadingScreen";
 
 import { setGlobalLogoutHandler } from "@utils/globalLogout";
 
@@ -129,9 +127,7 @@ export function RootNavigator() {
     }
   };
 
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
+  
 
   return (
     <Stack.Navigator
@@ -152,7 +148,6 @@ export function RootNavigator() {
           </Stack.Screen>
           <Stack.Screen name="Calendar" component={CalendarScreen} />
           <Stack.Screen name="Analytics" component={AnalyticsScreen} />
-          <Stack.Screen name="Focus" component={FocusTrackingScreen} />
           <Stack.Screen name="AddTask" component={AddTaskScreen} />
           <Stack.Screen
             name="AddTaskDetails"

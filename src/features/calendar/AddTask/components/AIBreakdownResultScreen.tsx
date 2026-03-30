@@ -26,106 +26,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { styles as detailsStyles } from "./styles/addTaskDetails.styles";
-import { styles } from "./styles/aiBreakdownResult.styles";
-
-interface Subtask {
-  description: string;
-  status: "pending" | "completed";
-  estimated_time: number;
-  startTime?: string; // HH:mm
-  endTime?: string; // HH:mm
-  date?: string; // YYYY-MM-DD
-  conflictDetected?: boolean;
-  conflictWith?: {
-    type?: string;
-    id?: number;
-    taskId?: number;
-    taskName?: string;
-    subtaskDescription?: string;
-    endTime?: string;
-    resolution?: string;
-  } | null;
-  subtasks: Subtask[];
-}
-
-interface Task {
-  description: string;
-  status: "pending" | "completed";
-  estimated_time: number;
-  subtasks: Subtask[];
-}
-
-interface AIBreakdownResult {
-  success: boolean;
-  message: string;
-  tasks: Task[];
-  user_id: string;
-}
-
-// Validation error messages
-const VALIDATION_ERRORS = {
-  NO_SUBTASKS: {
-    title: "No Subtasks",
-    message: "Please ensure you have at least one subtask",
-  },
-  EMPTY_DESCRIPTION: {
-    title: "Validation Error",
-    message: "Please enter a description",
-  },
-  EMPTY_TIME: {
-    title: "Validation Error",
-    message: "Please enter estimated time",
-  },
-  INVALID_TIME: {
-    title: "Validation Error",
-    message: "Time must be a number",
-  },
-  INVALID_TIME_VALUE: {
-    title: "Validation Error",
-    message: "Time must be greater than 0",
-  },
-  INVALID_SUBTASK_TIME: (index: number) => ({
-    title: "Invalid Input",
-    message: `Subtask ${index + 1}: Please enter a valid time in minutes`,
-  }),
-  INVALID_START_TIME: {
-    title: "Invalid Start Time",
-    message: "Start time must be before end time",
-  },
-  UNREASONABLE_TIME: {
-    title: "Unreasonable Time Slot",
-    message: "Please schedule between 5 AM and 11 PM",
-  },
-  SAVE_FAILED: {
-    title: "Error",
-    message: "Failed to save task. Please try again.",
-  },
-  USER_NOT_LINKED: {
-    title: "User Not Linked",
-    message: "Please sign in to save tasks.",
-  },
-  TASK_CREATION_FAILED: {
-    title: "Task Creation Failed",
-    message: "Failed to create task. Please try again.",
-  },
-  SUBTASK_CREATION_FAILED: {
-    title: "Subtask Creation Failed",
-    message: "Failed to create some subtasks. Please try again.",
-  },
-  SCHEDULING_FAILED: {
-    title: "Scheduling Failed",
-    message: "Failed to schedule subtasks. Please try again.",
-  },
-};
-
-const SUCCESS_MESSAGES = {
-  SAVE_SUCCESS: (description: string, count: number, totalTime: number) => ({
-    title: "Success",
-    message: `Task "${description}" has been saved with ${count} subtasks\n\nTotal estimated time: ${totalTime} minutes`,
-  }),
-};
-
+import { getDeviceTimeZone, toTwoDigits } from "./../utils/timezone";
+import { styles as detailsStyles } from "../styles/addTaskDetails.styles";
+import { styles } from "../styles/aiBreakdownResult.styles";
+import { Subtask } from "../types/types";
+import { SUCCESS_MESSAGES, VALIDATION_ERRORS } from "../utils/validationMessages";
 const getDurationDisplay = (time: number | string): string => {
   const parsedTime = typeof time === "string" ? parseInt(time, 10) : time;
   return isNaN(parsedTime) || parsedTime <= 0 ? "--" : parsedTime.toString();
@@ -168,14 +73,9 @@ const validateSubtaskDescription = (description: string): boolean => {
   return true;
 };
 
-const getDeviceTimeZone = (): string => {
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return timezone && timezone.trim().length > 0 ? timezone : "UTC";
-};
 
 const TIMEZONE = getDeviceTimeZone();
 
-const toTwoDigits = (value: number): string => `${value}`.padStart(2, "0");
 
 const toLocalApiDateTime = (value: Date): string => {
   const year = value.getFullYear();

@@ -1,3 +1,4 @@
+import { useLoading } from "@/src/shared/contexts/LoadingContext";
 import type { CreateSubtaskPayload } from "@/src/types/type";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
@@ -21,135 +22,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { styles } from "./styles/addTaskDetails.styles";
-
-type SubtaskDraft = {
-  name: string;
-  description: string;
-  startTime: Date | null;
-  endTime: Date | null;
-};
-
-type SubtaskPickerState = {
-  index: number;
-  field: "startTime" | "endTime";
-  mode: "date" | "time";
-};
-
-const getDeviceTimeZone = (): string => {
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return timezone && timezone.trim().length > 0 ? timezone : "UTC";
-};
+import { formatDateTime, getDeviceTimeZone, getEmptySubtask, getTodayMinDate, toLocalApiDateTime, toOffsetDateTime } from "./../utils/timezone";
+import { styles } from "../styles/addTaskDetails.styles";
+import { SubtaskDraft, SubtaskPickerState } from "../types/types";
+import { SUCCESS_MESSAGES, VALIDATION_ERRORS } from "../utils/validationMessages";
 
 const TIMEZONE = getDeviceTimeZone();
 
-const toTwoDigits = (value: number): string => `${value}`.padStart(2, "0");
-
-const toLocalApiDateTime = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = toTwoDigits(value.getMonth() + 1);
-  const day = toTwoDigits(value.getDate());
-  const hours = toTwoDigits(value.getHours());
-  const minutes = toTwoDigits(value.getMinutes());
-  const seconds = toTwoDigits(value.getSeconds());
-
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-};
-
-const toOffsetDateTime = (value: Date): string => {
-  const localDateTime = toLocalApiDateTime(value);
-  const offsetMinutes = -value.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? "+" : "-";
-  const absOffsetMinutes = Math.abs(offsetMinutes);
-  const hours = toTwoDigits(Math.floor(absOffsetMinutes / 60));
-  const minutes = toTwoDigits(absOffsetMinutes % 60);
-
-  return `${localDateTime}${sign}${hours}:${minutes}`;
-};
-
-const VALIDATION_ERRORS = {
-  MISSING_TASK_NAME: {
-    title: "Missing Task Name",
-    message: "Please enter a task name.",
-  },
-  MISSING_SUBTASKS: {
-    title: "Missing Subtasks",
-    message: "Please add at least one subtask with a name.",
-  },
-  MISSING_START_TIME: (index: number) => ({
-    title: "Missing Start Date/Time",
-    message: `Sub Task ${index}: Please set a start date and time.`,
-  }),
-  MISSING_END_TIME: (index: number) => ({
-    title: "Missing End Date/Time",
-    message: `Sub Task ${index}: Please set an end date and time.`,
-  }),
-  INVALID_SUBTASK_DATES: (index: number) => ({
-    title: "Invalid Subtask Dates",
-    message: `Sub Task ${index}: Start date/time must be before end date/time.`,
-  }),
-  USER_NOT_LINKED: {
-    title: "User Not Linked",
-    message: "Please sign in again before creating a task.",
-  },
-  AUTH_REQUIRED: {
-    title: "Authentication Required",
-    message: "Please sign in again to get your email for task creation.",
-  },
-  SUBTASK_CREATION_FAILED: {
-    title: "Task Created with Warnings",
-    message: "Main task was created, but one or more subtasks failed to save.",
-  },
-  TASK_CREATION_FAILED: {
-    title: "Error",
-    message: "Failed to create task. Please try again.",
-  },
-};
-
-const SUCCESS_MESSAGES = {
-  TASK_CREATED: {
-    title: "Task Created",
-    message: "Task was added successfully.",
-  },
-  TASK_CREATED_CALENDAR_FAILED: {
-    title: "Task Created with Issues",
-    message:
-      "Task was created successfully, but some calendar events could not be synced. Your calendar may be out of sync.",
-  },
-};
-
-const formatDate = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = `${value.getMonth() + 1}`.padStart(2, "0");
-  const day = `${value.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
-const formatTime = (value: Date): string => {
-  const hours = `${value.getHours()}`.padStart(2, "0");
-  const minutes = `${value.getMinutes()}`.padStart(2, "0");
-  return `${hours}:${minutes}`;
-};
-
-const formatDateTime = (value: Date): string =>
-  `${formatDate(value)} ${formatTime(value)}`;
-
-const getEmptySubtask = (): SubtaskDraft => ({
-  name: "",
-  description: "",
-  startTime: null,
-  endTime: null,
-});
-
-const getTodayMinDate = (): Date => {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
-
 export default function AddTaskDetailsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-
   const [taskName, setTaskName] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [subtasks, setSubtasks] = useState<SubtaskDraft[]>([getEmptySubtask()]);
@@ -161,8 +42,8 @@ export default function AddTaskDetailsScreen() {
     useState<SubtaskPickerState | null>(null);
   const [pendingSubtaskDateTime, setPendingSubtaskDateTime] =
     useState<Date | null>(null);
-
   const todayMinDate = useMemo(() => getTodayMinDate(), []);
+const { setIsLoading } = useLoading();
 
   const validSubtasks = useMemo(
     () =>
@@ -461,6 +342,7 @@ export default function AddTaskDetailsScreen() {
     if (!validateAllInputs()) return;
 
     try {
+      setIsLoading(true, "Creating task...");
       setIsSaving(true);
 
       const userId = await getStoredUserId();
@@ -510,6 +392,8 @@ export default function AddTaskDetailsScreen() {
       );
     } finally {
       setIsSaving(false);
+      setIsLoading(false);
+
     }
   };
 

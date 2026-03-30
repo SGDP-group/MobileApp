@@ -7,9 +7,12 @@ import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
   getStatusLabel,
+  getStatusLabelStatus,
   type HomeSubtask,
   type SubtaskStatus
 } from "../utils/taskQueueModalCalender.utils";
+
+import { formatDateTimeForDisplay, normalizeId, normalizeName, toDate } from "./../utils/editableSubtaskAccordionItem.utils";
 
 interface SubtaskAccordionItemProps {
   subtask: HomeSubtask;
@@ -47,72 +50,9 @@ export function SubtaskAccordionItem({
   isSaving = false,
   statusOptions = [],
 }: SubtaskAccordionItemProps) {
-    const handleDelete = () => {
-      if (!onDeleteSubtask) return;
-      Alert.alert(
-        "Delete Subtask",
-        "Are you sure you want to delete this subtask? This action cannot be undone.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: () => void onDeleteSubtask(subtask),
-          },
-        ]
-      );
-    };
-  const toDate = (value?: string): Date | null => {
-    if (!value) {
-      return null;
-    }
 
-    const trimmed = value.trim();
-    const hasTimezone = /Z$|[+-]\d{2}:\d{2}$/.test(trimmed);
-    const normalizedInput = hasTimezone ? trimmed : `${trimmed}Z`;
-    const parsed = new Date(normalizedInput);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  };
-
-  const formatDate = (value: Date): string => {
-    const year = value.getFullYear();
-    const month = `${value.getMonth() + 1}`.padStart(2, "0");
-    const day = `${value.getDate()}`.padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const formatTime = (value: Date): string => {
-    const hours = `${value.getHours()}`.padStart(2, "0");
-    const minutes = `${value.getMinutes()}`.padStart(2, "0");
-    return `${hours}:${minutes}`;
-  };
-
-  const formatDateTimeForDisplay = (value?: string): string => {
-    const date = toDate(value);
-    if (!date) {
-      return "Not set";
-    }
-
-    return `${formatDate(date)} ${formatTime(date)}`;
-  };
-
-  const normalizeId = (value: unknown): string | undefined => {
-    if (value === null || value === undefined) {
-      return undefined;
-    }
-
-    return String(value).trim();
-  };
-
-  const normalizeName = (value: unknown): string | undefined => {
-    if (typeof value !== "string") {
-      return undefined;
-    }
-
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed.toLowerCase() : undefined;
-  };
-
+  
+ 
   const [isEditing, setIsEditing] = useState(false);
   const [editableName, setEditableName] = useState(subtask.name ?? "");
   const [editableDescription, setEditableDescription] = useState(subtask.description ?? "");
@@ -159,7 +99,23 @@ export function SubtaskAccordionItem({
     subtask.taskOrder,
   ]);
 
-  const statusLabel = getStatusLabel(isEditing ? editableCompleted : subtask.completed);
+const statusLabel =  getStatusLabelStatus( subtask.statusName);   
+
+const handleDelete = () => {
+      if (!onDeleteSubtask) return;
+      Alert.alert(
+        "Delete Subtask",
+        "Are you sure you want to delete this subtask? This action cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: () => void onDeleteSubtask(subtask),
+          },
+        ]
+      );
+    };
   const normalizedStatusOptions = statusOptions.map((option) => {
     const rawOption = option as SubtaskStatus & {
       statusId?: number | string;

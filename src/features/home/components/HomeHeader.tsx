@@ -9,7 +9,7 @@ interface HomeHeaderProps {
   userName: string;
   avatarUri?: string;
   onOpenScanner: () => void;
-  onOpenNotifications: () => void;
+  // onOpenNotifications: () => void;
   onOpenProfile: () => void;
 }
 
@@ -18,7 +18,7 @@ export function HomeHeader({
   userName,
   avatarUri,
   onOpenScanner,
-  onOpenNotifications,
+  // onOpenNotifications,
   onOpenProfile,
 }: HomeHeaderProps) {
   return (
@@ -34,13 +34,13 @@ export function HomeHeader({
         <TouchableOpacity style={styles.iconButton} onPress={onOpenScanner}>
           <Ionicons name="scan-outline" size={20} color="#E5F7FF" />
         </TouchableOpacity>
-
+{/* 
         <TouchableOpacity
           style={styles.iconButton}
           onPress={onOpenNotifications}
         >
           <Ionicons name="notifications-outline" size={20} color="#E5F7FF" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <TouchableOpacity style={styles.avatarCircle} onPress={onOpenProfile}>
           {avatarUri ? (

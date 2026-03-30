@@ -1,3 +1,4 @@
+import { useLoading } from "@/src/shared/contexts/LoadingContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
@@ -5,24 +6,37 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import type { HomeTask } from "../home.tasks";
 import { styles } from "../styles/taskQueueModal.styles";
-import {
-  formatDateObject,
-  formatDateTime,
-  getSubtaskDuration,
-  toSafeDate
-} from "../utils/taskQueueModal.utils";
+import { toSafeDate } from "../utils/taskQueueModal.utils";
 import { SubtaskAccordionItem } from "./SubtaskAccordionItem";
+import { SubtaskStatus } from "../../calendar/utils/taskQueueModalCalender.utils";
 
 interface TaskQueueModalProps {
   visible: boolean;
   task: HomeTask | null;
   onClose: () => void;
+  
 }
 
 export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) {
+
+
   const [expandedSubtaskIds, setExpandedSubtaskIds] = useState<number[]>([]);
   const [subtasks, setSubtasks] = useState<NonNullable<HomeTask["subtasks"]>>([]);
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
+    const [subtaskStatuses, setSubtaskStatuses] = useState<SubtaskStatus[]>([]);
+  
+  const { setIsLoading } = useLoading();
+
+
+
+  const normalizeStatusName = (value?: string): string | undefined => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+    // Add your normalization logic here if needed
+    return value;
+  };
+
 
   useEffect(() => {
     let isActive = true;
@@ -68,6 +82,9 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
     };
   }, [task?.id, visible]);
 
+
+
+
   useEffect(() => {
     if (!visible || subtasks.length === 0) {
       setExpandedSubtaskIds([]);
@@ -99,83 +116,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
       });
   }, [subtasks]);
 
-  const derivedMainDescription = useMemo(() => {
-    const firstDescription = sortedSubtasks.find(
-      (subtask) => typeof subtask.description === "string" && subtask.description.trim().length > 0,
-    );
-
-    if (firstDescription?.description) {
-      return firstDescription.description;
-    }
-
-    if (typeof task?.description === "string" && task.description.trim().length > 0) {
-      return task.description;
-    }
-
-    return "No description available";
-  }, [sortedSubtasks, task?.description]);
-
-  const derivedMainDuration = useMemo(() => {
-    const totalDuration = sortedSubtasks.reduce((total, subtask) => {
-      return total + getSubtaskDuration(subtask.duration, subtask.estimatedTime);
-    }, 0);
-
-    return totalDuration;
-  }, [sortedSubtasks]);
-
-  const derivedStartTime = useMemo(() => {
-    if (sortedSubtasks.length === 0) {
-      return formatDateTime(task?.updatedAt);
-    }
-
-    let earliestStartTimestamp: number | null = null;
-
-    sortedSubtasks.forEach((subtask) => {
-      const startDate = toSafeDate(subtask.startTime);
-      if (!startDate) {
-        return;
-      }
-
-      const startTimestamp = startDate.getTime();
-      if (earliestStartTimestamp === null || startTimestamp < earliestStartTimestamp) {
-        earliestStartTimestamp = startTimestamp;
-      }
-    });
-
-    if (!earliestStartTimestamp) {
-      return formatDateTime(task?.updatedAt);
-    }
-
-    return formatDateObject(new Date(earliestStartTimestamp));
-  }, [sortedSubtasks, task?.updatedAt]);
-
-  const derivedDeadline = useMemo(() => {
-    if (sortedSubtasks.length === 0) {
-      return formatDateTime(task?.updatedAt);
-    }
-
-    let latestEndTimestamp: number | null = null;
-
-    sortedSubtasks.forEach((subtask) => {
-      const startDate = toSafeDate(subtask.startTime);
-      const duration = getSubtaskDuration(subtask.duration, subtask.estimatedTime);
-
-      if (!startDate || duration <= 0) {
-        return;
-      }
-
-      const endTimestamp = startDate.getTime() + duration * 60 * 1000;
-      if (!latestEndTimestamp || endTimestamp > latestEndTimestamp) {
-        latestEndTimestamp = endTimestamp;
-      }
-    });
-
-    if (!latestEndTimestamp) {
-      return formatDateTime(task?.updatedAt);
-    }
-
-    return formatDateObject(new Date(latestEndTimestamp));
-  }, [sortedSubtasks, task?.updatedAt]);
+  
 
   const toggleSubtask = (subtaskId: number) => {
     setExpandedSubtaskIds((prev) => {
@@ -225,57 +166,46 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
             </View>
           ) : (
             <ScrollView
-              style={styles.taskQueueBody}
-              contentContainerStyle={styles.taskQueueBodyContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.taskQueueMainSection}>
-             
-
-                <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Description</Text>
-                  <Text style={styles.taskQueueFieldValue}>{task.description}</Text>
-                </View>
-
-                {/* <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Start time</Text>
-                  <Text style={styles.taskQueueFieldValue}>{derivedStartTime}</Text>
-                </View> */}
-
-                {/* <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Deadline</Text>
-                  <Text style={styles.taskQueueFieldValue}>{derivedDeadline}</Text>
-                </View>
-
-                <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Duration</Text>
-                  <Text style={styles.taskQueueFieldValue}>{formatDuration(derivedMainDuration)}</Text>
-                </View> */}
-              </View>
-
-              <View style={styles.taskQueueSubtasksSection}>
-                <Text style={styles.taskQueueSectionTitle}>Subtasks</Text>
-
-                {isLoadingSubtasks ? (
-                  <Text style={styles.taskQueueNoSubtasksText}>Loading subtasks...</Text>
-                ) : sortedSubtasks.length === 0 ? (
-                  <Text style={styles.taskQueueNoSubtasksText}>No subtasks available.</Text>
-                ) : (
-                  sortedSubtasks.map((subtask) => {
-                    const isExpanded = expandedSubtaskIds.includes(subtask.id);
-
-                    return (
-                      <SubtaskAccordionItem
-                        key={subtask.id}
-                        subtask={subtask}
-                        isExpanded={!isExpanded}
-                        onToggle={toggleSubtask}
-                      />
-                    );
-                  })
-                )}
-              </View>
-            </ScrollView>
+                          style={styles.taskQueueBody}
+                          contentContainerStyle={styles.taskQueueBodyContent}
+                          showsVerticalScrollIndicator={false}
+                        >
+                          <View style={styles.taskQueueMainSection}>
+                            <View style={styles.taskQueueFieldRow}>
+                              <Text style={styles.taskQueueFieldLabel}>Task Name</Text>
+                                <Text style={styles.taskQueueFieldValue}>{task.name}</Text>
+                            </View>
+            
+                            <View style={styles.taskQueueFieldRow}>
+                              <Text style={styles.taskQueueFieldLabel}>Description</Text>
+                                <Text style={styles.taskQueueFieldValue}>{task.description}</Text>
+                            </View>
+                          </View>
+            
+                          <View style={styles.taskQueueSubtasksSection}>
+                            <Text style={styles.taskQueueSectionTitle}>Subtasks</Text>
+            
+                            {isLoadingSubtasks ? (
+                              <Text style={styles.taskQueueNoSubtasksText}>Loading subtasks...</Text>
+                            ) : sortedSubtasks.length === 0 ? (
+                              <Text style={styles.taskQueueNoSubtasksText}>No subtasks available.</Text>
+                            ) : (
+                              sortedSubtasks.map((subtask) => {
+                                const isExpanded = expandedSubtaskIds.includes(subtask.id);
+            
+                                return (
+                                  <SubtaskAccordionItem
+                                    key={subtask.id}
+                                    subtask={subtask}
+                                    isExpanded={!isExpanded}
+                                    onToggle={toggleSubtask}
+                                    statusOptions={subtaskStatuses}
+                                  />
+                                );
+                              })
+                            )}
+                          </View>
+                        </ScrollView>
           )}
         </View>
       </View>

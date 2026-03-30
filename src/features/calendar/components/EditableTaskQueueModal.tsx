@@ -20,6 +20,7 @@ import {
   type SubtaskStatus,
 } from "../utils/taskQueueModalCalender.utils";
 import { SubtaskAccordionItem } from "./EditableSubtaskAccordionItem";
+import { useLoading } from "@/src/shared/contexts/LoadingContext";
 
 interface TaskQueueModalProps {
   visible: boolean;
@@ -39,6 +40,7 @@ export function TaskQueueModal({
   onEditTask,
   onDeleteTask,
 }: TaskQueueModalProps) {
+  
   const [expandedSubtaskIds, setExpandedSubtaskIds] = useState<number[]>([]);
   const [subtasks, setSubtasks] = useState<NonNullable<HomeTask["subtasks"]>>([]);
   const [isLoadingSubtasks, setIsLoadingSubtasks] = useState(false);
@@ -49,6 +51,7 @@ export function TaskQueueModal({
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [savingSubtaskId, setSavingSubtaskId] = useState<number | null>(null);
   const [subtaskStatuses, setSubtaskStatuses] = useState<SubtaskStatus[]>([]);
+  const { setIsLoading } = useLoading();
 
   const normalizeStatusName = (value?: string): string | undefined => {
     if (typeof value !== "string") {
@@ -61,6 +64,7 @@ export function TaskQueueModal({
 
   const loadSubtasks = async (taskId: number): Promise<void> => {
     setIsLoadingSubtasks(true);
+    setIsLoading(true, "Loading subtasks...");
 
     try {
       const fetchedSubtasks = await getSubtasksByTask(taskId);
@@ -99,6 +103,7 @@ export function TaskQueueModal({
       setSubtasks([]);
     } finally {
       setIsLoadingSubtasks(false);
+      setIsLoading(false);
     }
   };
 
@@ -531,21 +536,6 @@ export function TaskQueueModal({
                     <Text style={styles.taskQueueFieldValue}>{task.description}</Text>
                   )}
                 </View>
-
-                {/* <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Start time</Text>
-                  <Text style={styles.taskQueueFieldValue}>{derivedStartTime}</Text>
-                </View> */}
-
-                {/* <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Deadline</Text>
-                  <Text style={styles.taskQueueFieldValue}>{derivedDeadline}</Text>
-                </View>
-
-                <View style={styles.taskQueueFieldRow}>
-                  <Text style={styles.taskQueueFieldLabel}>Duration</Text>
-                  <Text style={styles.taskQueueFieldValue}>{formatDuration(derivedMainDuration)}</Text>
-                </View> */}
               </View>
 
               <View style={styles.taskQueueSubtasksSection}>
