@@ -11,6 +11,7 @@ import AddTaskScreen from "../../features/calendar/AddTask/components/AddTaskScr
 import AIBreakdownScreen from "../../features/calendar/AddTask/components/AIBreakdownScreen";
 import CalendarScreen from "../../features/calendar/CalendarScreen";
 import HomeScreen from "../../features/home/HomeScreen";
+import DeviceProvisioningScreen from "../../features/provisioning/screens/DeviceProvisioningScreen";
 import { clearStoredUser, findOrCreateUser } from "../../services/focusFrameUserService";
 import { tokenManager } from "../../utils/tokenManager";
 
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   AddTaskDetails: undefined;
   AIBreakdownDetails: undefined;
   AIBreakdownResult: { result: any };
+  DeviceProvisioning: { prefilledSsid?: string } | undefined;
   Loading: undefined;
 };
 
@@ -158,6 +160,11 @@ export function RootNavigator() {
           <Stack.Screen
             name="AIBreakdownResult"
             component={AIBreakdownResultScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="DeviceProvisioning"
+            component={DeviceProvisioningScreen}
             options={{ headerShown: false }}
           />
         </>

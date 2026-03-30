@@ -6,7 +6,8 @@ import { Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FocusHeroCard } from "./components/FocusHeroCard";
 import { HomeHeader } from "./components/HomeHeader";
-import QrScannerModal from "./components/QrScannerModal";
+import DeviceProvisioningModal from "./../provisioning/screens/DeviceProvisioningScreen"; // Import the modal
+// import QrScannerModal from "./components/QrScannerModal";
 import { QuickActionsSection } from "./components/QuickActionsSection";
 import { SystemStatusPill } from "./components/SystemStatusPill";
 import { TaskQueueModal } from "./components/TaskQueueModal";
@@ -24,7 +25,6 @@ const QUICK_ACTIONS = [
   { id: "start", label: "Start Focus\nSession", icon: "play" as const },
   { id: "plan", label: "Plan Tasks", icon: "checkmark-circle" as const },
   { id: "analytics", label: "Analytics", icon: "stats-chart" as const },
-  { id: "settings", label: "Settings", icon: "settings" as const },
 ] as const;
 
 export default function HomeScreen({ userInfo }: HomeScreenProps) {
@@ -33,13 +33,19 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<HomeTask | null>(null);
-  const {
-    isScannerVisible,
-    isProcessingScan,
-    openScanner,
-    closeScanner,
-    handleScan,
-  } = useQrCodeScanner();
+  const [setupModalVisible, setSetupModalVisible] = useState(false);
+  // const {
+  //   isScannerVisible,
+  //   isProcessingScan,
+  //   scannedQrPayload,
+  //   clearScannedQrPayload,
+  //   openScanner,
+  //   closeScanner,
+  //   handleScan,
+  // } = useQrCodeScanner();
+
+
+
 
   const { upNextData, refreshTasks } = useHomeTasks();
 
@@ -57,6 +63,25 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
       void refreshTasks();
     }, [refreshTasks]),
   );
+
+
+    const handleOpenProvisioning = useCallback(() => {
+    navigation.navigate("DeviceProvisioning", {
+      prefilledSsid: "", 
+    });
+  }, [navigation]);
+
+
+  // useEffect(() => {
+  //   if (!scannedQrPayload) {
+  //     return;
+  //   }
+
+  //   navigation.navigate("DeviceProvisioning", {
+  //     prefilledSsid: scannedQrPayload.ssid,
+  //   });
+  //   clearScannedQrPayload();
+  // }, [clearScannedQrPayload, navigation, scannedQrPayload]);
 
   const handleQuickAction = useCallback((actionId: string) => {
     switch (actionId) {
@@ -113,8 +138,8 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
           currentDate={currentDate}
           userName={userName}
           avatarUri={userInfo?.user?.photo}
-          onOpenScanner={openScanner}
-          // onOpenNotifications={() => Alert.alert("Notifications", "Coming soon.")}
+          onOpenScanner={() => setSetupModalVisible(true)}         
+           // onOpenNotifications={() => Alert.alert("Notifications", "Coming soon.")}
           onOpenProfile={() => Alert.alert("Profile", "Coming soon.")}
         />
 
@@ -125,7 +150,10 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
           upNextData={upNextData}
           onOpenTaskQueue={handleOpenTaskQueue}
         />
-
+      <DeviceProvisioningModal 
+        visible={setupModalVisible} 
+        onClose={() => setSetupModalVisible(false)} 
+      />
         <QuickActionsSection
           actions={QUICK_ACTIONS}
           onActionPress={handleQuickAction}
@@ -133,12 +161,12 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
       </ScrollView>
 
 
-      <QrScannerModal
+      {/* <QrScannerModal
         visible={isScannerVisible}
         isProcessingScan={isProcessingScan}
         onClose={closeScanner}
         onScan={handleScan}
-      />
+      /> */}
 
       <BottomNav activeRoute="Home" />
 
