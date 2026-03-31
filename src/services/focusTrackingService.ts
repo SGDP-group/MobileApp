@@ -96,6 +96,7 @@ export class FocusTrackingService {
   private static currentUserId: string | null = null;
   private static currentSessionId: string | null = null;
 
+
   // User Management
   static setCurrentUser(userId: string) {
     this.currentUserId = userId;
