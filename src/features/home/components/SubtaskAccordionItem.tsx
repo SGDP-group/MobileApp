@@ -1,15 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import DateTimePicker, {
-  DateTimePickerEvent,
+import {
+    DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import React, { useEffect, useState } from "react";
-import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 import { styles } from "./../../calendar/styles/taskQueueModalCalender.styles";
 import {
-  getStatusLabel,
-   getStatusLabelStatus,
-  type HomeSubtask,
-  type SubtaskStatus
+    getStatusLabelStatus,
+    type HomeSubtask,
+    type SubtaskStatus
 } from "./../../calendar/utils/taskQueueModalCalender.utils";
 
 import { formatDateTimeForDisplay, normalizeId, normalizeName, toDate } from "./../../calendar/utils/editableSubtaskAccordionItem.utils";
@@ -258,7 +257,7 @@ export function SubtaskAccordionItem({
             <Text style={styles.taskQueueFieldLabel}>Status</Text>
            
               <View style={styles.subtaskStatusOptionsRow}>
-                {resolvedStatusOptions.map((option) => {
+                {resolvedStatusOptions.map((option, index) => {
                   const isSelected =
                     normalizeId(option.id) === normalizeId(editableStatusId) ||
                     normalizeName(option.name) === normalizeName(editableStatusName) ||
@@ -266,6 +265,7 @@ export function SubtaskAccordionItem({
 
                   return (
                       <Text
+                        key={`status-${option.id}-${index}`}
                         style={[
                           styles.subtaskStatusOptionText,
                           isSelected && styles.subtaskStatusOptionTextActive,
