@@ -1,23 +1,24 @@
+import Ionicons from "@expo/vector-icons/Ionicons";
 import {
     pingProvisioningServer,
     submitProvisioning,
 } from "@services/deviceProvisioningService";
 import { getStoredUserId } from "@services/focusFrameUserService";
+import StyledAlert from "@shared/components/StyledAlert";
+
 import React, { useCallback, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
-    Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Ionicons from "@expo/vector-icons/Ionicons";
 
 interface DeviceProvisioningModalProps {
     visible: boolean;
@@ -34,21 +35,45 @@ export default function DeviceProvisioningModal({
     const [wifiPassword, setWifiPassword] = useState("");
     const [isChecking, setIsChecking] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState<{
+        title: string;
+        message: string;
+        buttons: Array<{ text: string; onPress?: () => void }>;
+        type?: "info" | "success" | "warning" | "error";
+    }>({
+        title: "",
+        message: "",
+        buttons: [],
+        type: "info",
+    });
+
+    const showAlert = (
+        title: string,
+        message: string,
+        buttons: Array<{ text: string; onPress?: () => void }> = [],
+        type?: "info" | "success" | "warning" | "error"
+    ) => {
+        setAlertConfig({ title, message, buttons, type });
+        setAlertVisible(true);
+    };
 
     const handleCheckConnection = useCallback(async () => {
         setIsChecking(true);
         try {
             const reachable = await pingProvisioningServer();
             if (!reachable) {
-                Alert.alert(
+                showAlert(
                     "Device Not Reachable",
-                    "Connect your phone to PiSetup-XXXX and try again."
+                    "Connect your phone to PiSetup-XXXX and try again.",
+                    undefined,
+                    "warning"
                 );
                 return;
             }
-            Alert.alert("Connected", "Pi provisioning server is reachable.");
+            showAlert("Connected", "Pi provisioning server is reachable.", undefined, "success");
         } catch {
-            Alert.alert("Connection Failed", "Could not reach the device.");
+            showAlert("Connection Failed", "Could not reach the device.", undefined, "error");
         } finally {
             setIsChecking(false);
         }
@@ -56,7 +81,7 @@ export default function DeviceProvisioningModal({
 
     const handleSubmit = useCallback(async () => {
         if (!wifiSsid || !wifiPassword) {
-            Alert.alert("Missing Info", "Please enter both SSID and Password.");
+            showAlert("Missing Info", "Please enter both SSID and Password.", undefined, "warning");
             return;
         }
 
@@ -64,21 +89,21 @@ export default function DeviceProvisioningModal({
         try {
             const userId = await getStoredUserId();
             if (!userId) {
-                Alert.alert("Sign In Required", "Please sign in again.");
+                showAlert("Sign In Required", "Please sign in again.", undefined, "warning");
                 return;
             }
             const response = await submitProvisioning({ userId, wifiSsid, wifiPassword });
 
             if (response.status === "error") {
-                Alert.alert("Error", response.message || "Please retry.");
+                showAlert("Error", response.message || "Please retry.", undefined, "error");
                 return;
             }
 
-            Alert.alert("Success", "Settings sent! Device is rebooting.");
+            showAlert("Success", "Settings sent! Device is rebooting.", undefined, "success");
             setWifiPassword("");
             onClose(); // Close modal on success
         } catch (error) {
-            Alert.alert("Failed", "Provisioning request failed.");
+            showAlert("Failed", "Provisioning request failed.", undefined, "error");
         } finally {
             setIsSubmitting(false);
         }
@@ -159,6 +184,14 @@ export default function DeviceProvisioningModal({
                     </TouchableOpacity>
                 </KeyboardAvoidingView>
             </SafeAreaView>
+
+            <StyledAlert
+                visible={alertVisible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                buttons={alertConfig.buttons}
+                type={alertConfig.type}
+            />
         </Modal>
     );
 }

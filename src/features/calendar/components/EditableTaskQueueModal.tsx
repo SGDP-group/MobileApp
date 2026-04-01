@@ -1,26 +1,26 @@
+import { useLoading } from "@/src/shared/contexts/LoadingContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { getSubtaskStatuses, getSubtasksByTask, patchSubtask } from "@services/focusFrameSubtaskService";
+import StyledAlert from "@shared/components/StyledAlert";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Modal,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import type { HomeTask } from "../../home/home.tasks";
 import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
-  toSafeDate,
-  type HomeSubtask,
-  type SubtaskStatus,
+    toSafeDate,
+    type HomeSubtask,
+    type SubtaskStatus,
 } from "../utils/taskQueueModalCalender.utils";
 import { SubtaskAccordionItem } from "./EditableSubtaskAccordionItem";
-import { useLoading } from "@/src/shared/contexts/LoadingContext";
 
 interface TaskQueueModalProps {
   visible: boolean;
@@ -52,6 +52,23 @@ export function TaskQueueModal({
   const [savingSubtaskId, setSavingSubtaskId] = useState<number | null>(null);
   const [subtaskStatuses, setSubtaskStatuses] = useState<SubtaskStatus[]>([]);
   const { setIsLoading } = useLoading();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({ title: "", message: "", buttons: [] });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }>,
+    type?: "info" | "success" | "warning" | "error",
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  };
 
   const normalizeStatusName = (value?: string): string | undefined => {
     if (typeof value !== "string") {
@@ -275,7 +292,7 @@ export function TaskQueueModal({
     const trimmedDescription = editableDescription.trim();
 
     if (!trimmedName) {
-      Alert.alert("Validation", "Task name is required.");
+      showAlert("Validation", "Task name is required.", [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
       return;
     }
 
@@ -287,7 +304,7 @@ export function TaskQueueModal({
       });
       setIsEditing(false);
     } catch (error) {
-      Alert.alert("Error", getSafeErrorMessage(error));
+      showAlert("Error", getSafeErrorMessage(error), [{ text: "OK", onPress: () => setAlertVisible(false) }], "error");
     } finally {
       setIsSavingEdit(false);
     }
@@ -298,13 +315,14 @@ export function TaskQueueModal({
       return;
     }
 
-    Alert.alert(
+    showAlert(
       "Delete Task",
       "This will permanently delete this task and all related subtasks. This action cannot be undone.",
       [
         {
           text: "Cancel",
           style: "cancel",
+          onPress: () => setAlertVisible(false),
         },
         {
           text: "Delete",
@@ -314,9 +332,9 @@ export function TaskQueueModal({
               try {
                 setIsDeletingTask(true);
                 await onDeleteTask(task);
-                
+                setAlertVisible(false);
               } catch (error) {
-                Alert.alert("Error", getSafeErrorMessage(error));
+                showAlert("Error", getSafeErrorMessage(error), [{ text: "OK", onPress: () => setAlertVisible(false) }], "error");
               } finally {
                 setIsDeletingTask(false);
               }
@@ -324,6 +342,7 @@ export function TaskQueueModal({
           },
         },
       ],
+      "warning"
     );
   };
 
@@ -579,6 +598,13 @@ export function TaskQueueModal({
             </View>
           )}
         </View>
+        <StyledAlert
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          type={alertConfig.type}
+        />
       </View>
     </Modal>
   );
