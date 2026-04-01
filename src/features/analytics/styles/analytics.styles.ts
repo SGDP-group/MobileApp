@@ -31,10 +31,27 @@ export const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: 16,
   },
+  sectionHeaderWithButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: colors.text,
+  },
+  viewAllButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    // backgroundColor: "rgba(84, 210, 255, 0.1)",
+  },
+  viewAllButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#54D2FF",
   },
   cardsRow: {
     paddingBottom: 10,
