@@ -7,24 +7,24 @@ import { createTask as createFocusFrameTask } from "@services/focusFrameTaskServ
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { googleCalendarService } from "@services/googleCalendarService";
 import {
-    calculateEndTime,
-    formatDateFromDate,
-    formatTimeFromDate,
-    scheduleSubtasksWithConflictDetection,
+  calculateEndTime,
+  formatDateFromDate,
+  formatTimeFromDate,
+  scheduleSubtasksWithConflictDetection,
 } from "@services/subtaskSchedulingService";
 import StyledAlert from "@shared/components/StyledAlert";
 import {
-    RootNavigationProp,
-    RootStackParamList,
+  RootNavigationProp,
+  RootStackParamList,
 } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
 import {
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles as detailsStyles } from "../styles/addTaskDetails.styles";
@@ -575,8 +575,9 @@ const { setIsLoading } = useLoading();
     date: undefined,
   }));
   
-  const [subtasks, setSubtasks] = useState<Subtask[]>(initialSubtasks);
-
+  const [subtasks, setSubtasks] = useState<Subtask[]>(
+    result?.tasks[0]?.subtasks || [],
+  );
   const getInitialStartTime = (): string => {
     if (passedStartTime) {
       return `${formatDateFromDate(passedStartTime)} ${formatTimeFromDate(passedStartTime)}`;
@@ -961,6 +962,7 @@ const { setIsLoading } = useLoading();
             "info"
           );
         }
+        setIsScheduling(false);
       } else {
         setIsScheduling(false);
         showAlert(
@@ -1059,18 +1061,18 @@ const { setIsLoading } = useLoading();
         });
       }
 
-      await Promise.all(
+     await Promise.all(
         subtaskPayload.map((subtask) =>
           createFocusFrameSubtask(subtask as any),
         ),
       );
+
 
       if (calendarFailureCount > 0) {
         console.warn(
           `Created ${subtaskPayload.length} subtasks, but ${calendarFailureCount} Google Calendar event(s) failed to create`,
         );
       }
-
       return true;
     } catch (error) {
       console.error("Error creating subtasks:", error);
@@ -1107,6 +1109,8 @@ const { setIsLoading } = useLoading();
           [{ text: "OK", onPress: () => setAlertVisible(false) }],
           "error"
         );
+        setIsLoading(false);
+        setIsSaving(false);
         return;
       }
 
@@ -1121,7 +1125,11 @@ const { setIsLoading } = useLoading();
       }
 
       const subtasksCreated = await createSubtasks(createdTask.id);
-      if (!subtasksCreated) return;
+      if (!subtasksCreated) {
+        setIsLoading(false);
+        setIsSaving(false);
+        return;
+      }
 
       setIsEditing(false);
       const totalSubtaskCount = getTotalSubtaskCount(subtasks);
@@ -1147,6 +1155,7 @@ const { setIsLoading } = useLoading();
       );
     } finally {
       setIsSaving(false);
+      setIsLoading(false);
     }
   };
 
