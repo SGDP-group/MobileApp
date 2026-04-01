@@ -306,7 +306,7 @@ export default function AIBreakdownScreen() {
         }}>
           <ActivityIndicator size="large" color="#fff" />
           <Text style={{ color: '#fff', marginTop: 15, fontWeight: '600', fontSize: 16 }}>
-            Generating subtasks...
+            Breaking the task into smart action steps…
           </Text>
         </View>
       )}

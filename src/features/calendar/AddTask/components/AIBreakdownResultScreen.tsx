@@ -678,15 +678,38 @@ const { setIsLoading } = useLoading();
 
     return taskList.map((subtask) => {
       const endTime = calculateEndTime(currentTime, subtask.estimated_time);
+      
+      // Check if time has gone past 24 hours
+      const [endHours, endMins] = endTime.split(":").map(Number);
+      let nextCurrentTime = endTime;
+      let nextCurrentDate = currentDate;
+      
+      if (endHours >= 24) {
+        // Time rolled over to next day - calculate proper day and time
+        const totalMinutes = endHours * 60 + endMins;
+        const minutesInDay = 24 * 60;
+        const daysAdded = Math.floor(totalMinutes / minutesInDay);
+        const remainingMinutes = totalMinutes % minutesInDay;
+        
+        const wrappedHours = Math.floor(remainingMinutes / 60);
+        const wrappedMins = remainingMinutes % 60;
+        nextCurrentTime = `${String(wrappedHours).padStart(2, "0")}:${String(wrappedMins).padStart(2, "0")}`;
+        
+        // Add days to current date
+        const currentDateObj = new Date(currentDate);
+        currentDateObj.setDate(currentDateObj.getDate() + daysAdded);
+        nextCurrentDate = formatDateFromDate(currentDateObj);
+      }
 
       const updatedSubtask = {
         ...subtask,
         startTime: currentTime,
-        endTime: endTime,
+        endTime: endHours >= 24 ? nextCurrentTime : endTime,
         date: currentDate,
       };
 
-      currentTime = endTime;
+      currentTime = nextCurrentTime;
+      currentDate = nextCurrentDate;
 
       return updatedSubtask;
     });
@@ -818,13 +841,36 @@ const { setIsLoading } = useLoading();
             currentTime,
             updated[i].estimated_time,
           );
+          
+          // Handle day rollover if time goes past 24 hours
+          const [nextEndHours, nextEndMins] = nextEnd.split(":").map(Number);
+          let nextCurrentTime = nextEnd;
+          let nextCurrentDate = currentDate;
+          
+          if (nextEndHours >= 24) {
+            // Time rolled over to next day
+            const totalMinutes = nextEndHours * 60 + nextEndMins;
+            const minutesInDay = 24 * 60;
+            const daysAdded = Math.floor(totalMinutes / minutesInDay);
+            const remainingMinutes = totalMinutes % minutesInDay;
+            
+            const wrappedHours = Math.floor(remainingMinutes / 60);
+            const wrappedMins = remainingMinutes % 60;
+            nextCurrentTime = `${String(wrappedHours).padStart(2, "0")}:${String(wrappedMins).padStart(2, "0")}`;
+            
+            const nextDateObj = new Date(currentDate);
+            nextDateObj.setDate(nextDateObj.getDate() + daysAdded);
+            nextCurrentDate = formatDateFromDate(nextDateObj);
+          }
+          
           updated[i] = {
             ...updated[i],
             startTime: currentTime,
-            endTime: nextEnd,
+            endTime: nextEndHours >= 24 ? nextCurrentTime : nextEnd,
             date: currentDate,
           };
-          currentTime = nextEnd;
+          currentTime = nextCurrentTime;
+          currentDate = nextCurrentDate;
         }
       }
 
@@ -1065,6 +1111,10 @@ const { setIsLoading } = useLoading();
       for (let i = 0; i < subtaskPayload.length; i++) {
         const subtask = subtaskPayload[i];
         await createFocusFrameSubtask(subtask as any);
+        
+        // Update progress with percentage
+        const progress = Math.round(((i + 1) / subtaskPayload.length) * 100);
+        setIsLoading(true, `Creating SubTasks... ${i + 1}/${subtaskPayload.length} (${progress}%)`);
         
         // Add delay between subtask creations to respect rate limits
         if (i < subtaskPayload.length - 1) {
