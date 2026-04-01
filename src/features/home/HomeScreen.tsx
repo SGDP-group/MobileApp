@@ -1,6 +1,8 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { googleCalendarService } from "@services/googleCalendarService";
 import { BottomNav } from "@shared/components/BottomNav";
 import StyledAlert from "@shared/components/StyledAlert";
+import { useLoading } from "@shared/contexts/LoadingContext";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView } from "react-native";
@@ -27,12 +29,14 @@ const QUICK_ACTIONS = [
   { id: "analytics", label: "Analytics", icon: "stats-chart" as const },
   { id: "addTaskAI", label: "Add Task by AI", icon: "sparkles" as const },
   { id: "addTaskManual", label: "Add Task", icon: "add-circle" as const },
+  { id: "deleteNextWeek", label: "Clear 2 Weeks", icon: "trash" as const },
   // { id: "start", label: "Start Focus\nSession", icon: "play" as const },
   // { id: "clearToday", label: "Clear Today", icon: "trash" as const },
 ] as const;
 
 export default function HomeScreen({ userInfo }: HomeScreenProps) {
   const navigation = useNavigation<RootNavigationProp>();
+  const { setIsLoading } = useLoading();
   const userName = userInfo?.user?.name ?? "User";
   const [currentDate, setCurrentDate] = useState(new Date());
   const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
@@ -112,10 +116,57 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
       case "analytics":
         navigation.navigate("Analytics");
         return;
+      case "deleteNextWeek":
+        handleDeleteNextWeekEvents();
+        return;
       default:
         showAlert("Action", "This action is coming soon.", undefined, "info");
     }
   }, [navigation]);
+
+  const handleDeleteNextWeekEvents = useCallback(async () => {
+    try {
+      setIsLoading(true, "Deleting next 2 weeks' events and subtasks...");
+      const result = await googleCalendarService.deleteNextWeekEvents();
+      setIsLoading(false);
+
+      const totalDeleted = result.deleted + result.dbDeleted;
+      const totalFailed = result.failed + result.dbFailed;
+
+      if (totalDeleted > 0) {
+        const details = `\nCalendar: ${result.deleted}${result.failed > 0 ? ` (${result.failed} failed)` : ""}\nDatabase: ${result.dbDeleted}${result.dbFailed > 0 ? ` (${result.dbFailed} failed)` : ""}`;
+        showAlert(
+          "Success",
+          `Deleted ${totalDeleted} item(s) from next 2 weeks${details}`,
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "success"
+        );
+      } else if (totalDeleted === 0 && totalFailed === 0) {
+        showAlert(
+          "Info",
+          "No events or subtasks found for next 2 weeks",
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "info"
+        );
+      } else {
+        showAlert(
+          "Warning",
+          `Deleted ${totalDeleted} item(s), but ${totalFailed} failed to delete`,
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "warning"
+        );
+      }
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error deleting 2 weeks events:", error);
+      showAlert(
+        "Error",
+        "Failed to delete next 2 weeks' events. Please try again.",
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "error"
+      );
+    }
+  }, [setIsLoading]);
 
   const handleOpenTaskQueue = useCallback((task?: HomeTask) => {
     if (task) {

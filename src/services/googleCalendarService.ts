@@ -5,6 +5,9 @@ import {
   validateEventId
 } from "@utils/securityUtils";
 import { tokenManager } from "@utils/tokenManager";
+import { deleteSubtask, getSubtasksByTask } from "./focusFrameSubtaskService";
+import { getTasksByUser } from "./focusFrameTaskService";
+import { getStoredUserId } from "./focusFrameUserService";
 
 export interface CalendarEvent {
   id?: string;
@@ -306,6 +309,105 @@ class GoogleCalendarService {
       return data.items || [];
     } catch (error) {
       console.error("Error fetching calendar events:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete all events from 2 weeks (Monday of this week to Sunday of next week)
+   * Also deletes corresponding subtasks from the database
+   * Automatically calculates the date range for current + next week
+   */
+  async deleteNextWeekEvents(): Promise<{ deleted: number; failed: number; dbDeleted: number; dbFailed: number }> {
+    try {
+      // Calculate 2 weeks date range
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Find this week's Monday
+      const dayOfWeek = today.getDay();
+      const daysBackToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const thisMonday = new Date(today);
+      thisMonday.setDate(today.getDate() - daysBackToMonday);
+      
+      // 2 weeks = Monday of this week to Sunday of next week (13 days later)
+      const twoWeeksSunday = new Date(thisMonday);
+      twoWeeksSunday.setDate(thisMonday.getDate() + 13);
+      twoWeeksSunday.setHours(23, 59, 59, 999);
+
+      console.log(`[deleteThisWeekEvents] Date range (2 weeks): ${thisMonday.toISOString()} to ${twoWeeksSunday.toISOString()}`);
+
+      // Get all user's tasks and subtasks for 2 weeks
+      let dbDeleted = 0;
+      let dbFailed = 0;
+      
+      try {
+        const userId = await getStoredUserId();
+        if (userId) {
+          const tasks = await getTasksByUser(userId);
+          console.log(`[deleteThisWeekEvents] Found ${tasks.length} tasks for user`);
+
+          for (const task of tasks) {
+            try {
+              const subtasks = await getSubtasksByTask(task.id);
+              console.log(`[deleteThisWeekEvents] Task ${task.id} has ${subtasks.length} subtasks`);
+
+              for (const subtask of subtasks) {
+                // Check if subtask falls within 2 weeks
+                if (!subtask.startTime) continue;
+                const subtaskDate = new Date(subtask.startTime);
+                if (subtaskDate >= thisMonday && subtaskDate <= twoWeeksSunday) {
+                  try {
+                    console.log(`[deleteThisWeekEvents] Deleting DB subtask: ${subtask.id} - ${subtask.name}`);
+                    await deleteSubtask(subtask.id);
+                    console.log(`[deleteThisWeekEvents] ✓ Successfully deleted DB subtask: ${subtask.id}`);
+                    dbDeleted++;
+                  } catch (error) {
+                    console.error(`[deleteThisWeekEvents] ✗ Failed to delete DB subtask ${subtask.id}:`, error);
+                    dbFailed++;
+                  }
+                }
+              }
+            } catch (error) {
+              console.error(`[deleteThisWeekEvents] Error getting subtasks for task ${task.id}:`, error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[deleteThisWeekEvents] Error deleting database subtasks:", error);
+      }
+
+      // Fetch events for 2 weeks from Google Calendar
+      const events = await this.getEventsByDateRange(thisMonday, twoWeeksSunday);
+      console.log(`[deleteThisWeekEvents] Found ${events?.length || 0} Google Calendar events`);
+
+      if (!events || events.length === 0) {
+        console.log("No Google Calendar events found for 2 weeks");
+        return { deleted: 0, failed: 0, dbDeleted, dbFailed };
+      }
+
+      // Delete each Google Calendar event
+      let deleted = 0;
+      let failed = 0;
+
+      for (const event of events) {
+        try {
+          if (event.id) {
+            console.log(`[deleteThisWeekEvents] Deleting Google Calendar event: ${event.id} - ${event.summary}`);
+            await this.deleteEvent(event.id);
+            console.log(`[deleteThisWeekEvents] ✓ Successfully deleted Google Calendar event: ${event.id}`);
+            deleted++;
+          }
+        } catch (error) {
+          console.error(`[deleteThisWeekEvents] ✗ Failed to delete Google Calendar event ${event.id}:`, error);
+          failed++;
+        }
+      }
+
+      console.log(`[deleteThisWeekEvents] RESULT: Deleted ${deleted} Google Calendar events, ${failed} failed | Deleted ${dbDeleted} DB subtasks, ${dbFailed} failed`);
+      return { deleted, failed, dbDeleted, dbFailed };
+    } catch (error) {
+      console.error("[deleteThisWeekEvents] Error deleting this week events:", error);
       throw error;
     }
   }
