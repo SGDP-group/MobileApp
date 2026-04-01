@@ -361,8 +361,11 @@ const { setIsLoading } = useLoading();
       showAlert(
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.title,
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
-        [{ text: "OK", onPress: () => { setAlertVisible(false); navigation.getParent()?.navigate("Home"); } }],
-        "error"
+        [{ text: "OK", onPress: () => { 
+          setAlertVisible(false); 
+          navigation.navigate("Home" as never);
+        } }],
+        "success"
       );
       return { success: false, calendarFailureCount };
     }

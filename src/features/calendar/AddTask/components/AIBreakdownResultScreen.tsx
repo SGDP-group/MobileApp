@@ -31,7 +31,7 @@ import { styles as detailsStyles } from "../styles/addTaskDetails.styles";
 import { styles } from "../styles/aiBreakdownResult.styles";
 import { Subtask } from "../types/types";
 import { SUCCESS_MESSAGES, VALIDATION_ERRORS } from "../utils/validationMessages";
-import { getDeviceTimeZone, toOffsetDateTime } from "./../utils/timezone";
+import { getDeviceTimeZone, toLocalApiDateTime, toOffsetDateTime } from "./../utils/timezone";
 
 
 
@@ -1007,9 +1007,9 @@ const { setIsLoading } = useLoading();
         const startDate = new Date(`${dateStr}T${startTimeStr}:00`);
         const endDate = new Date(`${dateStr}T${endTimeStr}:00`);
         
-        // Convert to local time with timezone offset
-        const startDateTime = toOffsetDateTime(startDate);
-        const endDateTime = toOffsetDateTime(endDate);
+        // Convert to local API format for database
+        const startDateTime = toLocalApiDateTime(startDate);
+        const endDateTime = toLocalApiDateTime(endDate);
 
         let googleEventId: string | undefined = undefined;
         if (subtask.startTime && subtask.endTime) {
@@ -1061,12 +1061,16 @@ const { setIsLoading } = useLoading();
         });
       }
 
-     await Promise.all(
-        subtaskPayload.map((subtask) =>
-          createFocusFrameSubtask(subtask as any),
-        ),
-      );
-
+      // Create subtasks sequentially with delays to avoid backend rate limiting
+      for (let i = 0; i < subtaskPayload.length; i++) {
+        const subtask = subtaskPayload[i];
+        await createFocusFrameSubtask(subtask as any);
+        
+        // Add delay between subtask creations to respect rate limits
+        if (i < subtaskPayload.length - 1) {
+          await delay(300);
+        }
+      }
 
       if (calendarFailureCount > 0) {
         console.warn(
@@ -1142,7 +1146,10 @@ const { setIsLoading } = useLoading();
       showAlert(
         successMsg.title,
         successMsg.message,
-        [{ text: "OK", onPress: () => { setAlertVisible(false); navigation.getParent()?.navigate("Home"); } }],
+        [{ text: "OK", onPress: () => { 
+          setAlertVisible(false); 
+          navigation.navigate("Home" as never);
+        } }],
         "success"
       );
     } catch (error) {
