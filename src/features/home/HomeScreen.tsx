@@ -22,9 +22,13 @@ interface HomeScreenProps {
 }
 
 const QUICK_ACTIONS = [
-  { id: "start", label: "Start Focus\nSession", icon: "play" as const },
+  
   { id: "plan", label: "Plan Tasks", icon: "checkmark-circle" as const },
   { id: "analytics", label: "Analytics", icon: "stats-chart" as const },
+  { id: "addTaskAI", label: "Add Task by AI", icon: "sparkles" as const },
+  { id: "addTaskManual", label: "Add Task", icon: "add-circle" as const },
+  // { id: "start", label: "Start Focus\nSession", icon: "play" as const },
+  // { id: "clearToday", label: "Clear Today", icon: "trash" as const },
 ] as const;
 
 export default function HomeScreen({ userInfo }: HomeScreenProps) {
@@ -86,39 +90,28 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
     }, [refreshTasks]),
   );
 
-
-    const handleOpenProvisioning = useCallback(() => {
+  const handleOpenProvisioning = useCallback(() => {
     navigation.navigate("DeviceProvisioning", {
       prefilledSsid: "", 
     });
   }, [navigation]);
 
 
-  // useEffect(() => {
-  //   if (!scannedQrPayload) {
-  //     return;
-  //   }
-
-  //   navigation.navigate("DeviceProvisioning", {
-  //     prefilledSsid: scannedQrPayload.ssid,
-  //   });
-  //   clearScannedQrPayload();
-  // }, [clearScannedQrPayload, navigation, scannedQrPayload]);
 
   const handleQuickAction = useCallback((actionId: string) => {
     switch (actionId) {
+      case "addTaskAI":
+        navigation.navigate("AIBreakdownDetails");
+        return;
+      case "addTaskManual":
+        navigation.navigate("AddTaskDetails");
+        return;
       case "plan":
         navigation.navigate("Calendar");
-        return;
-      case "start":
-        navigation.navigate("Focus");
         return;
       case "analytics":
         navigation.navigate("Analytics");
         return;
-      // case "settings":
-      //   showAlert("Settings", "Settings are coming soon.");
-      //   return;
       default:
         showAlert("Action", "This action is coming soon.", undefined, "info");
     }

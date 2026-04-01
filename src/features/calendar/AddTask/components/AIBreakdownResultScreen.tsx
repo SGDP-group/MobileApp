@@ -1102,7 +1102,7 @@ const { setIsLoading } = useLoading();
     }
 
     try {
-      setIsLoading(true,"Updating the Calendar...");
+      setIsLoading(true,"Preparing...");
       setIsSaving(true);
 
       const userId = await getStoredUserId();
@@ -1118,6 +1118,7 @@ const { setIsLoading } = useLoading();
         return;
       }
 
+      setIsLoading(true,"Creating task...");
       const createdTask = await createFocusFrameTask({
         name: mainTask?.description || "AI Breakdown Task",
         description: mainTask?.description || "",
@@ -1128,6 +1129,7 @@ const { setIsLoading } = useLoading();
         throw new Error("Task created without task id.");
       }
 
+      setIsLoading(true,"Creating SubTasks...");
       const subtasksCreated = await createSubtasks(createdTask.id);
       if (!subtasksCreated) {
         setIsLoading(false);

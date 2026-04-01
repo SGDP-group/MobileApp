@@ -1,8 +1,8 @@
 import {
-    isDevelopment,
-    sanitizeString,
-    validateDateRange,
-    validateEventId
+  isDevelopment,
+  sanitizeString,
+  validateDateRange,
+  validateEventId
 } from "@utils/securityUtils";
 import { tokenManager } from "@utils/tokenManager";
 

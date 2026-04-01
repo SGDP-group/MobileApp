@@ -4,11 +4,11 @@ import { getSubtasksByTask } from "@services/focusFrameSubtaskService";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { SubtaskStatus } from "../../calendar/utils/taskQueueModalCalender.utils";
 import type { HomeTask } from "../home.tasks";
 import { styles } from "../styles/taskQueueModal.styles";
 import { toSafeDate } from "../utils/taskQueueModal.utils";
 import { SubtaskAccordionItem } from "./SubtaskAccordionItem";
-import { SubtaskStatus } from "../../calendar/utils/taskQueueModalCalender.utils";
 
 interface TaskQueueModalProps {
   visible: boolean;
@@ -33,8 +33,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
     if (typeof value !== "string") {
       return undefined;
     }
-    // Add your normalization logic here if needed
-    return value;
+        return value;
   };
 
 
@@ -50,6 +49,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
     }
 
     setIsLoadingSubtasks(true);
+    setIsLoading(true, "Loading Subtasks ...");
     setSubtasks([]);
 
     void (async () => {
@@ -73,6 +73,7 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
       } finally {
         if (isActive) {
           setIsLoadingSubtasks(false);
+          setIsLoading(false);
         }
       }
     })();
@@ -190,12 +191,12 @@ export function TaskQueueModal({ visible, task, onClose }: TaskQueueModalProps) 
                             ) : sortedSubtasks.length === 0 ? (
                               <Text style={styles.taskQueueNoSubtasksText}>No subtasks available.</Text>
                             ) : (
-                              sortedSubtasks.map((subtask) => {
+                              sortedSubtasks.map((subtask, index) => {
                                 const isExpanded = expandedSubtaskIds.includes(subtask.id);
             
                                 return (
                                   <SubtaskAccordionItem
-                                    key={subtask.id}
+                                    key={`subtask-${subtask.id}-${index}`}
                                     subtask={subtask}
                                     isExpanded={!isExpanded}
                                     onToggle={toggleSubtask}

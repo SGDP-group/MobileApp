@@ -5,20 +5,20 @@ import StyledAlert from "@shared/components/StyledAlert";
 import { getSafeErrorMessage } from "@utils/securityUtils";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Modal,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import type { HomeTask } from "../../home/home.tasks";
 import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
-    toSafeDate,
-    type HomeSubtask,
-    type SubtaskStatus,
+  toSafeDate,
+  type HomeSubtask,
+  type SubtaskStatus,
 } from "../utils/taskQueueModalCalender.utils";
 import { SubtaskAccordionItem } from "./EditableSubtaskAccordionItem";
 
@@ -565,12 +565,12 @@ export function TaskQueueModal({
                 ) : sortedSubtasks.length === 0 ? (
                   <Text style={styles.taskQueueNoSubtasksText}>No subtasks available.</Text>
                 ) : (
-                  sortedSubtasks.map((subtask) => {
+                  sortedSubtasks.map((subtask, index) => {
                     const isExpanded = expandedSubtaskIds.includes(subtask.id);
 
                     return (
                       <SubtaskAccordionItem
-                        key={subtask.id}
+                        key={`subtask-${subtask.id}-${index}`}
                         subtask={subtask}
                         isExpanded={!isExpanded}
                         onToggle={toggleSubtask}

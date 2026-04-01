@@ -68,6 +68,7 @@ export const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 12,
     paddingVertical: 12,
+    paddingBottom: 80,
   },
   eventCard: {
     backgroundColor: "#1A2429",
