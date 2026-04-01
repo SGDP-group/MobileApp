@@ -1,3 +1,4 @@
+import { useLoading } from "@/src/shared/contexts/LoadingContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -6,31 +7,34 @@ import { createTask as createFocusFrameTask } from "@services/focusFrameTaskServ
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { googleCalendarService } from "@services/googleCalendarService";
 import {
-  calculateEndTime,
-  formatDateFromDate,
-  formatTimeFromDate,
-  scheduleSubtasksWithConflictDetection,
+    calculateEndTime,
+    formatDateFromDate,
+    formatTimeFromDate,
+    scheduleSubtasksWithConflictDetection,
 } from "@services/subtaskSchedulingService";
+import StyledAlert from "@shared/components/StyledAlert";
 import {
-  RootNavigationProp,
-  RootStackParamList,
+    RootNavigationProp,
+    RootStackParamList,
 } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
 import {
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getDeviceTimeZone, toTwoDigits } from "./../utils/timezone";
 import { styles as detailsStyles } from "../styles/addTaskDetails.styles";
 import { styles } from "../styles/aiBreakdownResult.styles";
 import { Subtask } from "../types/types";
 import { SUCCESS_MESSAGES, VALIDATION_ERRORS } from "../utils/validationMessages";
+import { getDeviceTimeZone, toOffsetDateTime } from "./../utils/timezone";
+
+
+
 const getDurationDisplay = (time: number | string): string => {
   const parsedTime = typeof time === "string" ? parseInt(time, 10) : time;
   return isNaN(parsedTime) || parsedTime <= 0 ? "--" : parsedTime.toString();
@@ -38,25 +42,13 @@ const getDurationDisplay = (time: number | string): string => {
 
 const validateSubtaskTime = (time: string): boolean => {
   if (time.trim() === "") {
-    Alert.alert(
-      VALIDATION_ERRORS.EMPTY_TIME.title,
-      VALIDATION_ERRORS.EMPTY_TIME.message,
-    );
     return false;
   }
   const parsedTime = parseInt(time, 10);
   if (isNaN(parsedTime)) {
-    Alert.alert(
-      VALIDATION_ERRORS.INVALID_TIME.title,
-      VALIDATION_ERRORS.INVALID_TIME.message,
-    );
     return false;
   }
   if (parsedTime <= 0) {
-    Alert.alert(
-      VALIDATION_ERRORS.INVALID_TIME_VALUE.title,
-      VALIDATION_ERRORS.INVALID_TIME_VALUE.message,
-    );
     return false;
   }
   return true;
@@ -64,10 +56,6 @@ const validateSubtaskTime = (time: string): boolean => {
 
 const validateSubtaskDescription = (description: string): boolean => {
   if (!description.trim()) {
-    Alert.alert(
-      VALIDATION_ERRORS.EMPTY_DESCRIPTION.title,
-      VALIDATION_ERRORS.EMPTY_DESCRIPTION.message,
-    );
     return false;
   }
   return true;
@@ -76,28 +64,29 @@ const validateSubtaskDescription = (description: string): boolean => {
 
 const TIMEZONE = getDeviceTimeZone();
 
+const toTwoDigits = (num: number): string => String(num).padStart(2, "0");
 
-const toLocalApiDateTime = (value: Date): string => {
-  const year = value.getFullYear();
-  const month = toTwoDigits(value.getMonth() + 1);
-  const day = toTwoDigits(value.getDate());
-  const hours = toTwoDigits(value.getHours());
-  const minutes = toTwoDigits(value.getMinutes());
-  const seconds = toTwoDigits(value.getSeconds());
+// const toLocalApiDateTime = (value: Date): string => {
+//   const year = value.getFullYear();
+//   const month = toTwoDigits(value.getMonth() + 1);
+//   const day = toTwoDigits(value.getDate());
+//   const hours = toTwoDigits(value.getHours());
+//   const minutes = toTwoDigits(value.getMinutes());
+//   const seconds = toTwoDigits(value.getSeconds());
 
-  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-};
+//   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+// };
 
-const toOffsetDateTime = (value: Date): string => {
-  const localDateTime = toLocalApiDateTime(value);
-  const offsetMinutes = -value.getTimezoneOffset();
-  const sign = offsetMinutes >= 0 ? "+" : "-";
-  const absOffsetMinutes = Math.abs(offsetMinutes);
-  const hours = toTwoDigits(Math.floor(absOffsetMinutes / 60));
-  const minutes = toTwoDigits(absOffsetMinutes % 60);
+// const toOffsetDateTime = (value: Date): string => {
+//   const localDateTime = toLocalApiDateTime(value);
+//   const offsetMinutes = -value.getTimezoneOffset();
+//   const sign = offsetMinutes >= 0 ? "+" : "-";
+//   const absOffsetMinutes = Math.abs(offsetMinutes);
+//   const hours = toTwoDigits(Math.floor(absOffsetMinutes / 60));
+//   const minutes = toTwoDigits(absOffsetMinutes % 60);
 
-  return `${localDateTime}${sign}${hours}:${minutes}`;
-};
+//   return `${localDateTime}${sign}${hours}:${minutes}`;
+// };
 
 const SubtaskItem: React.FC<{
   subtask: Subtask;
@@ -505,7 +494,7 @@ const SubtaskItem: React.FC<{
 
           <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
             <TouchableOpacity
-              style={[styles.secondaryButton, { flex: 1 }]}
+              style={[styles.primaryButton, { flex: 3 }]}
               onPress={() => {
                 if (!isScheduling) {
                   if (
@@ -524,14 +513,14 @@ const SubtaskItem: React.FC<{
                 setExpanded(false);
               }}
             >
-              <Text style={styles.secondaryButtonText}>Done</Text>
+              <Text style={styles.primaryButtonText}>Done</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.primaryButton, { flex: 1 }]}
+              style={[styles.secondaryButton, { flex: 1 }]}
               onPress={onRemove}
               disabled={isScheduling}
             >
-              <Text style={styles.primaryButtonText}>
+              <Text style={styles.secondaryButtonText}>
                 {isScheduling ? "Remove" : "Remove"}
               </Text>
             </TouchableOpacity>
@@ -549,13 +538,44 @@ export default function AIBreakdownResultScreen() {
   const route = useRoute<RouteProp<RootStackParamList, "AIBreakdownResult">>();
   const result = route.params?.result;
   const passedStartTime = (route.params as any)?.startTime as Date | undefined;
-
+const { setIsLoading } = useLoading();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
-  const [subtasks, setSubtasks] = useState<Subtask[]>(
-    result?.tasks[0]?.subtasks || [],
-  );
+  
+  // Alert management
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({
+    title: "",
+    message: "",
+    buttons: [],
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }> = [{ text: "OK", onPress: () => setAlertVisible(false) }],
+    type: "info" | "success" | "warning" | "error" = "info",
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  };
+  
+  // Strip time data from AI result to avoid timezone issues
+  const initialSubtasks = (result?.tasks[0]?.subtasks || []).map((subtask: any) => ({
+    ...subtask,
+    startTime: undefined,
+    endTime: undefined,
+    date: undefined,
+  }));
+  
+  const [subtasks, setSubtasks] = useState<Subtask[]>(initialSubtasks);
 
   const getInitialStartTime = (): string => {
     if (passedStartTime) {
@@ -583,18 +603,20 @@ export default function AIBreakdownResultScreen() {
   const subtaskCount = useMemo(() => subtasks.length, [subtasks]);
 
   React.useEffect(() => {
-    if (passedStartTime && subtasks.length > 0) {
+    if (passedStartTime && initialSubtasks.length > 0) {
       const startTimeStr = getInitialStartTime();
-      const updatedSubtasks = calculateSequentialTimes(startTimeStr);
+      const updatedSubtasks = calculateSequentialTimes(startTimeStr, initialSubtasks);
       setSubtasks(updatedSubtasks);
     }
   }, []);
 
   const validateSubtasksExist = (): boolean => {
     if (subtaskCount === 0) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.NO_SUBTASKS.title,
         VALIDATION_ERRORS.NO_SUBTASKS.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return false;
     }
@@ -610,9 +632,11 @@ export default function AIBreakdownResultScreen() {
         const time = parseInt(items[i].estimated_time.toString(), 10);
         if (isNaN(time) || time <= 0) {
           const indexDisplay = prefix ? `${prefix}.${i + 1}` : `${i + 1}`;
-          Alert.alert(
+          showAlert(
             VALIDATION_ERRORS.INVALID_SUBTASK_TIME(i).title,
             `Subtask ${indexDisplay}: Please enter a valid time in minutes`,
+            [{ text: "OK", onPress: () => setAlertVisible(false) }],
+            "warning"
           );
           return false;
         }
@@ -808,14 +832,15 @@ export default function AIBreakdownResultScreen() {
   };
 
   const handleRemoveSubtask = (index: number, parentIndices: number[] = []) => {
-    Alert.alert(
+    showAlert(
       "Remove Subtask",
       "Are you sure you want to remove this subtask?",
       [
-        { text: "Cancel", onPress: () => {} },
+        { text: "Cancel", onPress: () => setAlertVisible(false), style: "cancel" },
         {
           text: "Remove",
           onPress: () => {
+            setAlertVisible(false);
             setSubtasks((prev) => {
               if (parentIndices.length === 0) {
                 return prev.filter((_, i) => i !== index);
@@ -845,6 +870,7 @@ export default function AIBreakdownResultScreen() {
           style: "destructive",
         },
       ],
+      "warning"
     );
   };
 
@@ -862,9 +888,11 @@ export default function AIBreakdownResultScreen() {
     }
 
     if (!hasSetStartTime) {
-      Alert.alert(
+      showAlert(
         "Start Time Required",
         "Please set the start time for your tasks",
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return;
     }
@@ -874,9 +902,11 @@ export default function AIBreakdownResultScreen() {
 
       const userId = await getStoredUserId();
       if (!userId) {
-        Alert.alert(
+        showAlert(
           VALIDATION_ERRORS.USER_NOT_LINKED.title,
           VALIDATION_ERRORS.USER_NOT_LINKED.message,
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "error"
         );
         setIsScheduling(false);
         return;
@@ -924,24 +954,30 @@ export default function AIBreakdownResultScreen() {
         }
 
         if (response.conflictSummary && response.conflictSummary.length > 0) {
-          Alert.alert(
+          showAlert(
             "Conflicts Resolved",
             `${response.conflictSummary.length} subtask(s) were rescheduled due to conflicts.\n\n${response.message}`,
+            [{ text: "OK", onPress: () => setAlertVisible(false) }],
+            "info"
           );
         }
       } else {
         setIsScheduling(false);
-        Alert.alert(
+        showAlert(
           VALIDATION_ERRORS.SCHEDULING_FAILED.title,
           VALIDATION_ERRORS.SCHEDULING_FAILED.message,
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "error"
         );
       }
     } catch (error) {
       console.error("Error scheduling subtasks:", error);
       setIsScheduling(false);
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.SCHEDULING_FAILED.title,
         VALIDATION_ERRORS.SCHEDULING_FAILED.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "error"
       );
     }
   };
@@ -965,18 +1001,17 @@ export default function AIBreakdownResultScreen() {
           subtask.endTime ||
           calculateEndTime(startTimeStr, subtask.estimated_time);
 
-        const startDateTime = new Date(
-          `${dateStr}T${startTimeStr}:00Z`,
-        ).toISOString();
-        const endDateTime = new Date(
-          `${dateStr}T${endTimeStr}:00Z`,
-        ).toISOString();
+        // Create local datetime objects
+        const startDate = new Date(`${dateStr}T${startTimeStr}:00`);
+        const endDate = new Date(`${dateStr}T${endTimeStr}:00`);
+        
+        // Convert to local time with timezone offset
+        const startDateTime = toOffsetDateTime(startDate);
+        const endDateTime = toOffsetDateTime(endDate);
 
         let googleEventId: string | undefined = undefined;
         if (subtask.startTime && subtask.endTime) {
           try {
-            const startDate = new Date(`${dateStr}T${startTimeStr}:00`);
-            const endDate = new Date(`${dateStr}T${endTimeStr}:00`);
             const event = await googleCalendarService.createEvent({
               summary: subtask.description,
               description: `Subtask of "${mainTask?.description || "Task"}". Estimated time: ${subtask.estimated_time} minutes`,
@@ -1039,15 +1074,18 @@ export default function AIBreakdownResultScreen() {
       return true;
     } catch (error) {
       console.error("Error creating subtasks:", error);
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.title,
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "error"
       );
       return false;
     }
   };
 
   const handleSaveTask = async () => {
+
     if (!isScheduling) {
       await handleScheduleSubtasks();
       return;
@@ -1058,13 +1096,16 @@ export default function AIBreakdownResultScreen() {
     }
 
     try {
+      setIsLoading(true,"Updating the Calendar...");
       setIsSaving(true);
 
       const userId = await getStoredUserId();
       if (!userId) {
-        Alert.alert(
+        showAlert(
           VALIDATION_ERRORS.USER_NOT_LINKED.title,
           VALIDATION_ERRORS.USER_NOT_LINKED.message,
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "error"
         );
         return;
       }
@@ -1090,14 +1131,19 @@ export default function AIBreakdownResultScreen() {
         totalTime,
       );
 
-      Alert.alert(successMsg.title, successMsg.message, [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      showAlert(
+        successMsg.title,
+        successMsg.message,
+        [{ text: "OK", onPress: () => { setAlertVisible(false); navigation.getParent()?.navigate("Home"); } }],
+        "success"
+      );
     } catch (error) {
       console.error("Error creating task:", error);
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.TASK_CREATION_FAILED.title,
         VALIDATION_ERRORS.TASK_CREATION_FAILED.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "error"
       );
     } finally {
       setIsSaving(false);
@@ -1359,6 +1405,14 @@ export default function AIBreakdownResultScreen() {
           </View>
         )}
       </View>
+
+      <StyledAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
     </SafeAreaView>
   );
 }

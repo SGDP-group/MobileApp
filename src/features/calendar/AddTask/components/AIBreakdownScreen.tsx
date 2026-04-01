@@ -1,21 +1,21 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
-  DateTimePickerEvent,
+    DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { aiBreakdownService } from "@services/aiBreakdownService";
 import { getStoredUserId } from "@services/focusFrameUserService";
+import StyledAlert from "@shared/components/StyledAlert";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles } from "../styles/addTaskDetails.styles";
@@ -74,43 +74,77 @@ export default function AIBreakdownScreen() {
   const [pendingDateTime, setPendingDateTime] = useState<Date | null>(null);
   const [maximumTimePerTask, setMaximumTimePerTask] = useState<number>(5);
 
+  // Alert management
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({
+    title: "",
+    message: "",
+    buttons: [],
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }> = [{ text: "OK", onPress: () => setAlertVisible(false) }],
+    type: "info" | "success" | "warning" | "error" = "info",
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  };
+
   const validateInputs = (): boolean => {
     if (!taskTitle.trim()) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.MISSING_TASK_TITLE.title,
         VALIDATION_ERRORS.MISSING_TASK_TITLE.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return false;
     }
 
     if (!taskDescription.trim()) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.MISSING_DESCRIPTION.title,
         VALIDATION_ERRORS.MISSING_DESCRIPTION.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return false;
     }
 
     if (!startTime) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.MISSING_START_TIME.title,
         VALIDATION_ERRORS.MISSING_START_TIME.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return false;
     }
 
     if (!endTime) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.MISSING_END_TIME.title,
         VALIDATION_ERRORS.MISSING_END_TIME.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return false;
     }
 
     if (startTime >= endTime) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.INVALID_TIME_RANGE.title,
         VALIDATION_ERRORS.INVALID_TIME_RANGE.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return false;
     }
@@ -157,7 +191,7 @@ export default function AIBreakdownScreen() {
       selectedDateStart.setHours(0, 0, 0, 0);
 
       if (selectedDateStart < todayStart) {
-        Alert.alert("Invalid Date", "Please select today or a future date.");
+        showAlert("Invalid Date", "Please select today or a future date.", [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
         return;
       }
 
@@ -201,9 +235,11 @@ export default function AIBreakdownScreen() {
 
       const userId = await getStoredUserId();
       if (!userId) {
-        Alert.alert(
+        showAlert(
           VALIDATION_ERRORS.USER_NOT_LINKED.title,
           VALIDATION_ERRORS.USER_NOT_LINKED.message,
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "error"
         );
         return;
       }
@@ -219,16 +255,18 @@ export default function AIBreakdownScreen() {
 
       const validation = aiBreakdownService.validateRequest(request);
       if (!validation.valid) {
-        Alert.alert("Invalid Input", validation.errors.join("\n"));
+        showAlert("Invalid Input", validation.errors.join("\n"), [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
         return;
       }
 
       const response = await aiBreakdownService.breakdownTask(request);
 
       if (!response.success || !response.tasks || response.tasks.length === 0) {
-        Alert.alert(
+        showAlert(
           VALIDATION_ERRORS.AI_BREAKDOWN_FAILED.title,
           response.error || VALIDATION_ERRORS.AI_BREAKDOWN_FAILED.message,
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "error"
         );
         return;
       }
@@ -241,9 +279,11 @@ export default function AIBreakdownScreen() {
       console.error("Error generating subtasks:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error occurred";
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.AI_BREAKDOWN_FAILED.title,
         `${VALIDATION_ERRORS.AI_BREAKDOWN_FAILED.message}\n\nError: ${errorMessage}`,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "error"
       );
     } finally {
       setIsGenerating(false);
@@ -427,6 +467,14 @@ export default function AIBreakdownScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      <StyledAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
     </SafeAreaView>
   );
 }
