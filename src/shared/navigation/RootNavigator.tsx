@@ -12,7 +12,7 @@ import AIBreakdownScreen from "../../features/calendar/AddTask/components/AIBrea
 import CalendarScreen from "../../features/calendar/CalendarScreen";
 import HomeScreen from "../../features/home/HomeScreen";
 import DeviceProvisioningScreen from "../../features/provisioning/screens/DeviceProvisioningScreen";
-import { clearStoredUser, findOrCreateUser } from "../../services/focusFrameUserService";
+import { clearStoredUser, findOrCreateUser ,createAnalyticsUser,getUserByEmail} from "../../services/focusFrameUserService";
 import { tokenManager } from "../../utils/tokenManager";
 
 import { setGlobalLogoutHandler } from "@utils/globalLogout";
@@ -46,11 +46,14 @@ export function RootNavigator() {
       if (email) {
         await findOrCreateUser(email);
       }
+      if (currentUser) {
+        const analyticsUser = await getUserByEmail(email);
+        await createAnalyticsUser(String(analyticsUser.id));
+      }
       setUserInfo(currentUser);
       setIsLoggedIn(true);
     } catch (error) {
       console.error("Error during login success handler:", error);
-      // Still allow login even if backend registration fails
       setUserInfo(currentUser);
       setIsLoggedIn(true);
     }
@@ -164,9 +167,20 @@ export function RootNavigator() {
           />
           <Stack.Screen
             name="DeviceProvisioning"
-            component={DeviceProvisioningScreen}
             options={{ headerShown: false }}
-          />
+          >
+            {(props) => {
+              // Extract prefilledSsid from route params
+              const prefilledSsid = props.route.params?.prefilledSsid;
+              return (
+                <DeviceProvisioningScreen
+                  visible={true}
+                  onClose={() => props.navigation.goBack()}
+                  initialSsid={prefilledSsid}
+                />
+              );
+            }}
+          </Stack.Screen>
         </>
       ) : (
         <Stack.Screen name="Welcome">

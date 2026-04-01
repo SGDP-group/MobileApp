@@ -1,28 +1,28 @@
+import { getStoredUserId } from "@/src/services/focusFrameUserService";
+import { useLoading } from "@/src/shared/contexts/LoadingContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  RefreshControl,
-  ScrollView,
-  Text,
-  View,
+    Alert,
+    FlatList,
+    RefreshControl,
+    ScrollView,
+    Text,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AnalyticsService } from "../../services/analyticsService";
-import { FocusSession } from "../../types/analytics";
+import { AnalyticsService, SessionData, SessionStatistics } from "../../services/analyticsService";
 import { styles } from "./styles/analytics.styles";
-import { useLoading } from "@/src/shared/contexts/LoadingContext";
-import { getStoredUserId } from "@/src/services/focusFrameUserService";
 
 const CARD_SNAP_INTERVAL = 280;
 
 export default function AnalyticsScreen() {
   const navigation = useNavigation<RootNavigationProp>();
-  const [sessionData, setSessionData] = useState<FocusSession | null>(null);
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [sessionStatistics, setSessionStatistics] = useState<SessionStatistics | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
   const { setIsLoading } = useLoading(); 
@@ -39,14 +39,18 @@ export default function AnalyticsScreen() {
         );
         return;
       }
-      const data = await AnalyticsService.getFocusSession(userId.toString());
-      setSessionData(data);
+      
+      // Load both current session and overall statistics
+      const [currentSession, statistics] = await Promise.all([
+        AnalyticsService.getCurrentSession(userId.toString()),
+        AnalyticsService.getUserStatistics(userId.toString())
+      ]);
+      
+      setSessionData(currentSession);
+      setSessionStatistics(statistics);
     } catch (error) {
-      console.error("Failed to load analytics data:", error);
-       Alert.alert(
-          "Service Error", "Could not connect to analytics service."  ,
-          [{ text: "OK", onPress: () => navigation.navigate({ name: "Home", params: {} }) }]
-        );
+      console.warn("Analytics data not available, showing empty data:", error);
+      // Don't show alert, just continue with empty data
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -89,9 +93,9 @@ export default function AnalyticsScreen() {
   const getAnalyticsCards = (): AnalyticsCard[] => {
     if (!sessionData) return [];
 
-    const { comprehensive_analytics } = sessionData;
+    const { deep_work_metrics, distraction_analytics, gamification_stats } = sessionData;
     
-    return [
+    const cards: AnalyticsCard[] = [
       {
         id: "focus-score",
         title: "Focus Score",
@@ -104,72 +108,92 @@ export default function AnalyticsScreen() {
       {
         id: "deep-work",
         title: "Deep Work",
-        value: `${comprehensive_analytics.deep_work_metrics.focus_duration.daily_total_hours.toFixed(1)}h`,
-        subtitle: "Daily focus time",
-        extraInfo: `Weekly: ${comprehensive_analytics.deep_work_metrics.focus_duration.weekly_total_hours.toFixed(1)}h`,
+        value: `${(deep_work_metrics.deep_work_duration_minutes / 60).toFixed(1)}h`,
+        subtitle: "Current session focus time",
+        extraInfo: `Efficiency: ${deep_work_metrics.deep_work_percentage}%`,
         icon: "time",
         iconColor: "#54D2FF",
         backgroundColor: "#1A2429",
       },
       {
-        id: "efficiency",
-        title: "Focus Efficiency",
-        value: `${comprehensive_analytics.deep_work_metrics.focus_efficiency.toFixed(1)}%`,
-        subtitle: "Productivity ratio",
-        extraInfo: `Focus to rest: ${comprehensive_analytics.deep_work_metrics.focus_to_rest_ratio.toFixed(1)}:1`,
-        icon: "trending-up",
-        iconColor: "#F4C552",
-        backgroundColor: "#0E1C22",
-      },
-      {
-        id: "streak",
-        title: "Current Streak",
-        value: `${comprehensive_analytics.gamification_stats.focus_streaks.current_streak} days`,
-        subtitle: "Keep it going!",
-        extraInfo: `Longest: ${comprehensive_analytics.gamification_stats.focus_streaks.longest_streak} days`,
-        icon: "flame",
-        iconColor: "#FF6B6B",
-        backgroundColor: "#1A2429",
-      },
-      {
-        id: "distractions",
-        title: "Distractions",
-        value: `${comprehensive_analytics.distraction_analytics.interruption_count}`,
+        id: "interruptions",
+        title: "Interruptions",
+        value: `${deep_work_metrics.interruptions_count}`,
         subtitle: "Session interruptions",
-        extraInfo: `Cost: ${comprehensive_analytics.distraction_analytics.context_switching_cost.total_minutes.toFixed(0)}min`,
+        extraInfo: "Keep distractions minimal",
         icon: "warning",
         iconColor: "#FF9F40",
         backgroundColor: "#0E1C22",
       },
       {
-        id: "recovery",
-        title: "Recovery Time",
-        value: `${comprehensive_analytics.distraction_analytics.recovery_metrics.average_recovery_time_seconds.toFixed(0)}s`,
-        subtitle: "Average refocus time",
-        extraInfo: `${comprehensive_analytics.distraction_analytics.recovery_metrics.recovery_events} events`,
-        icon: "refresh",
-        iconColor: "#A78BFA",
+        id: "streak",
+        title: "Current Streak",
+        value: `${gamification_stats.streak_days} days`,
+        subtitle: "Keep it going!",
+        extraInfo: `Level: ${gamification_stats.level}`,
+        icon: "flame",
+        iconColor: "#FF6B6B",
         backgroundColor: "#1A2429",
       },
       {
-        id: "completion",
-        title: "Completion Rate",
-        value: `${comprehensive_analytics.deep_work_metrics.session_completion_rate.toFixed(1)}%`,
-        subtitle: "Session success rate",
-        icon: "checkmark-circle",
-        iconColor: "#4DE3B1",
+        id: "phone-pickups",
+        title: "Phone Pickups",
+        value: `${distraction_analytics.phone_pickups}`,
+        subtitle: "Phone distractions",
+        extraInfo: "Stay focused on your work",
+        icon: "phone-portrait",
+        iconColor: "#A78BFA",
         backgroundColor: "#0E1C22",
       },
       {
-        id: "longest-streak",
-        title: "Longest Focus",
-        value: `${comprehensive_analytics.deep_work_metrics.longest_focus_streak.minutes.toFixed(1)}min`,
-        subtitle: "Uninterrupted focus",
-        icon: "timer",
+        id: "frames",
+        title: "Frames Analyzed",
+        value: `${sessionData.frames_analyzed}`,
+        subtitle: "Data points processed",
+        extraInfo: "High accuracy tracking",
+        icon: "camera",
         iconColor: "#54D2FF",
         backgroundColor: "#1A2429",
       },
     ];
+    
+    // Add session statistics if available
+    if (sessionStatistics) {
+      cards.push(
+        {
+          id: "total-sessions",
+          title: "Total Sessions",
+          value: `${sessionStatistics.total_sessions}`,
+          subtitle: "All completed sessions",
+          extraInfo: `Avg: ${sessionStatistics.average_session_duration_minutes}min`,
+          icon: "list",
+          iconColor: "#F4C552",
+          backgroundColor: "#0E1C22",
+        },
+        {
+          id: "total-hours",
+          title: "Total Focus Hours",
+          value: `${sessionStatistics.total_focused_hours.toFixed(1)}h`,
+          subtitle: "Lifetime focused time",
+          extraInfo: `Trend: ${sessionStatistics.productivity_trend}`,
+          icon: "time",
+          iconColor: "#4DE3B1",
+          backgroundColor: "#1A2429",
+        },
+        {
+          id: "avg-focus",
+          title: "Average Focus",
+          value: `${sessionStatistics.average_focus_score.toFixed(1)}%`,
+          subtitle: "Across all sessions",
+          extraInfo: `Best time: ${sessionStatistics.most_productive_time}`,
+          icon: "analytics",
+          iconColor: "#54D2FF",
+          backgroundColor: "#0E1C22",
+        }
+      );
+    }
+    
+    return cards;
   };
 
   const renderInsightCard = ({ item }: { item: string }) => (
@@ -224,9 +248,9 @@ export default function AnalyticsScreen() {
 
             {getAnalyticsCards().length > 1 && (
               <View style={styles.scrollIndicatorContainer}>
-                {getAnalyticsCards().map((_, index) => (
+                {getAnalyticsCards().map((card, index) => (
                   <View
-                    key={index}
+                    key={card.id}
                     style={[
                       styles.scrollDot,
                       index === currentScrollIndex && styles.scrollDotActive,
@@ -241,8 +265,8 @@ export default function AnalyticsScreen() {
             </View>
 
             <View style={styles.insightsContainer}>
-              {sessionData.comprehensive_analytics.insights.map((insight, index) => (
-                <View key={index} style={styles.insightWrapper}>
+              {sessionData.personalized_insights.map((insight, index) => (
+                <View key={`insight-${index}-${insight.slice(0, 10)}`} style={styles.insightWrapper}>
                   {renderInsightCard({ item: insight })}
                 </View>
               ))}
