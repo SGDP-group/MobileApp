@@ -1,7 +1,13 @@
 import * as Haptics from "expo-haptics";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert } from "react-native";
 import { parseQrPayload, QrPayload } from "../utils/qrPayloadParser";
+
+interface AlertConfig {
+  title: string;
+  message: string;
+  buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }>;
+  type?: "info" | "success" | "warning" | "error";
+}
 
 interface UseQrCodeScannerResult {
   isScannerVisible: boolean;
@@ -11,6 +17,7 @@ interface UseQrCodeScannerResult {
   openScanner: () => void;
   closeScanner: () => void;
   handleScan: (rawPayload: string) => Promise<void>;
+  alertConfig: AlertConfig | null;
 }
 
 const INVALID_SCAN_COOLDOWN_MS = 1000;
@@ -37,6 +44,7 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
   const [scannedQrPayload, setScannedQrPayload] = useState<QrPayload | null>(
     null,
   );
+  const [alertConfig, setAlertConfig] = useState<AlertConfig | null>(null);
   const scanLockRef = useRef(false);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -88,14 +96,15 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
 
         handled = true;
         unlockScanAfterCooldown();
+        setAlertConfig(null);
       };
 
-      Alert.alert(
-        "Invalid QR Code",
-        getScanErrorMessage(error),
-        [{ text: "OK", onPress: handleDismiss }],
-        { cancelable: false, onDismiss: handleDismiss },
-      );
+      setAlertConfig({
+        title: "Invalid QR Code",
+        message: getScanErrorMessage(error),
+        buttons: [{ text: "OK", onPress: handleDismiss }],
+        type: "error",
+      });
     },
     [unlockScanAfterCooldown],
   );
@@ -134,5 +143,6 @@ export const useQrCodeScanner = (): UseQrCodeScannerResult => {
     openScanner,
     closeScanner,
     handleScan,
+    alertConfig,
   };
 };

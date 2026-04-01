@@ -53,7 +53,7 @@ export const styles = StyleSheet.create({
     backgroundColor: "#16242B",
     borderRadius: 12,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 2,
     borderLeftWidth: 4,
     borderLeftColor: "#8AE8FF",
     borderWidth: 1,
@@ -128,7 +128,7 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
   },
   subtasksContainer: {
-    backgroundColor: "#16242B",
+    backgroundColor: "transparent",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#223D47",
@@ -140,10 +140,11 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingRight: 12,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#223D47",
+
+    
   },
   subtaskLeft: {
     flex: 1,

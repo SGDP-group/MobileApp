@@ -10,11 +10,11 @@ import { createSubtask as createFocusFrameSubtask } from "@services/focusFrameSu
 import { createTask as createFocusFrameTask } from "@services/focusFrameTaskService";
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { googleCalendarService } from "@services/googleCalendarService";
+import StyledAlert from "@shared/components/StyledAlert";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
 import {
-  Alert,
   ScrollView,
   Text,
   TextInput,
@@ -22,10 +22,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { formatDateTime, getDeviceTimeZone, getEmptySubtask, getTodayMinDate, toLocalApiDateTime, toOffsetDateTime } from "./../utils/timezone";
 import { styles } from "../styles/addTaskDetails.styles";
 import { SubtaskDraft, SubtaskPickerState } from "../types/types";
 import { SUCCESS_MESSAGES, VALIDATION_ERRORS } from "../utils/validationMessages";
+import { formatDateTime, getDeviceTimeZone, getEmptySubtask, getTodayMinDate, toLocalApiDateTime, toOffsetDateTime } from "./../utils/timezone";
 
 const TIMEZONE = getDeviceTimeZone();
 
@@ -44,6 +44,30 @@ export default function AddTaskDetailsScreen() {
     useState<Date | null>(null);
   const todayMinDate = useMemo(() => getTodayMinDate(), []);
 const { setIsLoading } = useLoading();
+
+  // Alert management
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({
+    title: "",
+    message: "",
+    buttons: [],
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }> = [{ text: "OK", onPress: () => setAlertVisible(false) }],
+    type: "info" | "success" | "warning" | "error" = "info",
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  };
 
   const validSubtasks = useMemo(
     () =>
@@ -127,9 +151,11 @@ const { setIsLoading } = useLoading();
 
   const validateTaskName = (title: string): boolean => {
     if (!title.trim()) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.MISSING_TASK_NAME.title,
         VALIDATION_ERRORS.MISSING_TASK_NAME.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return false;
     }
@@ -138,9 +164,11 @@ const { setIsLoading } = useLoading();
 
   const validateSubtasksExist = (): boolean => {
     if (validSubtasks.length === 0) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.MISSING_SUBTASKS.title,
         VALIDATION_ERRORS.MISSING_SUBTASKS.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "warning"
       );
       return false;
     }
@@ -154,19 +182,19 @@ const { setIsLoading } = useLoading();
 
       if (!subtask.startTime) {
         const error = VALIDATION_ERRORS.MISSING_START_TIME(subtaskNumber);
-        Alert.alert(error.title, error.message);
+        showAlert(error.title, error.message, [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
         return false;
       }
 
       if (!subtask.endTime) {
         const error = VALIDATION_ERRORS.MISSING_END_TIME(subtaskNumber);
-        Alert.alert(error.title, error.message);
+        showAlert(error.title, error.message, [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
         return false;
       }
 
       if (subtask.startTime >= subtask.endTime) {
         const error = VALIDATION_ERRORS.INVALID_SUBTASK_DATES(subtaskNumber);
-        Alert.alert(error.title, error.message);
+        showAlert(error.title, error.message, [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
         return false;
       }
     }
@@ -204,7 +232,7 @@ const { setIsLoading } = useLoading();
   const handleAuthError = async (): Promise<string | null> => {
     const signedInUser = await GoogleSignin.getCurrentUser();
     if (!signedInUser?.user?.email) {
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.AUTH_REQUIRED.title,
         VALIDATION_ERRORS.AUTH_REQUIRED.message,
         [
@@ -220,6 +248,7 @@ const { setIsLoading } = useLoading();
           },
           { text: "Cancel", onPress: () => {} },
         ],
+        "warning"
       );
       return null;
     }
@@ -329,10 +358,11 @@ const { setIsLoading } = useLoading();
       };
     } catch (error) {
       console.error("Error creating subtasks:", error);
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.title,
         VALIDATION_ERRORS.SUBTASK_CREATION_FAILED.message,
-        [{ text: "OK", onPress: () => navigation.goBack() }],
+        [{ text: "OK", onPress: () => { setAlertVisible(false); navigation.getParent()?.navigate("Home"); } }],
+        "error"
       );
       return { success: false, calendarFailureCount };
     }
@@ -347,9 +377,11 @@ const { setIsLoading } = useLoading();
 
       const userId = await getStoredUserId();
       if (!userId) {
-        Alert.alert(
+        showAlert(
           VALIDATION_ERRORS.USER_NOT_LINKED.title,
           VALIDATION_ERRORS.USER_NOT_LINKED.message,
+          [{ text: "OK", onPress: () => setAlertVisible(false) }],
+          "error"
         );
         return;
       }
@@ -372,23 +404,27 @@ const { setIsLoading } = useLoading();
       if (!subtasksResult.success) return;
 
       if (subtasksResult.calendarFailureCount > 0) {
-        Alert.alert(
+        showAlert(
           SUCCESS_MESSAGES.TASK_CREATED_CALENDAR_FAILED.title,
           SUCCESS_MESSAGES.TASK_CREATED_CALENDAR_FAILED.message,
-          [{ text: "OK", onPress: () => navigation.goBack() }],
+          [{ text: "OK", onPress: () => { setAlertVisible(false); navigation.goBack(); } }],
+          "info"
         );
       } else {
-        Alert.alert(
+        showAlert(
           SUCCESS_MESSAGES.TASK_CREATED.title,
           SUCCESS_MESSAGES.TASK_CREATED.message,
-          [{ text: "OK", onPress: () => navigation.goBack() }],
+          [{ text: "OK", onPress: () => { setAlertVisible(false); navigation.goBack(); } }],
+          "success"
         );
       }
     } catch (error) {
       console.error("Error creating task:", error);
-      Alert.alert(
+      showAlert(
         VALIDATION_ERRORS.TASK_CREATION_FAILED.title,
         VALIDATION_ERRORS.TASK_CREATION_FAILED.message,
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "error"
       );
     } finally {
       setIsSaving(false);
@@ -649,6 +685,14 @@ const { setIsLoading } = useLoading();
           </Text>
         </TouchableOpacity>
       </View>
+
+      <StyledAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
     </SafeAreaView>
   );
 }

@@ -47,7 +47,7 @@ export async function scheduleSubtasksWithConflictDetection(
   userId: number,
   subtasks: ScheduledSubtaskRequest[],
 ): Promise<ScheduleSubtasksResponse> {
-  return apiClient.post<ScheduleSubtasksResponse>("/tasks/schedule-subtasks", {
+  return apiClient.post<ScheduleSubtasksResponse>("/subtasks/schedule-subtasks", {
     userId,
     subtasks,
   });

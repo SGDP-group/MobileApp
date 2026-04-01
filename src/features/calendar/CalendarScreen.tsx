@@ -1,27 +1,49 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { deleteSubtask, getSubtasksByTask } from "@services/focusFrameSubtaskService";
+import { deleteTask, getTaskById, updateTask } from "@services/focusFrameTaskService";
+import { getStoredUserId } from "@services/focusFrameUserService";
 import { BottomNav } from "@shared/components/BottomNav";
+import StyledAlert from "@shared/components/StyledAlert";
+import { useLoading } from '@shared/contexts/LoadingContext';
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { deleteTask, getTaskById, updateTask } from "@services/focusFrameTaskService";
-import { deleteSubtask, getSubtasksByTask } from "@services/focusFrameSubtaskService";
-import { getStoredUserId } from "@services/focusFrameUserService";
 import { HomeTask, useHomeTasks } from "../home/home.tasks";
 import { formatTaskLeadMeta, formatTaskTimestamp } from "../home/utils/home.helpers";
 import { CalendarTaskListSection } from "./components/CalendarTaskListSection";
-import { TaskQueueHeader } from "./components/TaskQueueHeader";
 import { TaskQueueModal } from "./components/EditableTaskQueueModal";
+import { TaskQueueHeader } from "./components/TaskQueueHeader";
 import { styles } from "./styles/calendar.styles";
 import type { CalendarTaskItem } from "./utils/calendar.types";
-import { useLoading } from '@shared/contexts/LoadingContext'; 
 
 export default function CalendarScreen() {
   const navigation = useNavigation<RootNavigationProp>();
   const { upNextData, refreshTasks } = useHomeTasks();
   const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<HomeTask | null>(null);
-  const { setIsLoading } = useLoading(); 
+  const { setIsLoading } = useLoading();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({
+    title: "",
+    message: "",
+    buttons: [],
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void }> = [{ text: "OK", onPress: () => setAlertVisible(false) }],
+    type?: "info" | "success" | "warning" | "error"
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  }; 
 
 
 
@@ -134,7 +156,7 @@ export default function CalendarScreen() {
                 await googleCalendarService.deleteEvent(subtask.googleEventId);
               } catch (calendarError) {
                 // console.error("Failed to delete Google Calendar event:", calendarError);
-                Alert.alert("Google Calendar Sync Failed", "Could not delete associated Google Calendar event. Please check your connection or re-authenticate.");
+                showAlert("Google Calendar Sync Failed", "Could not delete associated Google Calendar event. Please check your connection or re-authenticate.", undefined, "error");
               }
             }
             await deleteSubtask(subtask.id);
@@ -148,7 +170,7 @@ export default function CalendarScreen() {
       setSelectedTask(null);
       await refreshTasks();
 
-      Alert.alert("Deleted", `Task \"${task.name}\" and its subtasks were deleted.`);
+      showAlert("Deleted", `Task "${task.name}" and its subtasks were deleted.`, undefined, "success");
     } finally {
       setIsLoading(false);
     }
@@ -177,7 +199,15 @@ export default function CalendarScreen() {
         onClose={handleCloseTaskQueue}
         onEditTask={handleEditTask}
         onDeleteTask={handleDeleteTask}
-      />  
+      />
+
+      <StyledAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
     </SafeAreaView>
   );
 }

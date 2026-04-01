@@ -87,6 +87,7 @@ export const styles = StyleSheet.create({
     borderColor: "#223D47",
     marginBottom: 10,
     overflow: "hidden",
+    padding: 12,
   },
   subtaskContent: {
     paddingHorizontal: 14,

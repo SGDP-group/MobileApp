@@ -1,15 +1,15 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import DateTimePicker, {
-  DateTimePickerEvent,
+    DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import StyledAlert from "@shared/components/StyledAlert";
 import React, { useEffect, useState } from "react";
-import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import { styles } from "../styles/taskQueueModalCalender.styles";
 import {
-  getStatusLabel,
-  getStatusLabelStatus,
-  type HomeSubtask,
-  type SubtaskStatus
+    getStatusLabelStatus,
+    type HomeSubtask,
+    type SubtaskStatus
 } from "../utils/taskQueueModalCalender.utils";
 
 import { formatDateTimeForDisplay, normalizeId, normalizeName, toDate } from "./../utils/editableSubtaskAccordionItem.utils";
@@ -72,6 +72,23 @@ export function SubtaskAccordionItem({
     null,
   );
   const [pendingDateTime, setPendingDateTime] = useState<Date | null>(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({ title: "", message: "", buttons: [] });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void; style?: "default" | "cancel" | "destructive" }>,
+    type?: "info" | "success" | "warning" | "error",
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  };
 
   useEffect(() => {
     setIsEditing(false);
@@ -103,17 +120,18 @@ const statusLabel =  getStatusLabelStatus( subtask.statusName);
 
 const handleDelete = () => {
       if (!onDeleteSubtask) return;
-      Alert.alert(
+      showAlert(
         "Delete Subtask",
         "Are you sure you want to delete this subtask? This action cannot be undone.",
         [
-          { text: "Cancel", style: "cancel" },
+          { text: "Cancel", style: "cancel", onPress: () => {} },
           {
             text: "Delete",
             style: "destructive",
             onPress: () => void onDeleteSubtask(subtask),
           },
-        ]
+        ],
+        "warning"
       );
     };
   const normalizedStatusOptions = statusOptions.map((option) => {
@@ -189,7 +207,7 @@ const handleDelete = () => {
     const trimmedEndTime = editableEndTime.trim();
 
     if (!trimmedName) {
-      Alert.alert("Validation", "Subtask name is required.");
+      showAlert("Validation", "Subtask name is required.", [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
       return;
     }
 
@@ -197,7 +215,7 @@ const handleDelete = () => {
       trimmedTaskOrder.length > 0 ? Number.parseInt(trimmedTaskOrder, 10) : undefined;
 
     if (parsedTaskOrder !== undefined && Number.isNaN(parsedTaskOrder)) {
-      Alert.alert("Validation", "Task order must be a number.");
+      showAlert("Validation", "Task order must be a number.", [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
       return;
     }
 
@@ -216,9 +234,11 @@ const handleDelete = () => {
       });
       setIsEditing(false);
     } catch (error) {
-      Alert.alert(
+      showAlert(
         "Error",
         error instanceof Error ? error.message : "Failed to update subtask.",
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "error"
       );
     }
   };
@@ -598,6 +618,13 @@ const handleDelete = () => {
           </View>
         </View>
       )}
+      <StyledAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
     </View>
   );
 }
