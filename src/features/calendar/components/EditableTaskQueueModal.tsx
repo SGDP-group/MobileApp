@@ -376,30 +376,47 @@ export function TaskQueueModal({
         try {
           const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
           const { googleCalendarService } = await import("@services/googleCalendarService");
+          
+          // Validate time range - parse ISO strings and ensure endTime > startTime
+          let isValidTimeRange = false;
+          if (updates.startTime && updates.endTime) {
+            try {
+              const startDate = new Date(updates.startTime);
+              const endDate = new Date(updates.endTime);
+              isValidTimeRange = startDate.getTime() < endDate.getTime();
+            } catch {
+              isValidTimeRange = false;
+            }
+          }
+          
           if (googleEventId) {
             // Update existing event
-            await googleCalendarService.updateEvent(googleEventId, {
-              summary: trimmedName,
-              description: updates.description || "",
-              start: updates.startTime ? { dateTime: updates.startTime, timeZone } : undefined,
-              end: updates.endTime ? { dateTime: updates.endTime, timeZone } : undefined,
+            if (isValidTimeRange) {
+              await googleCalendarService.updateEvent(googleEventId, {
+                summary: trimmedName,
+                description: updates.description || "",
+                start: updates.startTime ? { dateTime: updates.startTime, timeZone } : undefined,
+                end: updates.endTime ? { dateTime: updates.endTime, timeZone } : undefined,
 
-            });
+              });
+            }
           } else {
-            // Create new event
-            const event = await googleCalendarService.createEvent({
-              summary: trimmedName,
-              description: updates.description || "",
-              start: {
-                dateTime: updates.startTime,
-                timeZone: timeZone,
-              },
-              end: {
-                dateTime: updates.endTime,
-                timeZone: timeZone,
-              },
-            });
-            googleEventId = event?.id;
+            // Create new event - only if time range is valid
+            if (isValidTimeRange) {
+              const event = await googleCalendarService.createEvent({
+                summary: trimmedName,
+                description: updates.description || "",
+                start: {
+                  dateTime: updates.startTime,
+                  timeZone: timeZone,
+                },
+                end: {
+                  dateTime: updates.endTime,
+                  timeZone: timeZone,
+                },
+              });
+              googleEventId = event?.id;
+            }
           }
         } catch (calendarError) {
           console.warn("Failed to sync Google Calendar event for subtask", subtask.name, calendarError);

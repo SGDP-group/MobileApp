@@ -1045,9 +1045,12 @@ const { setIsLoading } = useLoading();
         const subtask = subtasks[index];
         const dateStr = subtask.date || formatDateFromDate(new Date());
         const startTimeStr = subtask.startTime || "09:00";
+        
+        // Ensure estimated_time is at least 15 minutes to prevent empty time range
+        const durationMinutes = Math.max(subtask.estimated_time || 15, 15);
         const endTimeStr =
           subtask.endTime ||
-          calculateEndTime(startTimeStr, subtask.estimated_time);
+          calculateEndTime(startTimeStr, durationMinutes);
 
         // Create local datetime objects
         const startDate = new Date(`${dateStr}T${startTimeStr}:00`);
@@ -1058,11 +1061,12 @@ const { setIsLoading } = useLoading();
         const endDateTime = toLocalApiDateTime(endDate);
 
         let googleEventId: string | undefined = undefined;
-        if (subtask.startTime && subtask.endTime) {
+        // Only create calendar event if: times exist AND endTime > startTime
+        if (subtask.startTime && subtask.endTime && startDate.getTime() < endDate.getTime()) {
           try {
             const event = await googleCalendarService.createEvent({
               summary: subtask.description,
-              description: `Subtask of "${mainTask?.description || "Task"}". Estimated time: ${subtask.estimated_time} minutes`,
+              description: `Subtask of "${mainTask?.description || "Task"}". Estimated time: ${durationMinutes} minutes`,
               start: {
                 dateTime: toOffsetDateTime(startDate),
                 timeZone: TIMEZONE,
