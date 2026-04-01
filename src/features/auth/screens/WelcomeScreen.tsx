@@ -1,23 +1,23 @@
 import { useState } from "react";
 import {
-    Alert,
-    ImageBackground,
-    Platform,
-    StatusBar,
-    Text,
-    View,
+  ImageBackground,
+  Platform,
+  StatusBar,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { styles } from "@features/auth/styles/welcome.styles";
 import {
-    GoogleSignin,
-    isErrorWithCode,
-    isSuccessResponse,
-    statusCodes,
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
 } from "@react-native-google-signin/google-signin";
 import { GeometricLogo } from "@shared/components/GeometricLogo";
 import { SocialButton } from "@shared/components/SocialButton";
+import StyledAlert from "@shared/components/StyledAlert";
 
 const BG_IMAGE = require("@assets/images/login-bg.jpg");
 
@@ -27,12 +27,36 @@ interface WelcomeScreenProps {
 
 export default function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
   const [userInfo, setUserInfo] = useState<any>(null);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({
+    title: "",
+    message: "",
+    buttons: [],
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void }> = [{ text: "OK", onPress: () => setAlertVisible(false) }],
+    type?: "info" | "success" | "warning" | "error"
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  };
 
   const signIn = async () => {
     if (Platform.OS === "web") {
-      Alert.alert(
+      showAlert(
         "Web Support",
         "Native Google Sign-In is not supported on Web. Please implement Google Identity Services for Web.",
+        [{ text: "OK", onPress: () => setAlertVisible(false) }],
+        "info"
       );
       return;
     }
@@ -53,16 +77,16 @@ export default function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
       if (isErrorWithCode(error)) {
         switch (error.code) {
           case statusCodes.IN_PROGRESS:
-            Alert.alert("Sign in is in progress");
+            showAlert("Sign in is in progress", "", [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
             break;
           case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            Alert.alert("Play services not available");
+            showAlert("Play services not available", "", [{ text: "OK", onPress: () => setAlertVisible(false) }], "warning");
             break;
           default:
-            Alert.alert("An error occurred", error.message);
+            showAlert("An error occurred", error.message, [{ text: "OK", onPress: () => setAlertVisible(false) }], "error");
         }
       } else {
-        Alert.alert("An unknown error occurred");
+        showAlert("An unknown error occurred", "", [{ text: "OK", onPress: () => setAlertVisible(false) }], "error");
         console.error(error);
       }
     }
@@ -110,6 +134,14 @@ export default function WelcomeScreen({ onLoginSuccess }: WelcomeScreenProps) {
           </View>
         </SafeAreaView>
       </ImageBackground>
+
+      <StyledAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
     </View>
   );
 }

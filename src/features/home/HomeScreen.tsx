@@ -1,19 +1,19 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { BottomNav } from "@shared/components/BottomNav";
+import StyledAlert from "@shared/components/StyledAlert";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import DeviceProvisioningModal from "./../provisioning/screens/DeviceProvisioningScreen"; // Import the modal
 import { FocusHeroCard } from "./components/FocusHeroCard";
 import { HomeHeader } from "./components/HomeHeader";
-import DeviceProvisioningModal from "./../provisioning/screens/DeviceProvisioningScreen"; // Import the modal
 // import QrScannerModal from "./components/QrScannerModal";
 import { QuickActionsSection } from "./components/QuickActionsSection";
 import { SystemStatusPill } from "./components/SystemStatusPill";
 import { TaskQueueModal } from "./components/TaskQueueModal";
 import { UpNextSection } from "./components/UpNextSection";
 import { HomeTask, useHomeTasks } from "./home.tasks";
-import { useQrCodeScanner } from "./hooks/useQrCodeScanner";
 import { styles } from "./styles/home.styles";
 
 interface HomeScreenProps {
@@ -34,6 +34,28 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
   const [taskQueueModalVisible, setTaskQueueModalVisible] = useState(false);
   const [selectedTask, setSelectedTask] = useState<HomeTask | null>(null);
   const [setupModalVisible, setSetupModalVisible] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({
+    title: "",
+    message: "",
+    buttons: [],
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void }> = [{ text: "OK", onPress: () => setAlertVisible(false) }],
+    type?: "info" | "success" | "warning" | "error"
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  };
   // const {
   //   isScannerVisible,
   //   isProcessingScan,
@@ -95,10 +117,10 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
         navigation.navigate("Analytics");
         return;
       // case "settings":
-      //   Alert.alert("Settings", "Settings are coming soon.");
+      //   showAlert("Settings", "Settings are coming soon.");
       //   return;
       default:
-        Alert.alert("Action", "This action is coming soon.");
+        showAlert("Action", "This action is coming soon.", undefined, "info");
     }
   }, [navigation]);
 
@@ -138,9 +160,9 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
           currentDate={currentDate}
           userName={userName}
           avatarUri={userInfo?.user?.photo}
-          onOpenScanner={() => setSetupModalVisible(true)}         
-           // onOpenNotifications={() => Alert.alert("Notifications", "Coming soon.")}
-          onOpenProfile={() => Alert.alert("Profile", "Coming soon.")}
+          onOpenScanner={() => setSetupModalVisible(true)}
+          // onOpenNotifications={() => showAlert("Notifications", "Coming soon.")}
+          onOpenProfile={() => showAlert("Profile", "Coming soon.", undefined, "info")}
         />
 
         <SystemStatusPill />
@@ -176,7 +198,13 @@ export default function HomeScreen({ userInfo }: HomeScreenProps) {
         onClose={handleCloseTaskQueue}
       />
 
-      
+      <StyledAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
     </SafeAreaView>
   );
 }

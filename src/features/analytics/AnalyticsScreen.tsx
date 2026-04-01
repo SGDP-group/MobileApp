@@ -3,10 +3,10 @@ import { useLoading } from "@/src/shared/contexts/LoadingContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { BottomNav } from "@shared/components/BottomNav";
+import StyledAlert from "@shared/components/StyledAlert";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -26,17 +26,40 @@ export default function AnalyticsScreen() {
   const [sessionStatistics, setSessionStatistics] = useState<SessionStatistics | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [currentScrollIndex, setCurrentScrollIndex] = useState(0);
-  const { setIsLoading } = useLoading(); 
+  const { setIsLoading } = useLoading();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons: Array<{ text: string; onPress: () => void }>;
+    type?: "info" | "success" | "warning" | "error";
+  }>({
+    title: "",
+    message: "",
+    buttons: [],
+    type: "info",
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: Array<{ text: string; onPress: () => void }> = [],
+    type?: "info" | "success" | "warning" | "error"
+  ) => {
+    setAlertConfig({ title, message, buttons, type });
+    setAlertVisible(true);
+  }; 
 
   const loadSessionData = async () => {
     try {
       setIsLoading(true,"Analyzing your focus session...");
       const userId = await getStoredUserId();
       if (!userId) {
-        Alert.alert(
+        showAlert(
           "User Not Found",
           "No user information found. Please log in again.",
-          [{ text: "OK", onPress: () => navigation.navigate({ name: "Welcome", params: undefined }) }]
+          [{ text: "OK", onPress: () => navigation.navigate({ name: "Welcome", params: undefined }) }],
+          "warning"
         );
         return;
       }
@@ -285,6 +308,14 @@ export default function AnalyticsScreen() {
           </>
         )}
       </ScrollView>
+
+      <StyledAlert
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        type={alertConfig.type}
+      />
 
       <BottomNav activeRoute="Analytics" />
     </SafeAreaView>
