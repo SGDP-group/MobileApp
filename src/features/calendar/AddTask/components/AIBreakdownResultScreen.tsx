@@ -7,31 +7,31 @@ import { createTask as createFocusFrameTask } from "@services/focusFrameTaskServ
 import { getStoredUserId } from "@services/focusFrameUserService";
 import { googleCalendarService } from "@services/googleCalendarService";
 import {
-    calculateEndTime,
-    formatDateFromDate,
-    formatTimeFromDate,
-    scheduleSubtasksWithConflictDetection,
+  calculateEndTime,
+  formatDateFromDate,
+  formatTimeFromDate,
+  scheduleSubtasksWithConflictDetection,
 } from "@services/subtaskSchedulingService";
 import StyledAlert from "@shared/components/StyledAlert";
 import {
-    RootNavigationProp,
-    RootStackParamList,
+  RootNavigationProp,
+  RootStackParamList,
 } from "@shared/navigation/RootNavigator";
 import { colors } from "@shared/theme/colors";
 import React, { useMemo, useState } from "react";
 import {
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { styles as detailsStyles } from "../styles/addTaskDetails.styles";
 import { styles } from "../styles/aiBreakdownResult.styles";
 import { Subtask } from "../types/types";
 import { SUCCESS_MESSAGES, VALIDATION_ERRORS } from "../utils/validationMessages";
-import { getDeviceTimeZone, toOffsetDateTime } from "./../utils/timezone";
+import { getDeviceTimeZone, toLocalApiDateTime, toOffsetDateTime } from "./../utils/timezone";
 
 
 
@@ -575,8 +575,9 @@ const { setIsLoading } = useLoading();
     date: undefined,
   }));
   
-  const [subtasks, setSubtasks] = useState<Subtask[]>(initialSubtasks);
-
+  const [subtasks, setSubtasks] = useState<Subtask[]>(
+    result?.tasks[0]?.subtasks || [],
+  );
   const getInitialStartTime = (): string => {
     if (passedStartTime) {
       return `${formatDateFromDate(passedStartTime)} ${formatTimeFromDate(passedStartTime)}`;
@@ -961,6 +962,7 @@ const { setIsLoading } = useLoading();
             "info"
           );
         }
+        setIsScheduling(false);
       } else {
         setIsScheduling(false);
         showAlert(
@@ -1005,9 +1007,9 @@ const { setIsLoading } = useLoading();
         const startDate = new Date(`${dateStr}T${startTimeStr}:00`);
         const endDate = new Date(`${dateStr}T${endTimeStr}:00`);
         
-        // Convert to local time with timezone offset
-        const startDateTime = toOffsetDateTime(startDate);
-        const endDateTime = toOffsetDateTime(endDate);
+        // Convert to local API format for database
+        const startDateTime = toLocalApiDateTime(startDate);
+        const endDateTime = toLocalApiDateTime(endDate);
 
         let googleEventId: string | undefined = undefined;
         if (subtask.startTime && subtask.endTime) {
@@ -1059,18 +1061,22 @@ const { setIsLoading } = useLoading();
         });
       }
 
-      await Promise.all(
-        subtaskPayload.map((subtask) =>
-          createFocusFrameSubtask(subtask as any),
-        ),
-      );
+      // Create subtasks sequentially with delays to avoid backend rate limiting
+      for (let i = 0; i < subtaskPayload.length; i++) {
+        const subtask = subtaskPayload[i];
+        await createFocusFrameSubtask(subtask as any);
+        
+        // Add delay between subtask creations to respect rate limits
+        if (i < subtaskPayload.length - 1) {
+          await delay(300);
+        }
+      }
 
       if (calendarFailureCount > 0) {
         console.warn(
           `Created ${subtaskPayload.length} subtasks, but ${calendarFailureCount} Google Calendar event(s) failed to create`,
         );
       }
-
       return true;
     } catch (error) {
       console.error("Error creating subtasks:", error);
@@ -1107,6 +1113,8 @@ const { setIsLoading } = useLoading();
           [{ text: "OK", onPress: () => setAlertVisible(false) }],
           "error"
         );
+        setIsLoading(false);
+        setIsSaving(false);
         return;
       }
 
@@ -1121,7 +1129,11 @@ const { setIsLoading } = useLoading();
       }
 
       const subtasksCreated = await createSubtasks(createdTask.id);
-      if (!subtasksCreated) return;
+      if (!subtasksCreated) {
+        setIsLoading(false);
+        setIsSaving(false);
+        return;
+      }
 
       setIsEditing(false);
       const totalSubtaskCount = getTotalSubtaskCount(subtasks);
@@ -1134,7 +1146,10 @@ const { setIsLoading } = useLoading();
       showAlert(
         successMsg.title,
         successMsg.message,
-        [{ text: "OK", onPress: () => { setAlertVisible(false); navigation.getParent()?.navigate("Home"); } }],
+        [{ text: "OK", onPress: () => { 
+          setAlertVisible(false); 
+          navigation.navigate("Home" as never);
+        } }],
         "success"
       );
     } catch (error) {
@@ -1147,6 +1162,7 @@ const { setIsLoading } = useLoading();
       );
     } finally {
       setIsSaving(false);
+      setIsLoading(false);
     }
   };
 

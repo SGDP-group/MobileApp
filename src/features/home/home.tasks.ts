@@ -13,7 +13,7 @@ export type HomeUpNextItem =
   | { id: string; type: "empty" }
   | { id: string; type: "task"; task: HomeTask };
 
-const MAX_HOME_TASKS = 3;
+const MAX_HOME_TASKS = 100;
 
 const sortByUpdatedAtDesc = (a: { updatedAt: string }, b: { updatedAt: string }) => {
   const aUpdatedAt = new Date(a.updatedAt).getTime();
