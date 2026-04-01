@@ -4,6 +4,7 @@ import { NavigationProp } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
+import AllAnalyticsScreen from "../../features/analytics/AllAnalyticsScreen";
 import AnalyticsScreen from "../../features/analytics/AnalyticsScreen";
 import WelcomeScreen from "../../features/auth/screens/WelcomeScreen";
 import AddTaskDetailsScreen from "../../features/calendar/AddTask/components/AddTaskDetailsScreen";
@@ -12,7 +13,8 @@ import AIBreakdownScreen from "../../features/calendar/AddTask/components/AIBrea
 import CalendarScreen from "../../features/calendar/CalendarScreen";
 import HomeScreen from "../../features/home/HomeScreen";
 import DeviceProvisioningScreen from "../../features/provisioning/screens/DeviceProvisioningScreen";
-import { clearStoredUser, findOrCreateUser ,createAnalyticsUser,getUserByEmail} from "../../services/focusFrameUserService";
+import { SessionData, SessionStatistics } from "../../services/analyticsService";
+import { clearStoredUser, createAnalyticsUser, findOrCreateUser, getUserByEmail } from "../../services/focusFrameUserService";
 import { tokenManager } from "../../utils/tokenManager";
 
 import { setGlobalLogoutHandler } from "@utils/globalLogout";
@@ -22,6 +24,7 @@ export type RootStackParamList = {
   Home: { userInfo?: any };
   Calendar: undefined;
   Analytics: undefined;
+  AllMetrics: { sessionData: SessionData; sessionStatistics: SessionStatistics };
   Focus: undefined;
   AddTask: undefined;
   AddTaskDetails: undefined;
@@ -151,6 +154,7 @@ export function RootNavigator() {
           </Stack.Screen>
           <Stack.Screen name="Calendar" component={CalendarScreen} />
           <Stack.Screen name="Analytics" component={AnalyticsScreen} />
+          <Stack.Screen name="AllMetrics" component={AllAnalyticsScreen} />
           <Stack.Screen name="AddTask" component={AddTaskScreen} />
           <Stack.Screen
             name="AddTaskDetails"

@@ -6,12 +6,13 @@ import { BottomNav } from "@shared/components/BottomNav";
 import { RootNavigationProp } from "@shared/navigation/RootNavigator";
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
-    FlatList,
-    RefreshControl,
-    ScrollView,
-    Text,
-    View,
+  Alert,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AnalyticsService, SessionData, SessionStatistics } from "../../services/analyticsService";
@@ -222,8 +223,18 @@ export default function AnalyticsScreen() {
 
         {sessionData && (
           <>
-            <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderWithButton}>
               <Text style={styles.sectionTitle}>Performance Metrics</Text>
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => {
+                  if (sessionData && sessionStatistics) {
+                    navigation.navigate("AllMetrics", { sessionData, sessionStatistics });
+                  }
+                }}
+              >
+                <Text style={styles.viewAllButtonText}>View All</Text>
+              </TouchableOpacity>
             </View>
 
             <FlatList

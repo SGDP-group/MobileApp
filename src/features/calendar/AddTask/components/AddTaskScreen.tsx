@@ -95,7 +95,7 @@ export default function AddTaskScreen() {
         />
       </View>
 
-      <BottomNav activeRoute="Home" />
+      <BottomNav activeRoute="Add Task" />
     </SafeAreaView>
   );
 }
