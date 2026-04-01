@@ -313,7 +313,8 @@ const { setIsLoading } = useLoading();
       await Promise.all(
         validSubtasks.map(async (subtask, index) => {
           let googleEventId: string | undefined = undefined;
-          if (subtask.startTime && subtask.endTime) {
+          // Validate both times exist AND endTime is after startTime
+          if (subtask.startTime && subtask.endTime && subtask.startTime.getTime() < subtask.endTime.getTime()) {
             try {
               const event = await googleCalendarService.createEvent({
                 summary: subtask.name,
